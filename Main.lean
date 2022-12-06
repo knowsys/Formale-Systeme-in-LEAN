@@ -1,5 +1,4 @@
 
-import Foo
 open Classical
 
 theorem Or.distrib_and : p ∨ (q ∧ r) ↔ (p ∨ q) ∧ (p ∨ r) :=   
