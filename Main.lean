@@ -138,7 +138,7 @@ infixr:50 " ⊆ " => Set.subset
 def Set.intersection {α : Type u} (X Y : Set α) : Set α  := fun (e: α) => e ∈ X ∧  e ∈ Y
 infixr:80 " ∩ " => Set.intersection
 
---def Set.diff {α : Type u} (X Y : Set α) : Set α  := fun (e: α) => e ∈ X ∧ ¬(e ∈ Y)
+def Set.diff {α : Type u} (X Y : Set α) : Set α  := fun (e: α) => e ∈ X ∧ ¬(e ∈ Y)
 --infixr:80 " \\ " => Set.intersection
 
 def Set.empty {α :Type u}: Set α := fun _ => False
@@ -193,6 +193,42 @@ def Language.complement {α :Type u} (X: Language α ) : Language α  :=
   fun w: Word α =>
   --braucht man sigma kleene w hier? eigentlich kann ein wort hier eh nur über sigma sein, ist das nicht schon zu limitierend ->-es sind keine wörter aus nicht alpha zugelassen , sinnvoll?
     ¬(w ∈ X)
+
+  
+
+structure Grammar {α : Type _} where 
+  V : Set α
+  E : Set α
+  P : Set ((Language (Set α)) -> (Language (Set α)))
+  S : α
+
+--TODO:nachfragen grammar
+
+def EinSchrittableitungsregel (G: Grammar)  (w:Word α) (v: Word α) : Prop :=
+    ∃ w1 w2 w3: Word α,
+      ∃ v1 v2 v3: Word α,
+      have p1 := w = w1 ∘ w2 ∘ w3
+      have p2 := v = v1 ∘ v2 ∘ v3
+      ∃ p ∈ G.P,
+        v2 = p w2 ∧ p1 ∧ p2
+        
+
+-- TODO:nachfragen ob sinn macht
+def NSchrittableitungsregel (G: Grammar) (w:Word α) (v: Word α) (n:Nat) : Prop :=
+  match n with
+  | 0 => 
+    w = v
+  | (Nat.succ m) => 
+      ∃ w1 : Word α ,  (EinSchrittableitungsregel G w w1) ∧ (NSchrittableitungsregel G w1 v m)
+
+
+def SternSchrittableitungsregel (G: Grammar) (w:Word α) (v: Word α) : Prop :=
+  ∃ n : Nat , NSchrittableitungsregel G w v n
+
+
+def ErzeugtSprache (G: Grammar): Language α  :=
+  fun w => 
+    SternSchrittableitungsregel G (Word.mk G.S) w 
 
 
 
@@ -323,6 +359,41 @@ constructor
 exact eps_element_only_element_in_eps_lang_il w
 intro n 
 simp [Set.element,n, Language.epsilon]
+
+#check Set.setext
+
+theorem Langauge.kleene_eq_diff_eps {α :Type u} {X: Language α } :Language.kleene X = Language.kleene ( Set.diff X Language.epsilon) := by 
+  apply Set.setext 
+  intro x 
+  apply Iff.intro
+  intro n 
+  repeat (first | rw [Language.kleene]| rw [Set.diff]| rw [Set.element])
+  repeat (first | rw [Language.kleene] at n| rw [Set.element] at n) 
+  match n with 
+  | ⟨n1,h3 ⟩ =>
+    cases h:n1
+    rw [h] at h3
+    rw [Set.element, Language.power] at h3
+    exists 0
+    exists n1
+    rw [h]
+    rw [Set.element, Language.power]
+    rw [h] at h3
+    rw [Set.element, Language.power] at h3
+    match h3 with 
+    | ⟨w1,w2, hh3 ⟩ => 
+      exists w1
+      exists w2
+      simp [Set.element,  Set.diff]
+      sorry
+    sorry
+
+
+
+
+--TODO : nachfragen
+
+
 
 
 theorem Language.kleene_eq_plus_eps {α :Type u} {X: Language α } :  Language.plus X ∪ Language.epsilon = Language.kleene X := by 
