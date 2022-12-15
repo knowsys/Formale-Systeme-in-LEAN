@@ -1,4 +1,32 @@
 
+Skip to content
+Pull requests
+Issues
+Codespaces
+Marketplace
+Explore
+@nngvn8
+till4513 /
+formalesystemelean
+Private
+
+Code
+Issues
+Pull requests
+Actions
+Projects
+Wiki
+Security
+
+    Insights
+
+formalesystemelean/Main.lean
+Till Dirschnabel added parts of lecture 2
+Latest commit 47b1a27 Dec 12, 2022
+History
+1 contributor
+625 lines (493 sloc) 16.3 KB
+
 open Classical
 
 theorem Or.distrib_and : p ∨ (q ∧ r) ↔ (p ∨ q) ∧ (p ∨ r) :=   
@@ -194,41 +222,51 @@ def Language.complement {α :Type u} (X: Language α ) : Language α  :=
   --braucht man sigma kleene w hier? eigentlich kann ein wort hier eh nur über sigma sein, ist das nicht schon zu limitierend ->-es sind keine wörter aus nicht alpha zugelassen , sinnvoll?
     ¬(w ∈ X)
 
+inductive TypeUnion (α : Type u) (β : Type v) where
+  | first (whatever : α) : TypeUnion α β
+  | second (whatever : β) : TypeUnion α β
+
+structure Grammar {V : Type v} {E : Type u} where 
+  -- V : Set α
+  -- E : Set β
+  P : Set ((Word (TypeUnion V E)) × (Word (TypeUnion V β)))
+  S : V
+  -- disEV : Set.intersection E V = Set.empty
+  -- SinV : S ∈ V 
+  
+structure Expression {α : Type u} {β : Type v} where
+
+
+structure Grammar2 {α : Type _} extends @Grammar α  where
   
 
-structure Grammar {α : Type _} where 
-  V : Set α
-  E : Set α
-  P : Set ((Language (Set α)) -> (Language (Set α)))
-  S : α
 
 --TODO:nachfragen grammar
 
-def EinSchrittableitungsregel (G: Grammar)  (w:Word α) (v: Word α) : Prop :=
-    ∃ w1 w2 w3: Word α,
-      ∃ v1 v2 v3: Word α,
+def EinSchrittableitungsregel {V : Type u1} {E : Type u2} (G : @Grammar V E) (w : Word (TypeUnion V E)) (v : Word (TypeUnion V E)) : Prop :=
+    ∃ w1 w2 w3: Word (TypeUnion V E),
+      ∃ v1 v2 v3: Word (TypeUnion V E),
       have p1 := w = w1 ∘ w2 ∘ w3
       have p2 := v = v1 ∘ v2 ∘ v3
-      ∃ p ∈ G.P,
-        v2 = p w2 ∧ p1 ∧ p2
+      (v1 = w1) ∧ (v3 = w3) ∧ p1 ∧ p2 ∧ G.P ⟨w2, v2⟩
         
 
 -- TODO:nachfragen ob sinn macht
-def NSchrittableitungsregel (G: Grammar) (w:Word α) (v: Word α) (n:Nat) : Prop :=
+def NSchrittableitungsregel {V : Type u1} {E : Type u2} (G : @Grammar V E) (w : Word (TypeUnion V E)) (v : Word (TypeUnion V E)) (n:Nat) : Prop :=
   match n with
   | 0 => 
     w = v
   | (Nat.succ m) => 
-      ∃ w1 : Word α ,  (EinSchrittableitungsregel G w w1) ∧ (NSchrittableitungsregel G w1 v m)
+      ∃ w1 : Word (TypeUnion V E) ,  (EinSchrittableitungsregel G w w1) ∧ (NSchrittableitungsregel G w1 v m)
 
 
-def SternSchrittableitungsregel (G: Grammar) (w:Word α) (v: Word α) : Prop :=
+def SternSchrittableitungsregel {V : Type u1} {E : Type u2} (G : @Grammar V E) (w : Word (TypeUnion V E)) (v : Word (TypeUnion V E)) : Prop :=
   ∃ n : Nat , NSchrittableitungsregel G w v n
 
-
-def ErzeugtSprache (G: Grammar): Language α  :=
+-- problem das martin löst
+def ErzeugtSprache {V : Type u1} {E : Type u2} (G : @Grammar V E): Language (TypeUnion V E) :=
   fun w => 
-    SternSchrittableitungsregel G (Word.mk G.S) w 
+    SternSchrittableitungsregel G ({data := List.cons (TypeUnion.first G.S) List.nil}) w 
 
 
 
@@ -623,3 +661,21 @@ theorem concat_dist_union_l {α : Type u} (L1 L2 L3 : Language α) :
             | ⟨h1, h2, h3⟩ =>
               exists u, v
               exact ⟨h1, Or.inr h2, h3⟩
+Footer
+© 2022 GitHub, Inc.
+Footer navigation
+
+    Terms
+    Privacy
+    Security
+    Status
+    Docs
+    Contact GitHub
+    Pricing
+    API
+    Training
+    Blog
+    About
+
+formalesystemelean/Main.lean at master · till4513/formalesystemelean
+ 
