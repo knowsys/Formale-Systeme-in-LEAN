@@ -227,21 +227,42 @@ inductive TypeUnion (α : Type u) (β : Type v) where
   | second (whatever : β) : TypeUnion α β
 
 structure Grammar {V : Type v} {E : Type u} where 
-  -- V : Set α
-  -- E : Set β
-  P : Set ((Word (TypeUnion V E)) × (Word (TypeUnion V β)))
+  P : Set ((Word (TypeUnion V E)) × (Word (TypeUnion V E)))
   S : V
-  -- disEV : Set.intersection E V = Set.empty
-  -- SinV : S ∈ V 
-  
-structure Expression {α : Type u} {β : Type v} where
+  --TODO
+  bed : ∀ pair : (Word (TypeUnion V E)) × (Word (TypeUnion V E)), 
+    ∃ v1 v2 v3 : Word (TypeUnion V E), ((pair.first) = (v1 ∘ v2 ∘ v3)) 
+      ∧ (v2 : ((TypeUnion V E).first)) 
+      ∧ ¬(v2 = {data := []}) 
+      ∧ pair ∈ P 
 
+--TODO
+structure RegularGrammar {V : Type v} {E : Type u} extends (@Grammar V E) where
+  bed1 : ∀ pair : (Word (TypeUnion V E)) × (Word (TypeUnion V E)), pair.first ∈ V
+  bed2 : ∀ pair : (Word (TypeUnion V E)) × (Word (TypeUnion V E)), 
+    (∃ v1 v2: TypeUnion V E, 
+      ((pair.second) = ({data := List.cons v1 List.nil}) ∘ ({data := List.cons v2 List.nil}))
+      ∧ (v1 ∈ E) ∧ (v2 ∈ V))--TODO
+    ∨ (pair.second ∈ E) 
+    ∨ (pair.second = {data := []}) 
 
-structure Grammar2 {α : Type _} extends @Grammar α  where
-  
+--TODO
+structure EpsilonFreeRegularGrammar {V : Type v} {E : Type u} extends (@RegularGrammar V E) where
+  epsilonFree : ∀ pair : (Word (TypeUnion V E)) × (Word (TypeUnion V E)), ¬(pair.second = Word.empty) ∨ (pair.left = G.S)
 
+--TODO
+def CreateEpsilonFreeGrammarSub (G : @Grammar V E) (Vε : Type v): Set ((Word (TypeUnion V E)) × (Word (TypeUnion V E)))
+  have P1 = 
+--TODO
+def CreateEpsilonFreeGrammar (G : @Grammar V E) : (@EpsilonFreeRegularGrammar V E) :=
+  have P1 : Set ((Word (TypeUnion V E)) × (Word (TypeUnion V E))) := G.P
+  have V1 := V
+  have Vε := someFunction (G : @Grammar V E)
+  have EpsilonRules := fun rule: ((Word (TypeUnion V E)) × (Word (TypeUnion V E))) =>
+    (rule ∈ P1) ∧ ¬(rule.right = Word.empty)
+  have P1 := Set.diff P1 EpsilonRules
+  have P1 := CreateEpsilonFreeGrammarSub (G : @Grammar V E)
 
---TODO:nachfragen grammar
 
 def EinSchrittableitungsregel {V : Type u1} {E : Type u2} (G : @Grammar V E) (w : Word (TypeUnion V E)) (v : Word (TypeUnion V E)) : Prop :=
     ∃ w1 w2 w3: Word (TypeUnion V E),
