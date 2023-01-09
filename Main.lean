@@ -1,32 +1,3 @@
-
-Skip to content
-Pull requests
-Issues
-Codespaces
-Marketplace
-Explore
-@nngvn8
-till4513 /
-formalesystemelean
-Private
-
-Code
-Issues
-Pull requests
-Actions
-Projects
-Wiki
-Security
-
-    Insights
-
-formalesystemelean/Main.lean
-Till Dirschnabel added parts of lecture 2
-Latest commit 47b1a27 Dec 12, 2022
-History
-1 contributor
-625 lines (493 sloc) 16.3 KB
-
 open Classical
 
 theorem Or.distrib_and : p ∨ (q ∧ r) ↔ (p ∨ q) ∧ (p ∨ r) :=   
@@ -226,69 +197,142 @@ inductive TypeUnion (α : Type u) (β : Type v) where
   | first (whatever : α) : TypeUnion α β
   | second (whatever : β) : TypeUnion α β
 
-structure Grammar {V : Type v} {E : Type u} where 
+
+structure Grammar2 {V : Type v} {E : Type u} where 
   P : Set ((Word (TypeUnion V E)) × (Word (TypeUnion V E)))
   S : V
-  --TODO
-  bed : ∀ pair : (Word (TypeUnion V E)) × (Word (TypeUnion V E)), 
-    ∃ v1 v2 v3 : Word (TypeUnion V E), ((pair.first) = (v1 ∘ v2 ∘ v3)) 
-      ∧ (v2 : ((TypeUnion V E).first)) 
-      ∧ ¬(v2 = {data := []}) 
-      ∧ pair ∈ P 
+  bed2: ∀ pair : (Word (TypeUnion V E)) × (Word (TypeUnion V E)), 
+  -- wenn pair in p folgt dass es die bedingungen hat sonst keine einschränkung
+    ¬ P pair ∨ (
+      ∃ v1 v2 v3 : Word (TypeUnion V E), 
+        ((pair.fst) = (v1 ∘ v2 ∘ v3)) 
+        -- TODO v2 soll (ein Wort) über V sein
+        ∧ ∃ t, t = TypeUnion.first v2 
+        ∧ ¬(v2 = Word.epsilon) 
+    )
 
---TODO
-structure RegularGrammar {V : Type v} {E : Type u} extends (@Grammar V E) where
+structure Grammar {α : Type u} where
+  V : Set α 
+  E : Set α 
+  S: α 
+  P : Set ((Word α) × (Word α))
+  bed : V ∩ E = ∅ ∧ S ∈ V ∧ 
+    ¬ P pair ∨ (
+      ∃ v1 v2 v3 : Word α , 
+        ((pair.fst) = (v1 ∘ v2 ∘ v3)) ∧ 
+        (∃ t: α  , (Word.mk ([t]) = v2 ∧ t ∈ E ))
+        ∧ ¬(v2 = Word.epsilon) 
+    )
+
+structure RegularGrammar {α  : Type u} extends (@Grammar α) where
+  bed1 : ∀ pair : ((Word α) × (Word α)), 
+    ¬ (pair  ∈ P) ∨ (
+      (∃ t: α  , Word.mk ([t]) = pair.fst ∧ t ∈ V ) ∧ 
+      (∃ t1 t2 : α , Word.mk ([t1, t2]) = pair.snd ∧ t1 ∈ E ∧ t2 ∈ V) ∧ 
+      (∃ t: α  , Word.mk ([t]) = pair.snd ∧ t ∈ E ) ∧ 
+      pair.snd = Word.epsilon
+    )
+
+
+structure RegularGrammar2 {V : Type v} {E : Type u} extends (@Grammar V E) where
   bed1 : ∀ pair : (Word (TypeUnion V E)) × (Word (TypeUnion V E)), pair.first ∈ V
-  bed2 : ∀ pair : (Word (TypeUnion V E)) × (Word (TypeUnion V E)), 
+  bed3 : ∀ pair : (Word (TypeUnion V E)) × (Word (TypeUnion V E)), 
     (∃ v1 v2: TypeUnion V E, 
       ((pair.second) = ({data := List.cons v1 List.nil}) ∘ ({data := List.cons v2 List.nil}))
-      ∧ (v1 ∈ E) ∧ (v2 ∈ V))--TODO
+      ∧ (v1 ∈ E) ∧ (v2 ∈ V))
     ∨ (pair.second ∈ E) 
     ∨ (pair.second = {data := []}) 
 
---TODO
-structure EpsilonFreeRegularGrammar {V : Type v} {E : Type u} extends (@RegularGrammar V E) where
-  epsilonFree : ∀ pair : (Word (TypeUnion V E)) × (Word (TypeUnion V E)), ¬(pair.second = Word.empty) ∨ (pair.left = G.S)
 
---TODO
-def CreateEpsilonFreeGrammarSub (G : @Grammar V E) (Vε : Type v): Set ((Word (TypeUnion V E)) × (Word (TypeUnion V E)))
-  have P1 = 
---TODO
-def CreateEpsilonFreeGrammar (G : @Grammar V E) : (@EpsilonFreeRegularGrammar V E) :=
-  have P1 : Set ((Word (TypeUnion V E)) × (Word (TypeUnion V E))) := G.P
-  have V1 := V
-  have Vε := someFunction (G : @Grammar V E)
-  have EpsilonRules := fun rule: ((Word (TypeUnion V E)) × (Word (TypeUnion V E))) =>
-    (rule ∈ P1) ∧ ¬(rule.right = Word.empty)
-  have P1 := Set.diff P1 EpsilonRules
-  have P1 := CreateEpsilonFreeGrammarSub (G : @Grammar V E)
+structure EpsilonFreeRegularGrammar {α  : Type u} extends (@RegularGrammar α ) where
+  epsilonFree : ∀ pair : (Word α ) × (Word α), 
+  ¬ (pair  ∈ P) ∨ (
+    pair.fst = Word.mk ([S]) ∨ ¬ (pair.snd = Word.epsilon)
+  )
 
 
-def EinSchrittableitungsregel {V : Type u1} {E : Type u2} (G : @Grammar V E) (w : Word (TypeUnion V E)) (v : Word (TypeUnion V E)) : Prop :=
-    ∃ w1 w2 w3: Word (TypeUnion V E),
-      ∃ v1 v2 v3: Word (TypeUnion V E),
+def EinSchrittableitungsregel {α : Type u} (G : @Grammar α) (w : Word α) (v : Word α) : Prop :=
+    ∃ w1 w2 w3: Word α ,
+      ∃ v1 v2 v3: Word α ,
       have p1 := w = w1 ∘ w2 ∘ w3
       have p2 := v = v1 ∘ v2 ∘ v3
       (v1 = w1) ∧ (v3 = w3) ∧ p1 ∧ p2 ∧ G.P ⟨w2, v2⟩
         
-
--- TODO:nachfragen ob sinn macht
-def NSchrittableitungsregel {V : Type u1} {E : Type u2} (G : @Grammar V E) (w : Word (TypeUnion V E)) (v : Word (TypeUnion V E)) (n:Nat) : Prop :=
+def NSchrittableitungsregel {α : Type u} (G : @Grammar α ) (w : Word α ) (v : Word α ) (n:Nat) : Prop :=
   match n with
   | 0 => 
     w = v
   | (Nat.succ m) => 
-      ∃ w1 : Word (TypeUnion V E) ,  (EinSchrittableitungsregel G w w1) ∧ (NSchrittableitungsregel G w1 v m)
+      ∃ w1 : Word α , (EinSchrittableitungsregel G w w1) ∧ (NSchrittableitungsregel G w1 v m)
 
 
-def SternSchrittableitungsregel {V : Type u1} {E : Type u2} (G : @Grammar V E) (w : Word (TypeUnion V E)) (v : Word (TypeUnion V E)) : Prop :=
+def SternSchrittableitungsregel {α : Type u} (G : @Grammar α ) (w : Word α ) (v : Word α ) : Prop :=
   ∃ n : Nat , NSchrittableitungsregel G w v n
 
--- problem das martin löst
-def ErzeugtSprache {V : Type u1} {E : Type u2} (G : @Grammar V E): Language (TypeUnion V E) :=
-  fun w => 
-    SternSchrittableitungsregel G ({data := List.cons (TypeUnion.first G.S) List.nil}) w 
 
+def ErzeugtSprache {α : Type u} (G : @Grammar α): Language α  :=
+  fun w: Word α  => 
+    SternSchrittableitungsregel G (Word.mk [G.S]) w
+
+structure NFA {α : Type u} where 
+  Q : Set α 
+  E : Set α 
+  δ : Set ((α × α) × α)
+  Q0 : Set α 
+  F: Set α 
+  Q0subset: Q0 ⊆  Q 
+  Fsubset: F ⊆ Q
+  Tfunction: 
+    ∀ t : ((α × α) × α),
+       ¬ (t ∈ δ) ∨ (
+          t.fst.fst ∈ Q ∧ 
+          t.fst.snd ∈ E ∧ 
+          t.snd ∈ Q
+       )
+
+structure DFA {α : Type u} extends (@ NFA α ) where 
+  q0: 
+  (∃ t : α , Q = 
+    (fun a : α => 
+       (t = a)
+      )
+  ) 
+  uniqueness:
+      ∀ t1 t2 : ((α × α) × α),
+       ¬ ((t1 ∈ δ) ∧ (t1 ∈ δ)) ∨ 
+        (¬ ( t1.fst = t2.fst) ∨ t1.snd = t2.snd)
+
+def AllElementsOfWordInSet {α : Type u} (w: Word α) (S: Set α ) :=
+  match w with 
+  | Word.mk (a::as)  => a ∈ S ∧ AllElementsOfWordInSet (Word.mk as) S
+  | _ => True
+
+def EinSchrittableitungsregelNFA {α : Type u} {dfa: @ NFA α } (q1 : α) (q2 : α ) (w : Word α) (v: Word α) : Prop :=
+      q1 ∈ dfa.Q  ∧ q1 ∈ dfa.Q ∧ 
+      ∃ w1: Word α , 
+      (AllElementsOfWordInSet w1 dfa.E ∧ 
+      ∃ a : α, 
+        w = w1 ∘ (Word.mk [a]) ∧ v = w1 ∧ ⟨⟨q1, a⟩, q2⟩ ∈ dfa.δ 
+      )
+      ∨ (q1 = q2 ∧ w = Word.epsilon ∧ v = Word.epsilon)
+
+def NSchrittableitungsregelNFA {α : Type u} {dfa: @ NFA α } (q1 : α) (q2 : α ) (w : Word α) (v: Word α) (n:Nat) : Prop :=
+  match n with 
+  | (Nat.succ m) => 
+    ∃wz : Word α, 
+      ∃qz : α ,  qz ∈ dfa.Q ∧ 
+    @EinSchrittableitungsregelNFA α dfa q1 qz  w wz ∧ 
+    @NSchrittableitungsregelNFA α dfa qz q2 wz v m 
+  | _ => w = v ∧ q1 = q2
+
+def SternSchrittableitungsregelNFA {α : Type u} {dfa: @ NFA α } (q1 : α) (q2 : α ) (w : Word α) (v: Word α): Prop :=
+  ∃ n:Nat,
+    @NSchrittableitungsregelNFA α dfa q1 q2 w v n
+
+def NFASprache {α : Type u} {dfa: @ NFA α } : Language α :=
+  fun w: Word α => 
+    ∃ f s, f ∈ dfa.F ∧ s ∈ dfa.Q0 ∧ 
+    @SternSchrittableitungsregelNFA α dfa s f w Word.epsilon
 
 
 theorem Or.comm (a b:Prop) : a ∨ b ↔ b ∨ a := by
@@ -389,10 +433,6 @@ theorem Set.intersection_dist_union {α : Type u} (X Y Z : Set α) : X ∩ (Y �
   repeat rw [Set.element]
   rw [Set.union, Set.intersection, Set.intersection,And.distrib_or]
   rfl
-
-
-
-
 
 theorem Word.objects_equal {α : Type u} (w :Word α ): Word.mk w.data  = w := by rfl 
 
@@ -682,21 +722,5 @@ theorem concat_dist_union_l {α : Type u} (L1 L2 L3 : Language α) :
             | ⟨h1, h2, h3⟩ =>
               exists u, v
               exact ⟨h1, Or.inr h2, h3⟩
-Footer
-© 2022 GitHub, Inc.
-Footer navigation
 
-    Terms
-    Privacy
-    Security
-    Status
-    Docs
-    Contact GitHub
-    Pricing
-    API
-    Training
-    Blog
-    About
-
-formalesystemelean/Main.lean at master · till4513/formalesystemelean
  
