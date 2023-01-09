@@ -193,23 +193,23 @@ def Language.complement {α :Type u} (X: Language α ) : Language α  :=
   --braucht man sigma kleene w hier? eigentlich kann ein wort hier eh nur über sigma sein, ist das nicht schon zu limitierend ->-es sind keine wörter aus nicht alpha zugelassen , sinnvoll?
     ¬(w ∈ X)
 
-inductive TypeUnion (α : Type u) (β : Type v) where
-  | first (whatever : α) : TypeUnion α β
-  | second (whatever : β) : TypeUnion α β
+-- inductive TypeUnion (α : Type u) (β : Type v) where
+--   | first (whatever : α) : TypeUnion α β
+--   | second (whatever : β) : TypeUnion α β
 
 
-structure Grammar2 {V : Type v} {E : Type u} where 
-  P : Set ((Word (TypeUnion V E)) × (Word (TypeUnion V E)))
-  S : V
-  bed2: ∀ pair : (Word (TypeUnion V E)) × (Word (TypeUnion V E)), 
-  -- wenn pair in p folgt dass es die bedingungen hat sonst keine einschränkung
-    ¬ P pair ∨ (
-      ∃ v1 v2 v3 : Word (TypeUnion V E), 
-        ((pair.fst) = (v1 ∘ v2 ∘ v3)) 
-        -- TODO v2 soll (ein Wort) über V sein
-        ∧ ∃ t, t = TypeUnion.first v2 
-        ∧ ¬(v2 = Word.epsilon) 
-    )
+-- structure Grammar2 {V : Type v} {E : Type u} where 
+--   P : Set ((Word (TypeUnion V E)) × (Word (TypeUnion V E)))
+--   S : V
+--   bed2: ∀ pair : (Word (TypeUnion V E)) × (Word (TypeUnion V E)), 
+--   -- wenn pair in p folgt dass es die bedingungen hat sonst keine einschränkung
+--     ¬ P pair ∨ (
+--       ∃ v1 v2 v3 : Word (TypeUnion V E), 
+--         ((pair.fst) = (v1 ∘ v2 ∘ v3)) 
+--         -- TODO v2 soll (ein Wort) über V sein
+--         ∧ ∃ t, t = TypeUnion.first v2 
+--         ∧ ¬(v2 = Word.epsilon) 
+--     )
 
 structure Grammar {α : Type u} where
   V : Set α 
@@ -234,14 +234,14 @@ structure RegularGrammar {α  : Type u} extends (@Grammar α) where
     )
 
 
-structure RegularGrammar2 {V : Type v} {E : Type u} extends (@Grammar V E) where
-  bed1 : ∀ pair : (Word (TypeUnion V E)) × (Word (TypeUnion V E)), pair.first ∈ V
-  bed3 : ∀ pair : (Word (TypeUnion V E)) × (Word (TypeUnion V E)), 
-    (∃ v1 v2: TypeUnion V E, 
-      ((pair.second) = ({data := List.cons v1 List.nil}) ∘ ({data := List.cons v2 List.nil}))
-      ∧ (v1 ∈ E) ∧ (v2 ∈ V))
-    ∨ (pair.second ∈ E) 
-    ∨ (pair.second = {data := []}) 
+-- structure RegularGrammar2 {V : Type v} {E : Type u} extends (@Grammar V E) where
+--   bed1 : ∀ pair : (Word (TypeUnion V E)) × (Word (TypeUnion V E)), pair.first ∈ V
+--   bed3 : ∀ pair : (Word (TypeUnion V E)) × (Word (TypeUnion V E)), 
+--     (∃ v1 v2: TypeUnion V E, 
+--       ((pair.second) = ({data := List.cons v1 List.nil}) ∘ ({data := List.cons v2 List.nil}))
+--       ∧ (v1 ∈ E) ∧ (v2 ∈ V))
+--     ∨ (pair.second ∈ E) 
+--     ∨ (pair.second = {data := []}) 
 
 
 structure EpsilonFreeRegularGrammar {α  : Type u} extends (@RegularGrammar α ) where
@@ -334,6 +334,91 @@ def NFASprache {α : Type u} {dfa: @ NFA α } : Language α :=
     ∃ f s, f ∈ dfa.F ∧ s ∈ dfa.Q0 ∧ 
     @SternSchrittableitungsregelNFA α dfa s f w Word.epsilon
 
+structure TotalerDFA {α : Type u} extends (@ DFA α) where 
+  tot: ∀ a q : α,
+     ¬ (a ∈ E ∧ q ∈ Q) ∨ 
+    ∃ q2 : α , q2 ∈ Q ∧ ⟨⟨q, a ⟩,  q2⟩ ∈ δ
+
+def TotalerDFAConstruct {α : Type u} {dfa: @ DFA α } {fang: α } {p1: ¬(fang ∈ dfa.Q)}: @TotalerDFA α :=
+  have Q2: Set α  := fun w => (w ∈ dfa.Q) ∨ (w=fang) 
+  have pf2 :=  dfa.Q0subset
+  have pf4 : (fun w => (w ∈ dfa.Q) ∨ (w=fang)) = Q2 := by rfl
+  have Q0SubsetQ2: (dfa.Q0 ⊆ Q2) := by
+    intro n
+    intro w 
+    rw [Set.element] 
+    rw [Set.subset] at pf2 
+    have pf3 := (pf2 n) w 
+    simp [← pf4]
+    apply Or.inl 
+    exact pf3 
+  have FSubsetQ2: (dfa.F ⊆ Q2) := by
+    intro n
+    intro w 
+    rw [Set.element] 
+    rw [Set.subset] at pf2 
+    have pf3 := (pf2 n) w 
+    simp [← pf4]
+    apply Or.inl 
+    exact pf3 
+  have δ2: Set ((α × α) × α) := fun ⟨⟨ w1, w2⟩ , w3⟩  => ⟨ ⟨ w1, w2⟩ , w3⟩  ∈ dfa.δ ∨ (¬(Q2 w1 ∧ dfa.E w2) ∨ (w3 = fang))
+  have deltadef : (fun ⟨⟨w1,w2⟩ , w3⟩ =>
+                       ⟨ ⟨ w1, w2⟩ , w3⟩  ∈ dfa.δ ∨ (¬(Q2 w1 ∧ dfa.E w2 ) ∨ (w3 = fang))) = δ2 := by rfl 
+
+  have Tfunction2: (∀ t : ((α × α) × α),
+       ¬ (t ∈ δ2) ∨ (
+          t.fst.fst ∈ Q2 ∧ 
+          t.fst.snd ∈ dfa.E ∧ 
+          t.snd ∈ Q2
+       )) := by
+       intro n1
+       rw [not_or_eq_implication]
+       intro n2
+       have hq45 := n2
+       rw [Set.element] at n2
+       rw [←deltadef] at n2
+       match n1 with 
+       | ⟨⟨w11,w22⟩ , w33⟩ => 
+          simp[Set.element]
+          rw [← pf4]
+          have k1 : (fun w => w ∈ dfa.toNFA.Q ∨ w = fang) w11 := by 
+            have hqq : ((fun w => w ∈ dfa.toNFA.Q ∨ w = fang) w11) = (w11 ∈ dfa.toNFA.Q ∨ w11 = fang) := by rfl
+            rw [hqq]
+            --TODO matchen
+            have hsorry : ⟨ ⟨ w11, w22⟩ , w33⟩ ∈ dfa.toNFA.δ ∨ ¬(Q2 w11 ∧ dfa.E w22) ∨ w33 = fang := sorry
+            apply Or.elim hsorry
+            intro mm
+            apply Or.inl
+            have htfun := dfa.Tfunction
+            have htfun2 := htfun ⟨ ⟨ w11, w22⟩ , w33⟩ 
+            simp [not_or_eq_implication] at htfun2
+            have hq44 := htfun2 mm
+            exact hq44.left.left
+            intro mm
+            apply Or.elim mm
+            intro mmm
+            sorry
+            sorry
+          
+
+
+
+
+
+
+
+
+
+  --{ q0 := dfa.q0, uniqueness := dfa.uniqueness, Q := Q2, E := dfa.E, δ := dfa.δ , Q0 := dfa.Q0, F := dfa.F, Q0subset := dfa.Q0subset, Fsubset := dfa.Fsubset, Tfunction := dfa.Tfunction, tot:=sorry : TotalerDFA } 
+
+--  Q : Set α 
+  -- E : Set α 
+  -- δ : Set ((α × α) × α)
+  -- Q0 : Set α 
+  -- F: Set α 
+  -- Q0subset: Q0 ⊆  Q 
+  -- Fsubset: F ⊆ Q
+  -- Tfunction: 
 
 theorem Or.comm (a b:Prop) : a ∨ b ↔ b ∨ a := by
 constructor
