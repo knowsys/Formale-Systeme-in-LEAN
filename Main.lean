@@ -221,7 +221,6 @@ structure Grammar {α : Type u} where
       ∃ v1 v2 v3 : Word α , 
         ((pair.fst) = (v1 ∘ v2 ∘ v3)) ∧ 
         (∃ t: α  , (Word.mk ([t]) = v2 ∧ t ∈ E ))
-        ∧ ¬(v2 = Word.epsilon) 
     )
 
 structure RegularGrammar {α  : Type u} extends (@Grammar α) where
