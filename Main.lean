@@ -334,21 +334,34 @@ def NFASprache {α : Type u} {dfa: @ NFA α } : Language α :=
     @SternSchrittableitungsregelNFA α dfa s f w Word.epsilon
 
 structure TotalerDFA {α : Type u} extends (@ DFA α) where 
-  tot: ∀ a q : α,
-     ¬ (a ∈ E ∧ q ∈ Q) ∨ 
-    ∃ q2 : α , q2 ∈ Q ∧ ⟨⟨q, a ⟩,  q2⟩ ∈ δ
+  tot: ∀ t : ((α × α) × α),
+  ( ¬ (t.fst.snd ∈ E ∧ t.fst.fst ∈ Q) ∨ 
+    ∃ q2 : α , ⟨⟨t.fst.fst, t.fst.snd ⟩,  q2⟩ ∈ δ
+  )
 
 def TotalerDFAConstruct {α : Type u} {dfa: @ DFA α } {fang: α } {p1: ¬(fang ∈ dfa.Q)}: @TotalerDFA α :=
   have Q2: Set α  := fun w => (w ∈ dfa.Q) ∨ (w=fang) 
-  have pf2 :=  dfa.Q0subset
-  have pf4 : (fun w => (w ∈ dfa.Q) ∨ (w=fang)) = Q2 := by rfl
-  have Q0SubsetQ2: (dfa.Q0 ⊆ Q2) := by
+
+  have Q2_def_rfl : (fun w => (w ∈ dfa.Q) ∨ (w=fang)) = Q2 := by rfl
+  have QSubsetQ2: (dfa.Q ⊆ Q2) := by
+    have dfa_subset :=  dfa.Q0subset
     intro n
     intro w 
     rw [Set.element] 
-    rw [Set.subset] at pf2 
-    have pf3 := (pf2 n) w 
-    simp [← pf4]
+    rw [Set.subset] at dfa_subset 
+    have pf3 := (dfa_subset n) w 
+    simp [← Q2_def_rfl]
+    apply Or.inl 
+    exact pf3 
+
+  have Q0SubsetQ2: (dfa.Q0 ⊆ Q2) := by
+    have dfa_subset :=  dfa.Q0subset
+    intro n
+    intro w 
+    rw [Set.element] 
+    rw [Set.subset] at dfa_subset 
+    have pf3 := (dfa_subset n) w 
+    simp [← Q2_def_rfl]
     apply Or.inl 
     exact pf3 
   have FSubsetQ2: (dfa.F ⊆ Q2) := by
@@ -357,12 +370,11 @@ def TotalerDFAConstruct {α : Type u} {dfa: @ DFA α } {fang: α } {p1: ¬(fang 
     rw [Set.element] 
     rw [Set.subset] at pf2 
     have pf3 := (pf2 n) w 
-    simp [← pf4]
+    simp [← Q2_def_rfl]
     apply Or.inl 
     exact pf3 
-  have δ2: Set ((α × α) × α) := fun ⟨⟨ w1, w2⟩ , w3⟩  => ⟨ ⟨ w1, w2⟩ , w3⟩  ∈ dfa.δ ∨ (¬(Q2 w1 ∧ dfa.E w2) ∨ (w3 = fang))
-  have deltadef : (fun ⟨⟨w1,w2⟩ , w3⟩ =>
-                       ⟨ ⟨ w1, w2⟩ , w3⟩  ∈ dfa.δ ∨ (¬(Q2 w1 ∧ dfa.E w2 ) ∨ (w3 = fang))) = δ2 := by rfl 
+  have δ2: Set ((α × α) × α) := fun ⟨⟨ w1, w2⟩ , w3⟩  => ⟨ ⟨ w1, w2⟩ , w3⟩  ∈ dfa.δ ∨ (¬ (∃ a : α ,⟨ ⟨ w1, w2⟩ , a⟩ ∈ dfa.δ )∧ Q2 w1 ∧ dfa.E w2 ∧ w3 = fang)
+  have delta_def_rfl : ( fun ⟨⟨ w1, w2⟩ , w3⟩  => ⟨ ⟨ w1, w2⟩ , w3⟩  ∈ dfa.δ ∨ (¬ (∃ a : α ,⟨ ⟨ w1, w2⟩ , a⟩ ∈ dfa.δ )∧ Q2 w1 ∧ dfa.E w2 ∧ w3 = fang) ) = δ2 := by rfl 
 
   have Tfunction2: (∀ t : ((α × α) × α),
        ¬ (t ∈ δ2) ∨ (
@@ -370,54 +382,108 @@ def TotalerDFAConstruct {α : Type u} {dfa: @ DFA α } {fang: α } {p1: ¬(fang 
           t.fst.snd ∈ dfa.E ∧ 
           t.snd ∈ Q2
        )) := by
-       intro n1
+       intro triple
        rw [not_or_eq_implication]
-       intro n2
-       have hq45 := n2
-       rw [Set.element] at n2
-       rw [←deltadef] at n2
-       match n1 with 
-       | ⟨⟨w11,w22⟩ , w33⟩ => 
-          simp[Set.element]
-          rw [← pf4]
-          have k1 : (fun w => w ∈ dfa.toNFA.Q ∨ w = fang) w11 := by 
-            have hqq : ((fun w => w ∈ dfa.toNFA.Q ∨ w = fang) w11) = (w11 ∈ dfa.toNFA.Q ∨ w11 = fang) := by rfl
-            rw [hqq]
-            --TODO matchen
-            have hsorry : ⟨ ⟨ w11, w22⟩ , w33⟩ ∈ dfa.toNFA.δ ∨ ¬(Q2 w11 ∧ dfa.E w22) ∨ w33 = fang := sorry
-            apply Or.elim hsorry
-            intro mm
+       intro triple_in_delta2
+       have triple_in_delta2_old := triple_in_delta2
+       rw [Set.element,←delta_def_rfl] at triple_in_delta2
+       match triple with 
+       | ⟨⟨qs,b⟩ , qz⟩ => 
+          have hsorry2 : ⟨ ⟨ qs, b⟩ , qz⟩ ∈ dfa.toNFA.δ ∨ ((¬ (∃ a : α ,⟨ ⟨ qs, b⟩ , a⟩ ∈ dfa.δ ) )∧ Q2 qs ∧ NFA.E dfa.toNFA b ∧  (qz = fang)) := by 
+            simp [Set.element, ← delta_def_rfl] at triple_in_delta2
+            exact triple_in_delta2
+          have hsorry : ⟨ ⟨ qs, b⟩ , qz⟩ ∈ dfa.toNFA.δ ∨ (Q2 qs ∧ NFA.E dfa.toNFA b ∧  (qz = fang)):= by 
+            apply Or.elim hsorry2
+            intro x 
             apply Or.inl
-            have htfun := dfa.Tfunction
-            have htfun2 := htfun ⟨ ⟨ w11, w22⟩ , w33⟩ 
-            simp [not_or_eq_implication] at htfun2
-            have hq44 := htfun2 mm
-            exact hq44.left.left
-            intro mm
-            apply Or.elim mm
-            intro mmm
-            sorry
-            sorry
-          
+            exact x
+            intro x 
+            apply Or.inr 
+            simp [x]
+          simp[Set.element]
+          have dfa_tfun := dfa.Tfunction
+          have dfa_tfun_w := dfa_tfun ⟨ ⟨ qs, b⟩ , qz⟩ 
+          simp [Set.element] at dfa_tfun_w 
+          repeat rw [←Set.element] at dfa_tfun_w
+          simp [not_or_eq_implication] at dfa_tfun_w
+          have k1 : Q2 qs := by
+            cases (Classical.em (dfa.δ ⟨⟨qs,b⟩ , qz⟩)) with 
+            | inl hl =>
+                have dfa_tfun_conjunctions := dfa_tfun_w hl
+                have kk1 := dfa_tfun_conjunctions.left
+                apply QSubsetQ2
+                rw [Set.element]
+                exact kk1
+            | inr hr =>
+              apply Or.elim (hsorry)
+              intro f
+              apply False.elim (hr f)
+              intro rdef
+              have g := rdef.left
+              exact g
+          have k2 : dfa.E b := by
+            cases (Classical.em (dfa.δ ⟨⟨qs,b⟩ , qz⟩)) with 
+            | inl hl =>
+              have dfa_tfun_conjunctions := dfa_tfun_w hl
+              have kk1 := dfa_tfun_conjunctions.right.left
+              exact kk1
+            | inr hr =>
+              apply Or.elim (hsorry)
+              intro f
+              apply False.elim (hr f)
+              intro rdef
+              have g := rdef.right.left
+              exact g
+          have k3: Q2 qz := by
+            cases (Classical.em (dfa.δ ⟨⟨qs,b⟩ , qz⟩)) with 
+            | inl hl =>
+              have dfa_tfun_conjunctions := dfa_tfun_w hl
+              have kk1 := dfa_tfun_conjunctions.right.left
+              exact kk1
+            | inr hr =>
+              apply Or.elim (hsorry)
+              intro f
+              apply False.elim (hr f)
+              intro rdef
+              have gh := rdef.right.right
+              rw [gh]
+              have q2_fang : Q2 fang := by  
+                rw [← Q2_def_rfl]
+                have hqq : (fun w => w ∈ dfa.toNFA.Q ∨ w = fang) fang = (fang ∈ dfa.toNFA.Q ∨ fang = fang) := by rfl
+                rw [hqq]
+                apply Or.inr
+                have aea : fang = fang := by rfl
+                exact aea 
+              exact q2_fang
+          exact ⟨k1, k2 , k3 ⟩
+
+  have tot2: ∀ t : ((α × α) × α),
+  ( ¬ (t.fst.snd ∈ dfa.E ∧ t.fst.fst ∈ Q2) ∨ 
+    ∃ q2 : α , ⟨⟨t.fst.fst, t.fst.snd ⟩,  q2⟩ ∈ δ2
+  ):= by 
+        intro triple
+        match triple with 
+       | ⟨⟨qs,b⟩ , qz⟩ => 
+          simp [not_or_eq_implication]
+          intro x
+          exists qz
+          simp [Set.element, ← delta_def_rfl]
 
 
 
 
 
+        
+
+  --have δ2: Set ((α × α) × α) := fun ⟨⟨ w1, w2⟩ , w3⟩  => ⟨ ⟨ w1, w2⟩ , w3⟩  ∈ dfa.δ ∨ (¬ (∃ a : α ,⟨ ⟨ w1, w2⟩ , a⟩ ∈ dfa.δ )∧ Q2 w1 ∧ dfa.E w2 ∧ w3 = fang)
 
 
+  -- tot: ∀ t : ((α × α) × α),
+  -- ( ¬ (t.fst.snd ∈ E ∧ t.fst.fst ∈ Q) ∨ 
+  --   ∃ q2 : α , ⟨⟨t.fst.fst, t.fst.snd ⟩,  q2⟩ ∈ δ
+  -- )
 
 
-  --{ q0 := dfa.q0, uniqueness := dfa.uniqueness, Q := Q2, E := dfa.E, δ := dfa.δ , Q0 := dfa.Q0, F := dfa.F, Q0subset := dfa.Q0subset, Fsubset := dfa.Fsubset, Tfunction := dfa.Tfunction, tot:=sorry : TotalerDFA } 
-
---  Q : Set α 
-  -- E : Set α 
-  -- δ : Set ((α × α) × α)
-  -- Q0 : Set α 
-  -- F: Set α 
-  -- Q0subset: Q0 ⊆  Q 
-  -- Fsubset: F ⊆ Q
-  -- Tfunction: 
 
 theorem Or.comm (a b:Prop) : a ∨ b ↔ b ∨ a := by
 constructor
