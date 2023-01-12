@@ -342,40 +342,50 @@ structure TotalerDFA {α : Type u} extends (@ DFA α) where
 
 def TotalerDFAConstruct {α : Type u} (dfa: @ DFA α ) (fang: α ) (p1: ¬(fang ∈ dfa.Q)): @TotalerDFA α :=
   have Q2: Set α  := fun w => (w ∈ dfa.Q) ∨ (w=fang) 
+  have δ2: Set ((α × α) × α) := fun ⟨⟨ w1, w2⟩ , w3⟩  => ⟨ ⟨ w1, w2⟩ , w3⟩  ∈ dfa.δ ∨ (¬ (∃ a : α ,⟨ ⟨ w1, w2⟩ , a⟩ ∈ dfa.δ )∧ Q2 w1 ∧ dfa.E w2 ∧ w3 = fang)
+  
+  -- wie zeigt man diese reflexivität?
+  have delta_def_rfl : ( fun ⟨⟨ w1, w2⟩ , w3⟩  => ⟨ ⟨ w1, w2⟩ , w3⟩  ∈ dfa.δ ∨ (¬ (∃ a : α ,⟨ ⟨ w1, w2⟩ , a⟩ ∈ dfa.δ )∧ Q2 w1 ∧ dfa.E w2 ∧ w3 = fang) ) = δ2 :=  
+    sorry 
 
-  have Q2_def_rfl : (fun w => (w ∈ dfa.Q) ∨ (w=fang)) = Q2 := by rfl
+  have Q2_def_rfl : ((fun w => (w ∈ dfa.Q) ∨ (w=fang)):(Set α )) = Q2 := 
+    sorry
+
   have QSubsetQ2: (dfa.Q ⊆ Q2) := by
-    have dfa_subset :=  dfa.Q0subset
     intro n
     intro w 
-    rw [Set.element] 
-    rw [Set.subset] at dfa_subset 
-    have pf3 := (dfa_subset n) w 
-    simp [← Q2_def_rfl]
+    simp [Set.element]
+    rw [← Q2_def_rfl]
+    simp []
     apply Or.inl 
-    exact pf3 
+    exact w
 
   have Q0SubsetQ2: (dfa.Q0 ⊆ Q2) := by
     have dfa_subset :=  dfa.Q0subset
-    intro n
-    intro w 
-    rw [Set.element] 
-    rw [Set.subset] at dfa_subset 
-    have pf3 := (dfa_subset n) w 
-    simp [← Q2_def_rfl]
-    apply Or.inl 
-    exact pf3 
+    simp [Set.subset]
+    intro n 
+    have hl := QSubsetQ2
+    rw [Set.subset ] at hl 
+    have hll := hl n 
+    rw [Set.subset ] at dfa_subset
+    have hrr := dfa_subset n 
+    intro x 
+    exact hll (hrr x)
+
+
+
   have FSubsetQ2: (dfa.F ⊆ Q2) := by
-    intro n
-    intro w 
-    rw [Set.element] 
-    rw [Set.subset] at pf2 
-    have pf3 := (pf2 n) w 
-    simp [← Q2_def_rfl]
-    apply Or.inl 
-    exact pf3 
-  have δ2: Set ((α × α) × α) := fun ⟨⟨ w1, w2⟩ , w3⟩  => ⟨ ⟨ w1, w2⟩ , w3⟩  ∈ dfa.δ ∨ (¬ (∃ a : α ,⟨ ⟨ w1, w2⟩ , a⟩ ∈ dfa.δ )∧ Q2 w1 ∧ dfa.E w2 ∧ w3 = fang)
-  have delta_def_rfl : ( fun ⟨⟨ w1, w2⟩ , w3⟩  => ⟨ ⟨ w1, w2⟩ , w3⟩  ∈ dfa.δ ∨ (¬ (∃ a : α ,⟨ ⟨ w1, w2⟩ , a⟩ ∈ dfa.δ )∧ Q2 w1 ∧ dfa.E w2 ∧ w3 = fang) ) = δ2 := by rfl 
+    have dfa_subset :=  dfa.Fsubset
+    simp [Set.subset]
+    intro n 
+    have hl := QSubsetQ2
+    rw [Set.subset ] at hl 
+    have hll := hl n 
+    rw [Set.subset ] at dfa_subset
+    have hrr := dfa_subset n 
+    intro x 
+    exact hll (hrr x)
+
 
   have Tfunction2: (∀ t : ((α × α) × α),
        ¬ (t ∈ δ2) ∨ (
@@ -439,7 +449,8 @@ def TotalerDFAConstruct {α : Type u} (dfa: @ DFA α ) (fang: α ) (p1: ¬(fang 
             cases (Classical.em (dfa.δ ⟨⟨qs,b⟩ , qz⟩)) with 
             | inl hl =>
               have dfa_tfun_conjunctions := dfa_tfun_w hl
-              have kk1 := dfa_tfun_conjunctions.right.left
+              have kk1 := dfa_tfun_conjunctions.right.right
+              apply QSubsetQ2
               exact kk1
             | inr hr =>
               apply Or.elim (hsorry)
@@ -474,12 +485,13 @@ def TotalerDFAConstruct {α : Type u} (dfa: @ DFA α ) (fang: α ) (p1: ¬(fang 
             match hl with 
             | ⟨y, hy ⟩ => 
               exists  y 
-              exists Or.inl 
+              apply Or.inl 
+              exact hy 
           | inr hr => 
             exists fang
             have hfang : fang = fang := rfl 
             apply Or.inr 
-            exact ⟨hr, x.left, x.right, hfang ⟩
+            exact ⟨hr, x.right, x.left, hfang ⟩
 
   have uniqueness2 :
       ∀ t1 t2 : ((α × α) × α),
@@ -491,13 +503,50 @@ def TotalerDFAConstruct {α : Type u} (dfa: @ DFA α ) (fang: α ) (p1: ¬(fang 
         intro bed1
         rw [not_or_eq_implication]
         intro bed2 
+        simp[] at bed2 
+        have bed11 := bed1.left 
+        have bed12 := bed1.right
+        have dfa_uniqueness := dfa.uniqueness triple1 triple2
+        repeat rw [not_or_eq_implication] at dfa_uniqueness
+        match triple1 with 
+        | ⟨first1, qz1⟩ => 
+          match triple2 with 
+          |⟨first2, qz2⟩ => 
+            simp [] at bed2
+            simp [Set.element] at dfa_uniqueness
+            simp [Set.element, ← delta_def_rfl] at bed11
+            simp [bed2, Set.element, ← delta_def_rfl] at bed12
+            simp []
+            cases bed11 with 
+            | inl hl1 =>
+              cases bed12 with 
+              | inl hl2 =>
+                exact dfa_uniqueness ⟨hl1, hl2⟩ bed2 
+              | inr hr2 => 
+                rw [bed2] at hl1
+                have hNEtransition := hr2.left
+                have  exa :∃ a , dfa.δ ⟨first2,a ⟩ := by
+                  exists qz1
+                have hfalse := hNEtransition  exa
+                apply False.elim hfalse
+
+            | inr hr1 => 
+              cases bed12 with 
+              | inl hl1 =>
+                have hNEtransition := hr1.left
+                rw [← bed2] at hl1
+                have  exa :∃ a , dfa.δ ⟨first1,a ⟩ := by
+                  exists qz2
+                have hfalse := hNEtransition exa
+                apply False.elim hfalse
+ 
+              | inr hr2 => 
+                have h_right := hr1.right.right.right
+                have h_left := hr2.right.right.right
+                simp [h_left, h_right]
 
 
-
-  --have δ2: Set ((α × α) × α) := fun ⟨⟨ w1, w2⟩ , w3⟩  => ⟨ ⟨ w1, w2⟩ , w3⟩  ∈ dfa.δ ∨ (¬ (∃ a : α ,⟨ ⟨ w1, w2⟩ , a⟩ ∈ dfa.δ )∧ Q2 w1 ∧ dfa.E w2 ∧ w3 = fang)
-
-
-
+    {tot := tot2, uniqueness := uniqueness2, Tfunction := Tfunction2, Q0 := dfa.Q0,  Q:= Q2, E := dfa.E, δ := δ2, F := dfa.F, Q0subset := Q0SubsetQ2, Fsubset := FSubsetQ2, q0 := dfa.q0  : TotalerDFA}
 
 
 theorem Or.comm (a b:Prop) : a ∨ b ↔ b ∨ a := by
