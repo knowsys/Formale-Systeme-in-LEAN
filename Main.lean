@@ -291,14 +291,14 @@ structure NFA {α : Type u} where
 
 structure DFA {α : Type u} extends (@ NFA α ) where 
   q0: 
-  (∃ t : α , Q = 
+  (∃ t : α , Q0 = 
     (fun a : α => 
        (t = a)
       )
   ) 
   uniqueness:
       ∀ t1 t2 : ((α × α) × α),
-       ¬ ((t1 ∈ δ) ∧ (t1 ∈ δ)) ∨ 
+       ¬ ((t1 ∈ δ) ∧ (t2 ∈ δ)) ∨ 
         (¬ ( t1.fst = t2.fst) ∨ t1.snd = t2.snd)
 
 def AllElementsOfWordInSet {α : Type u} (w: Word α) (S: Set α ) :=
@@ -339,7 +339,8 @@ structure TotalerDFA {α : Type u} extends (@ DFA α) where
     ∃ q2 : α , ⟨⟨t.fst.fst, t.fst.snd ⟩,  q2⟩ ∈ δ
   )
 
-def TotalerDFAConstruct {α : Type u} {dfa: @ DFA α } {fang: α } {p1: ¬(fang ∈ dfa.Q)}: @TotalerDFA α :=
+
+def TotalerDFAConstruct {α : Type u} (dfa: @ DFA α ) (fang: α ) (p1: ¬(fang ∈ dfa.Q)): @TotalerDFA α :=
   have Q2: Set α  := fun w => (w ∈ dfa.Q) ∨ (w=fang) 
 
   have Q2_def_rfl : (fun w => (w ∈ dfa.Q) ∨ (w=fang)) = Q2 := by rfl
@@ -466,22 +467,36 @@ def TotalerDFAConstruct {α : Type u} {dfa: @ DFA α } {fang: α } {p1: ¬(fang 
        | ⟨⟨qs,b⟩ , qz⟩ => 
           simp [not_or_eq_implication]
           intro x
-          exists qz
+          -- exists qz
           simp [Set.element, ← delta_def_rfl]
+          cases (Classical.em ( ∃y, dfa.δ ⟨⟨qs,b⟩ , y⟩) ) with 
+          | inl hl =>
+            match hl with 
+            | ⟨y, hy ⟩ => 
+              exists  y 
+              exists Or.inl 
+          | inr hr => 
+            exists fang
+            have hfang : fang = fang := rfl 
+            apply Or.inr 
+            exact ⟨hr, x.left, x.right, hfang ⟩
+
+  have uniqueness2 :
+      ∀ t1 t2 : ((α × α) × α),
+       ¬ ((t1 ∈ δ2) ∧ (t2 ∈ δ2)) ∨ 
+        (¬ ( t1.fst = t2.fst) ∨ t1.snd = t2.snd) := by 
+        intro triple1
+        intro triple2 
+        rw [not_or_eq_implication]
+        intro bed1
+        rw [not_or_eq_implication]
+        intro bed2 
 
 
-
-
-
-        
 
   --have δ2: Set ((α × α) × α) := fun ⟨⟨ w1, w2⟩ , w3⟩  => ⟨ ⟨ w1, w2⟩ , w3⟩  ∈ dfa.δ ∨ (¬ (∃ a : α ,⟨ ⟨ w1, w2⟩ , a⟩ ∈ dfa.δ )∧ Q2 w1 ∧ dfa.E w2 ∧ w3 = fang)
 
 
-  -- tot: ∀ t : ((α × α) × α),
-  -- ( ¬ (t.fst.snd ∈ E ∧ t.fst.fst ∈ Q) ∨ 
-  --   ∃ q2 : α , ⟨⟨t.fst.fst, t.fst.snd ⟩,  q2⟩ ∈ δ
-  -- )
 
 
 
