@@ -217,19 +217,22 @@ structure Grammar {α : Type u} where
   S: α 
   P : Set ((Word α) × (Word α))
   bed : V ∩ E = ∅ ∧ S ∈ V ∧ 
-    ¬ P pair ∨ (
+    ∀ pair : (Word α) × (Word α),
+    P pair -> (
       ∃ v1 v2 v3 : Word α , 
         ((pair.fst) = (v1 ∘ v2 ∘ v3)) ∧ 
         (∃ t: α  , (Word.mk ([t]) = v2 ∧ t ∈ E ))
     )
 
 structure RegularGrammar {α  : Type u} extends (@Grammar α) where
-  bed1 : ∀ pair : ((Word α) × (Word α)), 
-    ¬ (pair  ∈ P) ∨ (
-      (∃ t: α  , Word.mk ([t]) = pair.fst ∧ t ∈ V ) ∧ 
-      (∃ t1 t2 : α , Word.mk ([t1, t2]) = pair.snd ∧ t1 ∈ E ∧ t2 ∈ V) ∧ 
-      (∃ t: α  , Word.mk ([t]) = pair.snd ∧ t ∈ E ) ∧ 
-      pair.snd = Word.epsilon
+  bed_reg: ∀ pair : ((Word α) × (Word α)), 
+    (pair  ∈ P) -> 
+    (
+      (∃ t: α  , (Word.mk [t] = pair.fst) ∧ t ∈ V ) ∧ (
+        (∃ t1 t2 : α , (Word.mk [t1, t2] = pair.snd) ∧ t1 ∈ E ∧ t2 ∈ V) ∨ 
+        (∃ t: α  , Word.mk [t] = pair.snd ∧ t ∈ E ) ∨ 
+        pair.snd = Word.mk []
+      )
     )
 
 
@@ -338,6 +341,30 @@ structure TotalerDFA {α : Type u} extends (@ DFA α) where
   ( ¬ (t.fst.snd ∈ E ∧ t.fst.fst ∈ Q) ∨ 
     ∃ q2 : α , ⟨⟨t.fst.fst, t.fst.snd ⟩,  q2⟩ ∈ δ
   )
+
+
+def ConstructRegukarGrammarOutOfDFA {α : Type u} (dfa: @ DFA α ) : RegularGrammar := 
+  have E : Set α := sorry 
+  have V : Set α := sorry 
+  have P: Set ((Word α) × (Word α)) := sorry 
+  have S: α := sorry 
+  have bed : (V ∩ E = ∅) ∧ (S ∈ V) ∧ 
+    ∀ pair : (Word α) × (Word α),
+    (pair ∈ P) -> (
+      ∃ v1 v2 v3 : Word α , 
+        ((pair.fst) = (v1 ∘ v2 ∘ v3)) ∧ 
+        (∃ t: α  , ((Word.mk [t] = v2) ∧ (t ∈ E )))
+    ) := sorry 
+  have bed_reg: ∀ pair : ((Word α) × (Word α)), 
+    (pair  ∈ P) -> 
+    (
+      (∃ t: α  , (Word.mk [t] = pair.fst) ∧ t ∈ V ) ∧ (
+        (∃ t1 t2 : α , (Word.mk [t1, t2] = pair.snd) ∧ t1 ∈ E ∧ t2 ∈ V) ∨ 
+        (∃ t: α  , Word.mk [t] = pair.snd ∧ t ∈ E ) ∨ 
+        pair.snd = Word.mk []
+      )
+    ) := sorry
+
 
 
 def TotalerDFAConstruct {α : Type u} (dfa: @ DFA α ) (fang: α ) (p1: ¬(fang ∈ dfa.Q)): @TotalerDFA α :=
@@ -547,6 +574,8 @@ def TotalerDFAConstruct {α : Type u} (dfa: @ DFA α ) (fang: α ) (p1: ¬(fang 
 
 
     {tot := tot2, uniqueness := uniqueness2, Tfunction := Tfunction2, Q0 := dfa.Q0,  Q:= Q2, E := dfa.E, δ := δ2, F := dfa.F, Q0subset := Q0SubsetQ2, Fsubset := FSubsetQ2, q0 := dfa.q0  : TotalerDFA}
+
+
 
 
 theorem Or.comm (a b:Prop) : a ∨ b ↔ b ∨ a := by
