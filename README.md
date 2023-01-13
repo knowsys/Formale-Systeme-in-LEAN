@@ -1,3 +1,3 @@
 # formalesystemelean
-please use:
-elan default leanprover/lean4:stable
+## please use:
+### elan default leanprover/lean4:stable
