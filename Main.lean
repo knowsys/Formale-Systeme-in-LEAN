@@ -1,5 +1,6 @@
 open Classical
 
+
 theorem Or.distrib_and : p ∨ (q ∧ r) ↔ (p ∨ q) ∧ (p ∨ r) :=   
   Iff.intro
   (fun hpqr : p ∨ (q ∧ r) =>
@@ -115,6 +116,7 @@ theorem not_not_p {p : Prop}: (¬¬p) ↔ p := by
 
 
 
+
 --------------------------------------------------------------------
 structure Word (α : Type u) where
   data : List α
@@ -134,7 +136,7 @@ infixr:65 " ∪ " => Set.union
 def Set.subset {α : Type u} (X Y : Set α) : Prop := ∀ e : α, e ∈ X → e ∈ Y
 infixr:50 " ⊆ " => Set.subset
 
-def Set.intersection {α : Type u} (X Y : Set α) : Set α  := fun (e: α) => e ∈ X ∧  e ∈ Y
+def Set.intersection {α : Type u} (X Y : Set α) : Set α  := fun (e: α) => e ∈ X ∧ e ∈ Y
 infixr:80 " ∩ " => Set.intersection
 
 def Set.diff {α : Type u} (X Y : Set α) : Set α  := fun (e: α) => e ∈ X ∧ ¬(e ∈ Y)
@@ -210,373 +212,6 @@ def Language.complement {α :Type u} (X: Language α ) : Language α  :=
 --         ∧ ∃ t, t = TypeUnion.first v2 
 --         ∧ ¬(v2 = Word.epsilon) 
 --     )
-
-structure Grammar {α : Type u} where
-  V : Set α 
-  E : Set α 
-  S: α 
-  P : Set ((Word α) × (Word α))
-  bed : V ∩ E = ∅ ∧ S ∈ V ∧ 
-    ∀ pair : (Word α) × (Word α),
-    P pair -> (
-      ∃ v1 v2 v3 : Word α , 
-        ((pair.fst) = (v1 ∘ v2 ∘ v3)) ∧ 
-        (∃ t: α  , (Word.mk ([t]) = v2 ∧ t ∈ E ))
-    )
-
-structure RegularGrammar {α  : Type u} extends (@Grammar α) where
-  bed_reg: ∀ pair : ((Word α) × (Word α)), 
-    (pair  ∈ P) -> 
-    (
-      (∃ t: α  , (Word.mk [t] = pair.fst) ∧ t ∈ V ) ∧ (
-        (∃ t1 t2 : α , (Word.mk [t1, t2] = pair.snd) ∧ t1 ∈ E ∧ t2 ∈ V) ∨ 
-        (∃ t: α  , Word.mk [t] = pair.snd ∧ t ∈ E ) ∨ 
-        pair.snd = Word.mk []
-      )
-    )
-
-
--- structure RegularGrammar2 {V : Type v} {E : Type u} extends (@Grammar V E) where
---   bed1 : ∀ pair : (Word (TypeUnion V E)) × (Word (TypeUnion V E)), pair.first ∈ V
---   bed3 : ∀ pair : (Word (TypeUnion V E)) × (Word (TypeUnion V E)), 
---     (∃ v1 v2: TypeUnion V E, 
---       ((pair.second) = ({data := List.cons v1 List.nil}) ∘ ({data := List.cons v2 List.nil}))
---       ∧ (v1 ∈ E) ∧ (v2 ∈ V))
---     ∨ (pair.second ∈ E) 
---     ∨ (pair.second = {data := []}) 
-
-
-structure EpsilonFreeRegularGrammar {α  : Type u} extends (@RegularGrammar α ) where
-  epsilonFree : ∀ pair : (Word α ) × (Word α), 
-  ¬ (pair  ∈ P) ∨ (
-    pair.fst = Word.mk ([S]) ∨ ¬ (pair.snd = Word.epsilon)
-  )
-
-
-def EinSchrittableitungsregel {α : Type u} (G : @Grammar α) (w : Word α) (v : Word α) : Prop :=
-    ∃ w1 w2 w3: Word α ,
-      ∃ v1 v2 v3: Word α ,
-      have p1 := w = w1 ∘ w2 ∘ w3
-      have p2 := v = v1 ∘ v2 ∘ v3
-      (v1 = w1) ∧ (v3 = w3) ∧ p1 ∧ p2 ∧ G.P ⟨w2, v2⟩
-        
-def NSchrittableitungsregel {α : Type u} (G : @Grammar α ) (w : Word α ) (v : Word α ) (n:Nat) : Prop :=
-  match n with
-  | 0 => 
-    w = v
-  | (Nat.succ m) => 
-      ∃ w1 : Word α , (EinSchrittableitungsregel G w w1) ∧ (NSchrittableitungsregel G w1 v m)
-
-
-def SternSchrittableitungsregel {α : Type u} (G : @Grammar α ) (w : Word α ) (v : Word α ) : Prop :=
-  ∃ n : Nat , NSchrittableitungsregel G w v n
-
-
-def ErzeugtSprache {α : Type u} (G : @Grammar α): Language α  :=
-  fun w: Word α  => 
-    SternSchrittableitungsregel G (Word.mk [G.S]) w
-
-structure NFA {α : Type u} where 
-  Q : Set α 
-  E : Set α 
-  δ : Set ((α × α) × α)
-  Q0 : Set α 
-  F: Set α 
-  Q0subset: Q0 ⊆  Q 
-  Fsubset: F ⊆ Q
-  Tfunction: 
-    ∀ t : ((α × α) × α),
-       ¬ (t ∈ δ) ∨ (
-          t.fst.fst ∈ Q ∧ 
-          t.fst.snd ∈ E ∧ 
-          t.snd ∈ Q
-       )
-
-structure DFA {α : Type u} extends (@ NFA α ) where 
-  q0: 
-  (∃ t : α , Q0 = 
-    (fun a : α => 
-       (t = a)
-      )
-  ) 
-  uniqueness:
-      ∀ t1 t2 : ((α × α) × α),
-       ¬ ((t1 ∈ δ) ∧ (t2 ∈ δ)) ∨ 
-        (¬ ( t1.fst = t2.fst) ∨ t1.snd = t2.snd)
-
-def AllElementsOfWordInSet {α : Type u} (w: Word α) (S: Set α ) :=
-  match w with 
-  | Word.mk (a::as)  => a ∈ S ∧ AllElementsOfWordInSet (Word.mk as) S
-  | _ => True
-
-def EinSchrittableitungsregelNFA {α : Type u} {dfa: @ NFA α } (q1 : α) (q2 : α ) (w : Word α) (v: Word α) : Prop :=
-      q1 ∈ dfa.Q  ∧ q1 ∈ dfa.Q ∧ 
-      ∃ w1: Word α , 
-      (AllElementsOfWordInSet w1 dfa.E ∧ 
-      ∃ a : α, 
-        w = w1 ∘ (Word.mk [a]) ∧ v = w1 ∧ ⟨⟨q1, a⟩, q2⟩ ∈ dfa.δ 
-      )
-      ∨ (q1 = q2 ∧ w = Word.epsilon ∧ v = Word.epsilon)
-
-def NSchrittableitungsregelNFA {α : Type u} {dfa: @ NFA α } (q1 : α) (q2 : α ) (w : Word α) (v: Word α) (n:Nat) : Prop :=
-  match n with 
-  | (Nat.succ m) => 
-    ∃wz : Word α, 
-      ∃qz : α ,  qz ∈ dfa.Q ∧ 
-    @EinSchrittableitungsregelNFA α dfa q1 qz  w wz ∧ 
-    @NSchrittableitungsregelNFA α dfa qz q2 wz v m 
-  | _ => w = v ∧ q1 = q2
-
-def SternSchrittableitungsregelNFA {α : Type u} {dfa: @ NFA α } (q1 : α) (q2 : α ) (w : Word α) (v: Word α): Prop :=
-  ∃ n:Nat,
-    @NSchrittableitungsregelNFA α dfa q1 q2 w v n
-
-def NFASprache {α : Type u} {dfa: @ NFA α } : Language α :=
-  fun w: Word α => 
-    ∃ f s, f ∈ dfa.F ∧ s ∈ dfa.Q0 ∧ 
-    @SternSchrittableitungsregelNFA α dfa s f w Word.epsilon
-
-structure TotalerDFA {α : Type u} extends (@ DFA α) where 
-  tot: ∀ t : ((α × α) × α),
-  ( ¬ (t.fst.snd ∈ E ∧ t.fst.fst ∈ Q) ∨ 
-    ∃ q2 : α , ⟨⟨t.fst.fst, t.fst.snd ⟩,  q2⟩ ∈ δ
-  )
-
-
-def ConstructRegukarGrammarOutOfDFA {α : Type u} (dfa: @ DFA α ) : RegularGrammar := 
-  have E : Set α := sorry 
-  have V : Set α := sorry 
-  have P: Set ((Word α) × (Word α)) := sorry 
-  have S: α := sorry 
-  have bed : (V ∩ E = ∅) ∧ (S ∈ V) ∧ 
-    ∀ pair : (Word α) × (Word α),
-    (pair ∈ P) -> (
-      ∃ v1 v2 v3 : Word α , 
-        ((pair.fst) = (v1 ∘ v2 ∘ v3)) ∧ 
-        (∃ t: α  , ((Word.mk [t] = v2) ∧ (t ∈ E )))
-    ) := sorry 
-  have bed_reg: ∀ pair : ((Word α) × (Word α)), 
-    (pair  ∈ P) -> 
-    (
-      (∃ t: α  , (Word.mk [t] = pair.fst) ∧ t ∈ V ) ∧ (
-        (∃ t1 t2 : α , (Word.mk [t1, t2] = pair.snd) ∧ t1 ∈ E ∧ t2 ∈ V) ∨ 
-        (∃ t: α  , Word.mk [t] = pair.snd ∧ t ∈ E ) ∨ 
-        pair.snd = Word.mk []
-      )
-    ) := sorry
-
-
-
-def TotalerDFAConstruct {α : Type u} (dfa: @ DFA α ) (fang: α ) (p1: ¬(fang ∈ dfa.Q)): @TotalerDFA α :=
-  have Q2: Set α  := fun w => (w ∈ dfa.Q) ∨ (w=fang) 
-  have δ2: Set ((α × α) × α) := fun ⟨⟨ w1, w2⟩ , w3⟩  => ⟨ ⟨ w1, w2⟩ , w3⟩  ∈ dfa.δ ∨ (¬ (∃ a : α ,⟨ ⟨ w1, w2⟩ , a⟩ ∈ dfa.δ )∧ Q2 w1 ∧ dfa.E w2 ∧ w3 = fang)
-  
-  -- wie zeigt man diese reflexivität?
-  have delta_def_rfl : ( fun ⟨⟨ w1, w2⟩ , w3⟩  => ⟨ ⟨ w1, w2⟩ , w3⟩  ∈ dfa.δ ∨ (¬ (∃ a : α ,⟨ ⟨ w1, w2⟩ , a⟩ ∈ dfa.δ )∧ Q2 w1 ∧ dfa.E w2 ∧ w3 = fang) ) = δ2 :=  
-    sorry 
-
-  have Q2_def_rfl : ((fun w => (w ∈ dfa.Q) ∨ (w=fang)):(Set α )) = Q2 := 
-    sorry
-
-  have QSubsetQ2: (dfa.Q ⊆ Q2) := by
-    intro n
-    intro w 
-    simp [Set.element]
-    rw [← Q2_def_rfl]
-    simp []
-    apply Or.inl 
-    exact w
-
-  have Q0SubsetQ2: (dfa.Q0 ⊆ Q2) := by
-    have dfa_subset :=  dfa.Q0subset
-    simp [Set.subset]
-    intro n 
-    have hl := QSubsetQ2
-    rw [Set.subset ] at hl 
-    have hll := hl n 
-    rw [Set.subset ] at dfa_subset
-    have hrr := dfa_subset n 
-    intro x 
-    exact hll (hrr x)
-
-
-
-  have FSubsetQ2: (dfa.F ⊆ Q2) := by
-    have dfa_subset :=  dfa.Fsubset
-    simp [Set.subset]
-    intro n 
-    have hl := QSubsetQ2
-    rw [Set.subset ] at hl 
-    have hll := hl n 
-    rw [Set.subset ] at dfa_subset
-    have hrr := dfa_subset n 
-    intro x 
-    exact hll (hrr x)
-
-
-  have Tfunction2: (∀ t : ((α × α) × α),
-       ¬ (t ∈ δ2) ∨ (
-          t.fst.fst ∈ Q2 ∧ 
-          t.fst.snd ∈ dfa.E ∧ 
-          t.snd ∈ Q2
-       )) := by
-       intro triple
-       rw [not_or_eq_implication]
-       intro triple_in_delta2
-       have triple_in_delta2_old := triple_in_delta2
-       rw [Set.element,←delta_def_rfl] at triple_in_delta2
-       match triple with 
-       | ⟨⟨qs,b⟩ , qz⟩ => 
-          have hsorry2 : ⟨ ⟨ qs, b⟩ , qz⟩ ∈ dfa.toNFA.δ ∨ ((¬ (∃ a : α ,⟨ ⟨ qs, b⟩ , a⟩ ∈ dfa.δ ) )∧ Q2 qs ∧ NFA.E dfa.toNFA b ∧  (qz = fang)) := by 
-            simp [Set.element, ← delta_def_rfl] at triple_in_delta2
-            exact triple_in_delta2
-          have hsorry : ⟨ ⟨ qs, b⟩ , qz⟩ ∈ dfa.toNFA.δ ∨ (Q2 qs ∧ NFA.E dfa.toNFA b ∧  (qz = fang)):= by 
-            apply Or.elim hsorry2
-            intro x 
-            apply Or.inl
-            exact x
-            intro x 
-            apply Or.inr 
-            simp [x]
-          simp[Set.element]
-          have dfa_tfun := dfa.Tfunction
-          have dfa_tfun_w := dfa_tfun ⟨ ⟨ qs, b⟩ , qz⟩ 
-          simp [Set.element] at dfa_tfun_w 
-          repeat rw [←Set.element] at dfa_tfun_w
-          simp [not_or_eq_implication] at dfa_tfun_w
-          have k1 : Q2 qs := by
-            cases (Classical.em (dfa.δ ⟨⟨qs,b⟩ , qz⟩)) with 
-            | inl hl =>
-                have dfa_tfun_conjunctions := dfa_tfun_w hl
-                have kk1 := dfa_tfun_conjunctions.left
-                apply QSubsetQ2
-                rw [Set.element]
-                exact kk1
-            | inr hr =>
-              apply Or.elim (hsorry)
-              intro f
-              apply False.elim (hr f)
-              intro rdef
-              have g := rdef.left
-              exact g
-          have k2 : dfa.E b := by
-            cases (Classical.em (dfa.δ ⟨⟨qs,b⟩ , qz⟩)) with 
-            | inl hl =>
-              have dfa_tfun_conjunctions := dfa_tfun_w hl
-              have kk1 := dfa_tfun_conjunctions.right.left
-              exact kk1
-            | inr hr =>
-              apply Or.elim (hsorry)
-              intro f
-              apply False.elim (hr f)
-              intro rdef
-              have g := rdef.right.left
-              exact g
-          have k3: Q2 qz := by
-            cases (Classical.em (dfa.δ ⟨⟨qs,b⟩ , qz⟩)) with 
-            | inl hl =>
-              have dfa_tfun_conjunctions := dfa_tfun_w hl
-              have kk1 := dfa_tfun_conjunctions.right.right
-              apply QSubsetQ2
-              exact kk1
-            | inr hr =>
-              apply Or.elim (hsorry)
-              intro f
-              apply False.elim (hr f)
-              intro rdef
-              have gh := rdef.right.right
-              rw [gh]
-              have q2_fang : Q2 fang := by  
-                rw [← Q2_def_rfl]
-                have hqq : (fun w => w ∈ dfa.toNFA.Q ∨ w = fang) fang = (fang ∈ dfa.toNFA.Q ∨ fang = fang) := by rfl
-                rw [hqq]
-                apply Or.inr
-                have aea : fang = fang := by rfl
-                exact aea 
-              exact q2_fang
-          exact ⟨k1, k2 , k3 ⟩
-
-  have tot2: ∀ t : ((α × α) × α),
-  ( ¬ (t.fst.snd ∈ dfa.E ∧ t.fst.fst ∈ Q2) ∨ 
-    ∃ q2 : α , ⟨⟨t.fst.fst, t.fst.snd ⟩,  q2⟩ ∈ δ2
-  ):= by 
-        intro triple
-        match triple with 
-       | ⟨⟨qs,b⟩ , qz⟩ => 
-          simp [not_or_eq_implication]
-          intro x
-          -- exists qz
-          simp [Set.element, ← delta_def_rfl]
-          cases (Classical.em ( ∃y, dfa.δ ⟨⟨qs,b⟩ , y⟩) ) with 
-          | inl hl =>
-            match hl with 
-            | ⟨y, hy ⟩ => 
-              exists  y 
-              apply Or.inl 
-              exact hy 
-          | inr hr => 
-            exists fang
-            have hfang : fang = fang := rfl 
-            apply Or.inr 
-            exact ⟨hr, x.right, x.left, hfang ⟩
-
-  have uniqueness2 :
-      ∀ t1 t2 : ((α × α) × α),
-       ¬ ((t1 ∈ δ2) ∧ (t2 ∈ δ2)) ∨ 
-        (¬ ( t1.fst = t2.fst) ∨ t1.snd = t2.snd) := by 
-        intro triple1
-        intro triple2 
-        rw [not_or_eq_implication]
-        intro bed1
-        rw [not_or_eq_implication]
-        intro bed2 
-        simp[] at bed2 
-        have bed11 := bed1.left 
-        have bed12 := bed1.right
-        have dfa_uniqueness := dfa.uniqueness triple1 triple2
-        repeat rw [not_or_eq_implication] at dfa_uniqueness
-        match triple1 with 
-        | ⟨first1, qz1⟩ => 
-          match triple2 with 
-          |⟨first2, qz2⟩ => 
-            simp [] at bed2
-            simp [Set.element] at dfa_uniqueness
-            simp [Set.element, ← delta_def_rfl] at bed11
-            simp [bed2, Set.element, ← delta_def_rfl] at bed12
-            simp []
-            cases bed11 with 
-            | inl hl1 =>
-              cases bed12 with 
-              | inl hl2 =>
-                exact dfa_uniqueness ⟨hl1, hl2⟩ bed2 
-              | inr hr2 => 
-                rw [bed2] at hl1
-                have hNEtransition := hr2.left
-                have  exa :∃ a , dfa.δ ⟨first2,a ⟩ := by
-                  exists qz1
-                have hfalse := hNEtransition  exa
-                apply False.elim hfalse
-
-            | inr hr1 => 
-              cases bed12 with 
-              | inl hl1 =>
-                have hNEtransition := hr1.left
-                rw [← bed2] at hl1
-                have  exa :∃ a , dfa.δ ⟨first1,a ⟩ := by
-                  exists qz2
-                have hfalse := hNEtransition exa
-                apply False.elim hfalse
- 
-              | inr hr2 => 
-                have h_right := hr1.right.right.right
-                have h_left := hr2.right.right.right
-                simp [h_left, h_right]
-
-
-    {tot := tot2, uniqueness := uniqueness2, Tfunction := Tfunction2, Q0 := dfa.Q0,  Q:= Q2, E := dfa.E, δ := δ2, F := dfa.F, Q0subset := Q0SubsetQ2, Fsubset := FSubsetQ2, q0 := dfa.q0  : TotalerDFA}
-
-
-
 
 theorem Or.comm (a b:Prop) : a ∨ b ↔ b ∨ a := by
 constructor
@@ -679,7 +314,7 @@ theorem Set.intersection_dist_union {α : Type u} (X Y Z : Set α) : X ∩ (Y �
 
 theorem Word.objects_equal {α : Type u} (w :Word α ): Word.mk w.data  = w := by rfl 
 
-theorem Word.epsilon_eq_epsilon {α : Type u} : (@ε α)  = (Word.mk List.nil)  := by rfl 
+@[simp] theorem Word.epsilon_eq_epsilon {α : Type u} : (@ε α)  = (Word.mk List.nil)  := by rfl 
 
 
 theorem eps_element_only_element_in_eps_lang_il {α :Type u} (w : Word α ) : Language.epsilon w -> w = { data := [] } := by
@@ -928,42 +563,664 @@ theorem Language.morgan_inter {α : Type u} (L1 L2: Language α ) : (L1 ∩ L2) 
 
 
 theorem concat_dist_union_l {α : Type u} (L1 L2 L3 : Language α) :
-  L1 ∘ₗ (L2 ∪ L3) = (L1 ∘ₗ L2) ∪ (L1 ∘ₗ L3) :=
-    by
-      apply funext
-      intro w
-      apply propext
-      constructor
+L1 ∘ₗ (L2 ∪ L3) = (L1 ∘ₗ L2) ∪ (L1 ∘ₗ L3) :=
+  by
+    apply funext
+    intro w
+    apply propext
+    constructor
 
-      case mp =>
-        intro h
-        cases h with | intro u pu => cases pu with | intro v pv =>
-          rw [@And.comm (v ∈ (L2 ∪ L3)), ← And.assoc, Set.union_or, And.distrib_or] at pv
+    case mp =>
+      intro h
+      cases h with | intro u pu => cases pu with | intro v pv =>
+        rw [@And.comm (v ∈ (L2 ∪ L3)), ← And.assoc, Set.union_or, And.distrib_or] at pv
 
-          cases pv with
-          | inl _ =>
+        cases pv with
+        | inl _ =>
+          apply Or.inl
+          exists u, v
+          rw [@And.comm (v ∈ L2), ← And.assoc]
+          assumption
+        | inr _ =>
+          apply Or.inr
+          exists u, v
+          rw [@And.comm (v ∈ L3), ← And.assoc]
+          assumption
+
+    case mpr =>
+      intro h
+      cases h with
+        | inl hl => cases hl with | intro u pu => cases pu with | intro v pv =>
+          match pv with
+          | ⟨h1, h2, h3⟩ =>
+            exists u, v
+            exact ⟨h1, Or.inl h2, h3⟩
+        | inr hr => cases hr with | intro u pu => cases pu with | intro v pv =>
+          match pv with
+          | ⟨h1, h2, h3⟩ =>
+            exists u, v
+            exact ⟨h1, Or.inr h2, h3⟩
+
+@[simp] theorem eq_rfl {a : Type α} : (a = a) ↔ True := by simp[]
+  -- constructor
+  -- intro _
+  -- simp []
+  -- intro _
+  -- simp []
+  
+
+structure Grammar {α : Type u} where
+  V : Set α 
+  E : Set α 
+  S: α 
+  P : Set ((Word α) × (Word α))
+  bed_VEdisj : V ∩ E = ∅
+  bed_SinV: S ∈ V 
+  bed_VarInLeft: 
+    ∀ pair : (Word α) × (Word α),
+    P pair -> (
+      ∃ v1 v2 v3 : Word α , 
+        ((pair.fst) = (v1 ∘ v2 ∘ v3)) ∧ 
+        (∃ t: α  , (Word.mk ([t]) = v2 ∧ t ∈ V ))
+    )
+
+structure RegularGrammar {α  : Type u} extends (@Grammar α) where
+  bed_reg: ∀ pair : ((Word α) × (Word α)), 
+    (pair  ∈ P) -> 
+    (
+      (∃ t: α  , (Word.mk [t] = pair.fst) ∧ t ∈ V ) ∧ (
+        (∃ t1 t2 : α , (Word.mk [t1, t2] = pair.snd) ∧ t1 ∈ E ∧ t2 ∈ V) ∨ 
+        (∃ t: α  , Word.mk [t] = pair.snd ∧ t ∈ E ) ∨ 
+        pair.snd = Word.mk []
+      )
+    )
+
+
+-- structure RegularGrammar2 {V : Type v} {E : Type u} extends (@Grammar V E) where
+--   bed1 : ∀ pair : (Word (TypeUnion V E)) × (Word (TypeUnion V E)), pair.first ∈ V
+--   bed3 : ∀ pair : (Word (TypeUnion V E)) × (Word (TypeUnion V E)), 
+--     (∃ v1 v2: TypeUnion V E, 
+--       ((pair.second) = ({data := List.cons v1 List.nil}) ∘ ({data := List.cons v2 List.nil}))
+--       ∧ (v1 ∈ E) ∧ (v2 ∈ V))
+--     ∨ (pair.second ∈ E) 
+--     ∨ (pair.second = {data := []}) 
+
+
+structure EpsilonFreeRegularGrammar {α  : Type u} extends (@RegularGrammar α ) where
+  epsilonFree : ∀ pair : (Word α ) × (Word α), 
+  ¬ (pair  ∈ P) ∨ (
+    pair.fst = Word.mk ([S]) ∨ ¬ (pair.snd = Word.epsilon)
+  )
+
+
+def EinSchrittableitungsregel {α : Type u} (G : @Grammar α) (w : Word α) (v : Word α) : Prop :=
+    ∃ w1 w2 w3: Word α ,
+      ∃ v1 v2 v3: Word α ,
+      have p1 := w = w1 ∘ w2 ∘ w3
+      have p2 := v = v1 ∘ v2 ∘ v3
+      (v1 = w1) ∧ (v3 = w3) ∧ p1 ∧ p2 ∧ G.P ⟨w2, v2⟩
+        
+def NSchrittableitungsregel {α : Type u} (G : @Grammar α ) (w : Word α ) (v : Word α ) (n:Nat) : Prop :=
+  match n with
+  | 0 => 
+    w = v
+  | (Nat.succ m) => 
+      ∃ w1 : Word α , (EinSchrittableitungsregel G w w1) ∧ (NSchrittableitungsregel G w1 v m)
+
+
+def SternSchrittableitungsregel {α : Type u} (G : @Grammar α ) (w : Word α ) (v : Word α ) : Prop :=
+  ∃ n : Nat , NSchrittableitungsregel G w v n
+
+
+def ErzeugtSprache {α : Type u} (G : @Grammar α): Language α  :=
+  fun w: Word α  => 
+    SternSchrittableitungsregel G (Word.mk [G.S]) w
+
+structure NFA {α : Type u} where 
+  Q : Set α 
+  E : Set α 
+  δ : Set ((α × α) × α)
+  Q0 : Set α 
+  F: Set α
+  QEdisj: Q ∩ E = ∅ 
+  Q0subset: Q0 ⊆  Q 
+  Fsubset: F ⊆ Q
+  Tfunction: 
+    ∀ t : ((α × α) × α),
+       ¬ (t ∈ δ) ∨ (
+          t.fst.fst ∈ Q ∧ 
+          t.fst.snd ∈ E ∧ 
+          t.snd ∈ Q
+       ) 
+
+structure DFA {α : Type u} extends (@ NFA α ) where 
+  q0 : α 
+  bed_Q0:
+  (Q0 = 
+    (fun a : α => 
+       (q0 = a)
+      )
+  ) 
+  uniqueness:
+      ∀ t1 t2 : ((α × α) × α),
+       ¬ ((t1 ∈ δ) ∧ (t2 ∈ δ)) ∨ 
+        (¬ ( t1.fst = t2.fst) ∨ t1.snd = t2.snd)
+
+def AllElementsOfWordInSet {α : Type u} (w: Word α) (S: Set α ) :=
+  match w with 
+  | Word.mk (a::as)  => a ∈ S ∧ AllElementsOfWordInSet (Word.mk as) S
+  | _ => True
+
+def EinSchrittableitungsregelNFA {α : Type u} {dfa: @ NFA α } (q1 : α) (q2 : α ) (w : Word α) (v: Word α) : Prop :=
+      q1 ∈ dfa.Q  ∧ q1 ∈ dfa.Q ∧ 
+      ∃ w1: Word α , 
+      (AllElementsOfWordInSet w1 dfa.E ∧ 
+      ∃ a : α, 
+        w = w1 ∘ (Word.mk [a]) ∧ v = w1 ∧ ⟨⟨q1, a⟩, q2⟩ ∈ dfa.δ 
+      )
+      ∨ (q1 = q2 ∧ w = Word.epsilon ∧ v = Word.epsilon)
+
+def NSchrittableitungsregelNFA {α : Type u} {dfa: @ NFA α } (q1 : α) (q2 : α ) (w : Word α) (v: Word α) (n:Nat) : Prop :=
+  match n with 
+  | (Nat.succ m) => 
+    ∃wz : Word α, 
+      ∃qz : α ,  qz ∈ dfa.Q ∧ 
+    @EinSchrittableitungsregelNFA α dfa q1 qz  w wz ∧ 
+    @NSchrittableitungsregelNFA α dfa qz q2 wz v m 
+  | _ => w = v ∧ q1 = q2
+
+def SternSchrittableitungsregelNFA {α : Type u} {dfa: @ NFA α } (q1 : α) (q2 : α ) (w : Word α) (v: Word α): Prop :=
+  ∃ n:Nat,
+    @NSchrittableitungsregelNFA α dfa q1 q2 w v n
+
+def NFASprache {α : Type u} {dfa: @ NFA α } : Language α :=
+  fun w: Word α => 
+    ∃ f s, f ∈ dfa.F ∧ s ∈ dfa.Q0 ∧ 
+    @SternSchrittableitungsregelNFA α dfa s f w Word.epsilon
+
+structure TotalerDFA {α : Type u} extends (@ DFA α) where 
+  tot: ∀ t : ((α × α) × α),
+  ( ¬ (t.fst.snd ∈ E ∧ t.fst.fst ∈ Q) ∨ 
+    ∃ q2 : α , ⟨⟨t.fst.fst, t.fst.snd ⟩,  q2⟩ ∈ δ
+  )
+
+
+def ConstructRegularGrammarOutOfDFA {α : Type u} (dfa: @ DFA α ) : @RegularGrammar α:= 
+  have E : Set α := dfa.E
+  have E_def_refl : E = dfa.E := by rfl
+  
+  have V : Set α := dfa.Q
+  have V_def_refl : V = dfa.Q := by rfl
+  
+  have S : α := dfa.q0
+  have S_def_refl : S = dfa.q0 := by rfl
+  
+  have P : Set ((Word α) × (Word α)) := 
+    fun rule : (Word α) × (Word α) => 
+      (∃ql a qr : α , rule.fst = Word.mk [ql] ∧ rule.snd = Word.mk [a] ∘ Word.mk [qr] ∧ ⟨⟨ql,a⟩,qr⟩ ∈ dfa.δ)
+      ∨ (∃q a qf : α , rule.fst = Word.mk [q] ∧ rule.snd = Word.mk [a] ∧ qf ∈ dfa.F ∧ ⟨⟨q,a⟩,qf⟩ ∈ dfa.δ)
+      ∨ (rule.fst = Word.mk [S] ∧ rule.snd = Word.epsilon ∧ S ∈ dfa.F)
+  have P_def_refl : P = fun rule : (Word α) × (Word α) => 
+      (∃ql a qr : α , rule.fst = Word.mk [ql] ∧ rule.snd = Word.mk [a] ∘ Word.mk [qr] ∧ ⟨⟨ql,a⟩,qr⟩ ∈ dfa.δ)
+      ∨ (∃q a qf : α , rule.fst = Word.mk [q] ∧ rule.snd = Word.mk [a] ∧ qf ∈ dfa.F ∧ ⟨⟨q,a⟩,qf⟩ ∈ dfa.δ)
+      ∨ (rule.fst = Word.mk [S] ∧ rule.snd = Word.epsilon ∧ S ∈ dfa.F) := by rfl
+  
+  have bed_VEdisj : V ∩ E = ∅ := by
+    have QEdisj := dfa.QEdisj
+    simp [E_def_refl, V_def_refl]
+    exact QEdisj
+  
+  have bed_SinV: S ∈ V := by
+    -- exact adf
+    simp [S_def_refl, V_def_refl, Set.element]
+    have q0inQ0 : dfa.q0 ∈ dfa.Q0 := by 
+      simp [Set.element]
+      have bed_Q0 := dfa.bed_Q0
+      rw [bed_Q0]
+    have q0inQ := dfa.Q0subset dfa.q0 q0inQ0
+    rw [Set.element] at q0inQ
+    exact q0inQ 
+  
+  have bed_VarInLeft: 
+    ∀ pair : (Word α) × (Word α),
+    P pair -> (
+      ∃ v1 v2 v3 : Word α , 
+        ((pair.fst) = (v1 ∘ v2 ∘ v3)) ∧ 
+        (∃ t: α  , (Word.mk ([t]) = v2 ∧ t ∈ V ))
+    ) := by
+    intro pair
+    intro pairInP
+    simp [P_def_refl] at pairInP
+    cases pairInP with 
+    | inl disj1 => 
+      match disj1 with
+      | ⟨ql, a, qr, disj1woE⟩ => 
+        exists Word.mk []
+        exists Word.mk [ql]
+        exists Word.mk []
+        simp [Word.concat]
+        have k1 := disj1woE.left
+        have k2 : ∃ t, t = ql ∧ t ∈ V := by
+          exists ql
+          -- have ql_refl : (ql = ql) ↔ True := by rfl
+          -- simp [ql_refl]
+          simp []
+          have disj3 := disj1woE.right.right
+          rw [Set.element] at disj3
+          have Tfunction := dfa.Tfunction
+          have Tfunction2 := Tfunction ⟨⟨ql, a⟩,qr⟩
+          rw [not_or_eq_implication] at Tfunction2
+          have Tfunction3 := Tfunction2 disj3
+          simp [] at Tfunction3
+          have Tfunction31 := Tfunction3.left
+          rw [V_def_refl]
+          exact Tfunction31
+        have k1Andk2 := And.intro k1 k2
+        exact k1Andk2
+    | inr disjB =>
+      cases disjB with
+      | inl disj2 =>
+        match disj2 with
+        | ⟨q, a, qf, disj2woE⟩ => 
+          exists Word.mk []
+          exists Word.mk [q]
+          exists Word.mk []
+          simp [Word.concat]
+          have k1 := disj2woE.left
+          have k2 : ∃ t, t = q ∧ t ∈ V := by
+            exists q
+            -- have q_refl : (q = q) ↔ True := by rfl
+            -- simp [q_refl]
+            simp []
+            have disj3 := disj2woE.right.right
+            rw [Set.element] at disj3
+            have Tfunction := dfa.Tfunction
+            have Tfunction2 := Tfunction ⟨⟨q, a⟩,qf⟩
+            rw [not_or_eq_implication] at Tfunction2
+            have Tfunction3 := Tfunction2 disj3.right
+            simp [] at Tfunction3
+            have Tfunction31 := Tfunction3.left
+            rw [V_def_refl]
+            exact Tfunction31
+          have k1Andk2 := And.intro k1 k2
+          exact k1Andk2
+      | inr disj3 =>
+        exists Word.mk []
+        exists Word.mk [S]
+        exists Word.mk []
+        simp [Word.concat]
+        have k1 := disj3.left
+        have k2 : ∃ t, t = S ∧ t ∈ V := by
+          exists S
+        have k1Andk2 := And.intro k1 k2
+        exact k1Andk2
+
+  have bed_reg: ∀ pair : ((Word α) × (Word α)), 
+    (pair ∈ P) -> 
+    (
+      (∃ t: α  , (Word.mk [t] = pair.fst) ∧ t ∈ V ) ∧ (
+        (∃ t1 t2 : α , (Word.mk [t1, t2] = pair.snd) ∧ t1 ∈ E ∧ t2 ∈ V) ∨ 
+        (∃ t: α  , Word.mk [t] = pair.snd ∧ t ∈ E ) ∨ 
+        pair.snd = Word.mk []
+      )
+    ) := by 
+      intro pair
+      intro pairInP
+      simp [P_def_refl] at pairInP
+      cases pairInP with 
+      | inl disj1 => 
+        match disj1 with
+        | ⟨ql, a, qr, disj1woE⟩ => 
+          simp [Word.concat]
+          have k1 : ∃ t, t = ql ∧ t ∈ V := by
+            exists ql
+            -- have ql_refl : (ql = ql) ↔ True := by rfl
+            -- simp [ql_refl]
+            simp []
+            have disj3 := disj1woE.right.right
+            rw [Set.element] at disj3
+            have Tfunction := dfa.Tfunction
+            have Tfunction2 := Tfunction ⟨⟨ql, a⟩,qr⟩
+            rw [not_or_eq_implication] at Tfunction2
+            have Tfunction3 := Tfunction2 disj3
+            simp [] at Tfunction3
+            have Tfunction31 := Tfunction3.left
+            rw [V_def_refl]
+            exact Tfunction31
+          have k2 : ∃ t1 t2 : α , (Word.mk [t1, t2] = pair.snd) ∧ t1 ∈ E ∧ t2 ∈ V := by
+            exists a
+            exists qr
+            simp [Word.concat] at disj1woE
+            have k21 := disj1woE.right.left
+            have Tfunction := dfa.Tfunction
+            have k22 : a ∈ E ∧ qr ∈ V := by
+              have pInQ := disj1woE.right.right
+              have Tfunction2 := Tfunction ⟨⟨ql, a⟩,qr⟩
+              rw [not_or_eq_implication] at Tfunction2
+              have Tfunction3 := Tfunction2 pInQ
+              simp [] at Tfunction3
+              have Tfunction31 := Tfunction3.right
+              rw [V_def_refl, E_def_refl]
+              simp [Tfunction31]
+            simp [k21, k22]
+          simp [k2]
+          exists ql
+          simp [disj1woE.left]
+          match k1 with 
+          | ⟨qrr, k1woE⟩ =>
+          simp [←k1woE.left]
+          exact k1woE.right
+      | inr disjB =>
+        cases disjB with
+        | inl disj2 =>
+          match disj2 with
+          | ⟨ql, a, qr, disj2woE⟩ => 
+            simp [Word.concat]
+            have k1 : ∃ t, t = ql ∧ t ∈ V := by
+              exists ql
+              -- have ql_refl : (ql = ql) ↔ True := by rfl
+              -- simp [ql_refl]
+              simp []
+              have disj3 := disj2woE.right.right
+              rw [Set.element] at disj3
+              have Tfunction := dfa.Tfunction
+              have Tfunction2 := Tfunction ⟨⟨ql, a⟩,qr⟩
+              rw [not_or_eq_implication] at Tfunction2
+              have Tfunction3 := Tfunction2 disj3.right
+              simp [] at Tfunction3
+              have Tfunction31 := Tfunction3.left
+              rw [V_def_refl]
+              exact Tfunction31
+            have k2 : ∃ t: α , Word.mk [t] = pair.snd ∧ t ∈ E := by 
+              exists a
+              have disj3 := disj2woE.right.right
+              have Tfunction := dfa.Tfunction
+              have Tfunction2 := Tfunction ⟨⟨ql, a⟩,qr⟩
+              rw [not_or_eq_implication] at Tfunction2
+              have Tfunction3 := Tfunction2 disj3.right
+              simp [] at Tfunction3
+              have Tfunction31 := Tfunction3.right.left
+              rw [E_def_refl]
+              simp [disj2woE.right.left, Tfunction31]
+            simp [k2]
+            exists ql
+            simp [disj2woE.left]
+            match k1 with 
+            | ⟨qrr, k2woE⟩ =>
+            simp [←k2woE.left, k2woE.right]
+        | inr disj3 =>
+          have k1 : (∃ t, { data := [t] } = pair.fst ∧ t ∈ V) := by
+            exists S
+            simp [disj3.left, bed_SinV]
+          have k2 : pair.snd = { data := [] } := by 
+            simp [disj3.right.left]
+          simp [k1, k2]
+
+    { V := V, E := E, S := S, P := P, bed_VEdisj := bed_VEdisj, bed_SinV := bed_SinV, bed_VarInLeft := bed_VarInLeft, bed_reg := bed_reg : RegularGrammar}
+          
+
+
+def TotalerDFAConstruct {α : Type u} (dfa: @ DFA α ) (fang: α ) (p1: ¬fang ∈ dfa.Q ∧ ¬fang ∈ dfa.E) : @TotalerDFA α :=
+  have Q2: Set α  := fun w => (w ∈ dfa.Q) ∨ (w=fang) 
+  have δ2: Set ((α × α) × α) := fun ⟨⟨ w1, w2⟩ , w3⟩  => ⟨ ⟨ w1, w2⟩ , w3⟩  ∈ dfa.δ ∨ (¬ (∃ a : α ,⟨ ⟨ w1, w2⟩ , a⟩ ∈ dfa.δ )∧ Q2 w1 ∧ dfa.E w2 ∧ w3 = fang)
+  
+  -- wie zeigt man diese reflexivität?
+  have delta_def_rfl : ( fun ⟨⟨ w1, w2⟩ , w3⟩  => ⟨ ⟨ w1, w2⟩ , w3⟩  ∈ dfa.δ ∨ (¬ (∃ a : α ,⟨ ⟨ w1, w2⟩ , a⟩ ∈ dfa.δ )∧ Q2 w1 ∧ dfa.E w2 ∧ w3 = fang) ) = δ2 := 
+    sorry
+
+  have Q2_def_rfl : ((fun w => (w ∈ dfa.Q) ∨ (w=fang)):(Set α )) = Q2 := 
+    sorry
+
+  have setEmpty_rfl : Set.empty = (fun _ => False) := by rfl
+
+  have QSubsetQ2: (dfa.Q ⊆ Q2) := by
+    intro n
+    intro w 
+    simp [Set.element]
+    rw [← Q2_def_rfl]
+    simp []
+    apply Or.inl 
+    exact w
+
+  have Q2Edisj : Q2 ∩ dfa.E = Set.empty:= by
+    rw [setEmpty_rfl]
+    simp [Set.intersection]
+    rw [←Q2_def_rfl]
+    apply funext
+    intro x
+    -- rw [@And.comm]
+    simp [And.distrib_or, Set.element]
+    have hq := dfa.QEdisj
+    simp [Set.intersection, setEmpty_rfl] at hq
+    have hp : ((fun e => e ∈ dfa.Q ∧ e ∈ dfa.E) = fun x => False) → (∀e : α, (e ∈ dfa.Q ∧ e ∈ dfa.E) = False):= by
+      intro l
+      intro n
+      rw [←Set.intersection, dfa.QEdisj, Set.empty]
+    have hl := hp hq
+    have hll := hl x
+    simp [Set.element] at hll
+    rw [And.comm] at hll
+    -- simp [hll]
+    simp [Set.intersection]
+    cases (Classical.em (x = fang)) with 
+    | inl xfang => 
+      have p2 := p1.right
+      simp [xfang]
+      have hv : dfa.E fang ↔ False := by
+        constructor
+        intro x
+        apply p2
+        rw [Set.element]
+        exact x
+        intro x
+        apply False.elim x
+      simp [hv]
+    | inr xNotFang =>
+      have hv : x = fang ↔ False := by
+        constructor
+        intro x2
+        apply xNotFang
+        exact x2
+        intro x2
+        apply False.elim x2
+      simp [hv]
+    
+
+
+
+
+
+
+  have Q0SubsetQ2: (dfa.Q0 ⊆ Q2) := by
+    have dfa_subset :=  dfa.Q0subset
+    simp [Set.subset]
+    intro n 
+    have hl := QSubsetQ2
+    rw [Set.subset ] at hl 
+    have hll := hl n 
+    rw [Set.subset ] at dfa_subset
+    have hrr := dfa_subset n 
+    intro x 
+    exact hll (hrr x)
+
+
+
+  have FSubsetQ2: (dfa.F ⊆ Q2) := by
+    have dfa_subset :=  dfa.Fsubset
+    simp [Set.subset]
+    intro n 
+    have hl := QSubsetQ2
+    rw [Set.subset ] at hl 
+    have hll := hl n 
+    rw [Set.subset ] at dfa_subset
+    have hrr := dfa_subset n 
+    intro x 
+    exact hll (hrr x)
+
+
+  have Tfunction2: (∀ t : ((α × α) × α),
+       ¬ (t ∈ δ2) ∨ (
+          t.fst.fst ∈ Q2 ∧ 
+          t.fst.snd ∈ dfa.E ∧ 
+          t.snd ∈ Q2
+       )) := by
+       intro triple
+       rw [not_or_eq_implication]
+       intro triple_in_delta2
+       have triple_in_delta2_old := triple_in_delta2
+       rw [Set.element,←delta_def_rfl] at triple_in_delta2
+       match triple with 
+       | ⟨⟨qs,b⟩ , qz⟩ => 
+          have hsorry2 : ⟨ ⟨ qs, b⟩ , qz⟩ ∈ dfa.toNFA.δ ∨ ((¬ (∃ a : α ,⟨ ⟨ qs, b⟩ , a⟩ ∈ dfa.δ ) )∧ Q2 qs ∧ NFA.E dfa.toNFA b ∧  (qz = fang)) := by 
+            simp [Set.element, ← delta_def_rfl] at triple_in_delta2
+            exact triple_in_delta2
+          have hsorry : ⟨ ⟨ qs, b⟩ , qz⟩ ∈ dfa.toNFA.δ ∨ (Q2 qs ∧ NFA.E dfa.toNFA b ∧  (qz = fang)):= by 
+            apply Or.elim hsorry2
+            intro x 
             apply Or.inl
-            exists u, v
-            rw [@And.comm (v ∈ L2), ← And.assoc]
-            assumption
-          | inr _ =>
-            apply Or.inr
-            exists u, v
-            rw [@And.comm (v ∈ L3), ← And.assoc]
-            assumption
+            exact x
+            intro x 
+            apply Or.inr 
+            simp [x]
+          simp[Set.element]
+          have dfa_tfun := dfa.Tfunction
+          have dfa_tfun_w := dfa_tfun ⟨ ⟨ qs, b⟩ , qz⟩ 
+          simp [Set.element] at dfa_tfun_w 
+          repeat rw [←Set.element] at dfa_tfun_w
+          simp [not_or_eq_implication] at dfa_tfun_w
+          have k1 : Q2 qs := by
+            cases (Classical.em (dfa.δ ⟨⟨qs,b⟩ , qz⟩)) with 
+            | inl hl =>
+                have dfa_tfun_conjunctions := dfa_tfun_w hl
+                have kk1 := dfa_tfun_conjunctions.left
+                apply QSubsetQ2
+                rw [Set.element]
+                exact kk1
+            | inr hr =>
+              apply Or.elim (hsorry)
+              intro f
+              apply False.elim (hr f)
+              intro rdef
+              have g := rdef.left
+              exact g
+          have k2 : dfa.E b := by
+            cases (Classical.em (dfa.δ ⟨⟨qs,b⟩ , qz⟩)) with 
+            | inl hl =>
+              have dfa_tfun_conjunctions := dfa_tfun_w hl
+              have kk1 := dfa_tfun_conjunctions.right.left
+              exact kk1
+            | inr hr =>
+              apply Or.elim (hsorry)
+              intro f
+              apply False.elim (hr f)
+              intro rdef
+              have g := rdef.right.left
+              exact g
+          have k3: Q2 qz := by
+            cases (Classical.em (dfa.δ ⟨⟨qs,b⟩ , qz⟩)) with 
+            | inl hl =>
+              have dfa_tfun_conjunctions := dfa_tfun_w hl
+              have kk1 := dfa_tfun_conjunctions.right.right
+              apply QSubsetQ2
+              exact kk1
+            | inr hr =>
+              apply Or.elim (hsorry)
+              intro f
+              apply False.elim (hr f)
+              intro rdef
+              have gh := rdef.right.right
+              rw [gh]
+              have q2_fang : Q2 fang := by  
+                rw [← Q2_def_rfl]
+                have hqq : (fun w => w ∈ dfa.toNFA.Q ∨ w = fang) fang = (fang ∈ dfa.toNFA.Q ∨ fang = fang) := by rfl
+                rw [hqq]
+                apply Or.inr
+                have aea : fang = fang := by rfl
+                exact aea 
+              exact q2_fang
+          exact ⟨k1, k2 , k3 ⟩
 
-      case mpr =>
-        intro h
-        cases h with
-          | inl hl => cases hl with | intro u pu => cases pu with | intro v pv =>
-            match pv with
-            | ⟨h1, h2, h3⟩ =>
-              exists u, v
-              exact ⟨h1, Or.inl h2, h3⟩
-          | inr hr => cases hr with | intro u pu => cases pu with | intro v pv =>
-            match pv with
-            | ⟨h1, h2, h3⟩ =>
-              exists u, v
-              exact ⟨h1, Or.inr h2, h3⟩
+  have tot2: ∀ t : ((α × α) × α),
+  ( ¬ (t.fst.snd ∈ dfa.E ∧ t.fst.fst ∈ Q2) ∨ 
+    ∃ q2 : α , ⟨⟨t.fst.fst, t.fst.snd ⟩,  q2⟩ ∈ δ2
+  ):= by 
+        intro triple
+        match triple with 
+       | ⟨⟨qs,b⟩ , qz⟩ => 
+          simp [not_or_eq_implication]
+          intro x
+          simp [Set.element, ← delta_def_rfl]
+          cases (Classical.em ( ∃y, dfa.δ ⟨⟨qs,b⟩ , y⟩) ) with 
+          | inl hl =>
+            match hl with 
+            | ⟨y, hy ⟩ => 
+              exists  y 
+              apply Or.inl 
+              exact hy 
+          | inr hr => 
+            exists fang
+            have hfang : fang = fang := rfl 
+            apply Or.inr 
+            exact ⟨hr, x.right, x.left, hfang ⟩
+
+  have uniqueness2 :
+      ∀ t1 t2 : ((α × α) × α),
+       ¬ ((t1 ∈ δ2) ∧ (t2 ∈ δ2)) ∨ 
+        (¬ ( t1.fst = t2.fst) ∨ t1.snd = t2.snd) := by 
+        intro triple1
+        intro triple2 
+        rw [not_or_eq_implication]
+        intro bed1
+        rw [not_or_eq_implication]
+        intro bed2 
+        simp[] at bed2 
+        have bed11 := bed1.left 
+        have bed12 := bed1.right
+        have dfa_uniqueness := dfa.uniqueness triple1 triple2
+        repeat rw [not_or_eq_implication] at dfa_uniqueness
+        match triple1 with 
+        | ⟨first1, qz1⟩ => 
+          match triple2 with 
+          |⟨first2, qz2⟩ => 
+            simp [] at bed2
+            simp [Set.element] at dfa_uniqueness
+            simp [Set.element, ← delta_def_rfl] at bed11
+            simp [bed2, Set.element, ← delta_def_rfl] at bed12
+            simp []
+            cases bed11 with 
+            | inl hl1 =>
+              cases bed12 with 
+              | inl hl2 =>
+                exact dfa_uniqueness ⟨hl1, hl2⟩ bed2 
+              | inr hr2 => 
+                rw [bed2] at hl1
+                have hNEtransition := hr2.left
+                have  exa :∃ a , dfa.δ ⟨first2,a ⟩ := by
+                  exists qz1
+                have hfalse := hNEtransition  exa
+                apply False.elim hfalse
+
+            | inr hr1 => 
+              cases bed12 with 
+              | inl hl1 =>
+                have hNEtransition := hr1.left
+                rw [← bed2] at hl1
+                have  exa :∃ a , dfa.δ ⟨first1,a ⟩ := by
+                  exists qz2
+                have hfalse := hNEtransition exa
+                apply False.elim hfalse
+ 
+              | inr hr2 => 
+                have h_right := hr1.right.right.right
+                have h_left := hr2.right.right.right
+                simp [h_left, h_right]
+
+
+    {tot := tot2, uniqueness := uniqueness2, Tfunction := Tfunction2, Q0 := dfa.Q0,  Q:= Q2, E := dfa.E, δ := δ2, QEdisj := Q2Edisj, F := dfa.F, Q0subset := Q0SubsetQ2, Fsubset := FSubsetQ2, q0 := dfa.q0, bed_Q0 := dfa.bed_Q0  : TotalerDFA}
+
+
+
+
+
 
  
