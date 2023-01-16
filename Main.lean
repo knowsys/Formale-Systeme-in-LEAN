@@ -672,7 +672,7 @@ def SternSchrittableitungsregel {α : Type u} (G : @Grammar α ) (w : Word α ) 
   ∃ n : Nat , NSchrittableitungsregel G w v n
 
 
-def ErzeugtSprache {α : Type u} (G : @Grammar α): Language α  :=
+def ErzeugteSpracheGrammar {α : Type u} (G : @Grammar α): Language α  :=
   fun w: Word α  => 
     SternSchrittableitungsregel G (Word.mk [G.S]) w
 
@@ -733,7 +733,7 @@ def SternSchrittableitungsregelNFA {α : Type u} {dfa: @ NFA α } (q1 : α) (q2 
   ∃ n:Nat,
     @NSchrittableitungsregelNFA α dfa q1 q2 w v n
 
-def NFASprache {α : Type u} {dfa: @ NFA α } : Language α :=
+def NFASprache {α : Type u} (dfa: @ NFA α ) : Language α :=
   fun w: Word α => 
     ∃ f s, f ∈ dfa.F ∧ s ∈ dfa.Q0 ∧ 
     @SternSchrittableitungsregelNFA α dfa s f w Word.epsilon
@@ -954,7 +954,27 @@ def ConstructRegularGrammarOutOfDFA {α : Type u} (dfa: @ DFA α ) : @RegularGra
 
     { V := V, E := E, S := S, P := P, bed_VEdisj := bed_VEdisj, bed_SinV := bed_SinV, bed_VarInLeft := bed_VarInLeft, bed_reg := bed_reg : RegularGrammar}
           
+theorem languageDFAeqConstructedRegularGrammar {α : Type u} (dfa : @DFA α) : (@ErzeugteSpracheGrammar α (ConstructRegularGrammarOutOfDFA dfa).toGrammar) = (@NFASprache α dfa.toNFA) := by 
+  apply Set.setext
+  intro word
+  apply Iff.intro
+  intro wees
+  rw [Set.element, ErzeugteSpracheGrammar, SternSchrittableitungsregel] at wees
+   match wees with
+  | ⟨n1, weesn1⟩ =>
+    -- have q : NSchrittableitungsregel (ConstructRegularGrammarOutOfDFA dfa).toGrammar { data := [(ConstructRegularGrammarOutOfDFA dfa).toGrammar.S] } word n1
+    --   = match n1 with
+    --   | 0 => 
+    --     { data := [(ConstructRegularGrammarOutOfDFA dfa).toGrammar.S] } = word
+    --   | (Nat.succ m) => 
+    --     ∃ w1 : Word α , (EinSchrittableitungsregel (ConstructRegularGrammarOutOfDFA dfa).toGrammar { data := [(ConstructRegularGrammarOutOfDFA dfa).toGrammar.S] } w1) ∧ (NSchrittableitungsregel (ConstructRegularGrammarOutOfDFA dfa).toGrammar w1 word m) := by
+    --       sorry
+    -- rw [q] at weesn1
+    simp [ConstructRegularGrammarOutOfDFA] at weesn1
+    rw [Set.element, NFASprache]
+    exists s
 
+  simp [Set.element, NFASprache]
 
 def TotalerDFAConstruct {α : Type u} (dfa: @ DFA α ) (fang: α ) (p1: ¬fang ∈ dfa.Q ∧ ¬fang ∈ dfa.E) : @TotalerDFA α :=
   let Q2: Set α  := fun w => (w ∈ dfa.Q) ∨ (w=fang) 
