@@ -971,12 +971,24 @@ theorem languageDFAeqConstructedRegularGrammar {α : Type u} (dfa : @DFA α) : (
       simp [Set.element, NFASprache]
       exists dfa.q0, dfa.q0
       have weesr := wees.right
-      simp [← weesn1, AllElementsOfWordInSet, Set.element, ConstructRegularGrammarOutOfDFA] at weesr
+      simp [← weesn1, AllElementsOfWordInSet, ConstructRegularGrammarOutOfDFA] at weesr
       have qoinQ := dfa.bed_Q0
       have nfa := dfa.toNFA
-      have Q0sbQ :=  dfa.Q0Subset
-      simp [] at qoinQ
-      simp[]
+      have QEdisj :=  dfa.QEdisj
+      have Q0sbQ :=  dfa.Q0subset
+      have q0inQ0 : dfa.q0 ∈ dfa.Q0 := by
+        simp [qoinQ, Set.element]
+      have q0inQ : dfa.q0 ∈ dfa.Q := by
+        simp [Set.element]
+        apply Q0sbQ
+        exact q0inQ0
+      have setEmpty_rfl : @Set.empty α = (fun _ => False) := by rfl
+      have hff : (dfa.toNFA.Q ∩ dfa.toNFA.E) dfa.q0 →  False := by
+        intro n 
+        rw [QEdisj, setEmpty_rfl] at n
+        exact n 
+      simp [Set.intersection, q0inQ] at hff
+      apply False.elim (hff weesr)
     | inr nsucc =>
       sorry
     -- have q : NSchrittableitungsregel (ConstructRegularGrammarOutOfDFA dfa).toGrammar { data := [(ConstructRegularGrammarOutOfDFA dfa).toGrammar.S] } word n1
