@@ -670,11 +670,17 @@ def NSchrittableitungsregel {α : Type u} (G : @Grammar α ) (w : Word α ) (v :
 
 def SternSchrittableitungsregel {α : Type u} (G : @Grammar α ) (w : Word α ) (v : Word α ) : Prop :=
   ∃ n : Nat , NSchrittableitungsregel G w v n
+  
 
+def AllElementsOfWordInSet {α : Type u} (w: Word α) (S: Set α ) :=
+  match w with 
+  | Word.mk (a::as)  => a ∈ S ∧ AllElementsOfWordInSet (Word.mk as) S
+  | _ => True
 
 def ErzeugteSpracheGrammar {α : Type u} (G : @Grammar α): Language α  :=
   fun w: Word α  => 
-    SternSchrittableitungsregel G (Word.mk [G.S]) w
+    SternSchrittableitungsregel G (Word.mk [G.S]) w ∧ (AllElementsOfWordInSet w G.E)
+
 
 structure NFA {α : Type u} where 
   Q : Set α 
@@ -706,10 +712,7 @@ structure DFA {α : Type u} extends (@ NFA α ) where
        ¬ ((t1 ∈ δ) ∧ (t2 ∈ δ)) ∨ 
         (¬ ( t1.fst = t2.fst) ∨ t1.snd = t2.snd)
 
-def AllElementsOfWordInSet {α : Type u} (w: Word α) (S: Set α ) :=
-  match w with 
-  | Word.mk (a::as)  => a ∈ S ∧ AllElementsOfWordInSet (Word.mk as) S
-  | _ => True
+
 
 def EinSchrittableitungsregelNFA {α : Type u} {dfa: @ NFA α } (q1 : α) (q2 : α ) (w : Word α) (v: Word α) : Prop :=
       q1 ∈ dfa.Q  ∧ q1 ∈ dfa.Q ∧ 
@@ -960,8 +963,22 @@ theorem languageDFAeqConstructedRegularGrammar {α : Type u} (dfa : @DFA α) : (
   apply Iff.intro
   intro wees
   rw [Set.element, ErzeugteSpracheGrammar, SternSchrittableitungsregel] at wees
-   match wees with
+   match wees.left with
   | ⟨n1, weesn1⟩ =>
+    cases (Classical.em (n1 = 0)) with
+    | inl n0 => 
+      simp [n0, NSchrittableitungsregel, ConstructRegularGrammarOutOfDFA] at weesn1
+      simp [Set.element, NFASprache]
+      exists dfa.q0, dfa.q0
+      have weesr := wees.right
+      simp [← weesn1, AllElementsOfWordInSet, Set.element, ConstructRegularGrammarOutOfDFA] at weesr
+      have qoinQ := dfa.bed_Q0
+      have nfa := dfa.toNFA
+      have Q0sbQ :=  dfa.Q0Subset
+      simp [] at qoinQ
+      simp[]
+    | inr nsucc =>
+      sorry
     -- have q : NSchrittableitungsregel (ConstructRegularGrammarOutOfDFA dfa).toGrammar { data := [(ConstructRegularGrammarOutOfDFA dfa).toGrammar.S] } word n1
     --   = match n1 with
     --   | 0 => 
@@ -972,7 +989,12 @@ theorem languageDFAeqConstructedRegularGrammar {α : Type u} (dfa : @DFA α) : (
     -- rw [q] at weesn1
     simp [ConstructRegularGrammarOutOfDFA] at weesn1
     rw [Set.element, NFASprache]
-    exists s
+    exists dfa.q0
+    exists dfa.q0
+    rw [SternSchrittableitungsregelNFA]
+    have k3 := ∃ n, @NSchrittableitungsregelNFA α ( dfa.toNFA NFA.q0) dfa.q0 word ε n := by
+
+    exists n1
 
   simp [Set.element, NFASprache]
 
