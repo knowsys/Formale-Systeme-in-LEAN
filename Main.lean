@@ -746,16 +746,16 @@ structure TotalerDFA {α : Type u} extends (@ DFA α) where
 
 
 def ConstructRegularGrammarOutOfDFA {α : Type u} (dfa: @ DFA α ) : @RegularGrammar α:= 
-  have E : Set α := dfa.E
+  let E : Set α := dfa.E
   have E_def_refl : E = dfa.E := by rfl
   
-  have V : Set α := dfa.Q
+  let V : Set α := dfa.Q
   have V_def_refl : V = dfa.Q := by rfl
   
-  have S : α := dfa.q0
+  let S : α := dfa.q0
   have S_def_refl : S = dfa.q0 := by rfl
   
-  have P : Set ((Word α) × (Word α)) := 
+  let P : Set ((Word α) × (Word α)) := 
     fun rule : (Word α) × (Word α) => 
       (∃ql a qr : α , rule.fst = Word.mk [ql] ∧ rule.snd = Word.mk [a] ∘ Word.mk [qr] ∧ ⟨⟨ql,a⟩,qr⟩ ∈ dfa.δ)
       ∨ (∃q a qf : α , rule.fst = Word.mk [q] ∧ rule.snd = Word.mk [a] ∧ qf ∈ dfa.F ∧ ⟨⟨q,a⟩,qf⟩ ∈ dfa.δ)
@@ -813,7 +813,6 @@ def ConstructRegularGrammarOutOfDFA {α : Type u} (dfa: @ DFA α ) : @RegularGra
           have Tfunction3 := Tfunction2 disj3
           simp [] at Tfunction3
           have Tfunction31 := Tfunction3.left
-          rw [V_def_refl]
           exact Tfunction31
         have k1Andk2 := And.intro k1 k2
         exact k1Andk2
@@ -840,7 +839,6 @@ def ConstructRegularGrammarOutOfDFA {α : Type u} (dfa: @ DFA α ) : @RegularGra
             have Tfunction3 := Tfunction2 disj3.right
             simp [] at Tfunction3
             have Tfunction31 := Tfunction3.left
-            rw [V_def_refl]
             exact Tfunction31
           have k1Andk2 := And.intro k1 k2
           exact k1Andk2
@@ -885,7 +883,6 @@ def ConstructRegularGrammarOutOfDFA {α : Type u} (dfa: @ DFA α ) : @RegularGra
             have Tfunction3 := Tfunction2 disj3
             simp [] at Tfunction3
             have Tfunction31 := Tfunction3.left
-            rw [V_def_refl]
             exact Tfunction31
           have k2 : ∃ t1 t2 : α , (Word.mk [t1, t2] = pair.snd) ∧ t1 ∈ E ∧ t2 ∈ V := by
             exists a
@@ -929,7 +926,6 @@ def ConstructRegularGrammarOutOfDFA {α : Type u} (dfa: @ DFA α ) : @RegularGra
               have Tfunction3 := Tfunction2 disj3.right
               simp [] at Tfunction3
               have Tfunction31 := Tfunction3.left
-              rw [V_def_refl]
               exact Tfunction31
             have k2 : ∃ t: α , Word.mk [t] = pair.snd ∧ t ∈ E := by 
               exists a
@@ -961,15 +957,15 @@ def ConstructRegularGrammarOutOfDFA {α : Type u} (dfa: @ DFA α ) : @RegularGra
 
 
 def TotalerDFAConstruct {α : Type u} (dfa: @ DFA α ) (fang: α ) (p1: ¬fang ∈ dfa.Q ∧ ¬fang ∈ dfa.E) : @TotalerDFA α :=
-  have Q2: Set α  := fun w => (w ∈ dfa.Q) ∨ (w=fang) 
-  have δ2: Set ((α × α) × α) := fun ⟨⟨ w1, w2⟩ , w3⟩  => ⟨ ⟨ w1, w2⟩ , w3⟩  ∈ dfa.δ ∨ (¬ (∃ a : α ,⟨ ⟨ w1, w2⟩ , a⟩ ∈ dfa.δ )∧ Q2 w1 ∧ dfa.E w2 ∧ w3 = fang)
+  let Q2: Set α  := fun w => (w ∈ dfa.Q) ∨ (w=fang) 
+  let δ2: Set ((α × α) × α) := fun ⟨⟨ w1, w2⟩ , w3⟩  => ⟨ ⟨ w1, w2⟩ , w3⟩  ∈ dfa.δ ∨ (¬ (∃ a : α ,⟨ ⟨ w1, w2⟩ , a⟩ ∈ dfa.δ )∧ Q2 w1 ∧ dfa.E w2 ∧ w3 = fang)
   
   -- wie zeigt man diese reflexivität?
   have delta_def_rfl : ( fun ⟨⟨ w1, w2⟩ , w3⟩  => ⟨ ⟨ w1, w2⟩ , w3⟩  ∈ dfa.δ ∨ (¬ (∃ a : α ,⟨ ⟨ w1, w2⟩ , a⟩ ∈ dfa.δ )∧ Q2 w1 ∧ dfa.E w2 ∧ w3 = fang) ) = δ2 := 
-    sorry
+    by rfl
 
   have Q2_def_rfl : ((fun w => (w ∈ dfa.Q) ∨ (w=fang)):(Set α )) = Q2 := 
-    sorry
+    by rfl
 
   have setEmpty_rfl : Set.empty = (fun _ => False) := by rfl
 
@@ -977,15 +973,12 @@ def TotalerDFAConstruct {α : Type u} (dfa: @ DFA α ) (fang: α ) (p1: ¬fang �
     intro n
     intro w 
     simp [Set.element]
-    rw [← Q2_def_rfl]
-    simp []
     apply Or.inl 
     exact w
 
   have Q2Edisj : Q2 ∩ dfa.E = Set.empty:= by
     rw [setEmpty_rfl]
     simp [Set.intersection]
-    rw [←Q2_def_rfl]
     apply funext
     intro x
     -- rw [@And.comm]
@@ -1001,7 +994,7 @@ def TotalerDFAConstruct {α : Type u} (dfa: @ DFA α ) (fang: α ) (p1: ¬fang �
     simp [Set.element] at hll
     rw [And.comm] at hll
     -- simp [hll]
-    simp [Set.intersection]
+    simp [Set.intersection, Set.element]
     cases (Classical.em (x = fang)) with 
     | inl xfang => 
       have p2 := p1.right
@@ -1016,19 +1009,16 @@ def TotalerDFAConstruct {α : Type u} (dfa: @ DFA α ) (fang: α ) (p1: ¬fang �
         apply False.elim x
       simp [hv]
     | inr xNotFang =>
-      have hv : x = fang ↔ False := by
-        constructor
-        intro x2
-        apply xNotFang
-        exact x2
-        intro x2
-        apply False.elim x2
-      simp [hv]
-    
-
-
-
-
+      simp [xNotFang]
+      apply propext 
+      constructor 
+      intro x1
+      rw [And.comm, hll] at x1
+      exact x1
+      intro x
+      apply False.elim x
+      
+      
 
 
   have Q0SubsetQ2: (dfa.Q0 ⊆ Q2) := by
@@ -1218,9 +1208,3 @@ def TotalerDFAConstruct {α : Type u} (dfa: @ DFA α ) (fang: α ) (p1: ¬fang �
 
     {tot := tot2, uniqueness := uniqueness2, Tfunction := Tfunction2, Q0 := dfa.Q0,  Q:= Q2, E := dfa.E, δ := δ2, QEdisj := Q2Edisj, F := dfa.F, Q0subset := Q0SubsetQ2, Fsubset := FSubsetQ2, q0 := dfa.q0, bed_Q0 := dfa.bed_Q0  : TotalerDFA}
 
-
-
-
-
-
- 
