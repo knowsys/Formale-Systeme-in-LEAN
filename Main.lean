@@ -159,6 +159,10 @@ infixr:70 " ∘ₗ " => Language.concat
 def Word.epsilon {α : Type u} : Word α := Word.mk List.nil
 notation (priority := high) "ε" => Word.epsilon
 
+def Word.len {α : Type u} (w:Word α) : Nat :=
+  match w with 
+  | Word.mk List.nil => 0
+  | Word.mk (x::xs) => 1 + Word.len (Word.mk (xs))
 
 def Language.epsilon {α:Type u} : Language α :=
   fun w =>
@@ -652,6 +656,10 @@ structure EpsilonFreeRegularGrammar {α  : Type u} extends (@RegularGrammar α )
     pair.fst = Word.mk ([S]) ∨ ¬ (pair.snd = Word.epsilon)
   )
 
+def AllElementsOfWordInSet {α : Type u} (w: Word α) (S: Set α ) :=
+  match w with 
+  | Word.mk (a::as)  => a ∈ S ∧ AllElementsOfWordInSet (Word.mk as) S
+  | _ => True
 
 def EinSchrittableitungsregel {α : Type u} (G : @Grammar α) (w : Word α) (v : Word α) : Prop :=
     ∃ w1 w2 w3: Word α ,
@@ -665,21 +673,18 @@ def NSchrittableitungsregel {α : Type u} (G : @Grammar α ) (w : Word α ) (v :
   | 0 => 
     w = v
   | (Nat.succ m) => 
-      ∃ w1 : Word α , (EinSchrittableitungsregel G w w1) ∧ (NSchrittableitungsregel G w1 v m)
+      ∃ w1 : Word α , (EinSchrittableitungsregel G w w1) ∧ (NSchrittableitungsregel G w1 v m) ∧ (AllElementsOfWordInSet v G.E)
 
 
 def SternSchrittableitungsregel {α : Type u} (G : @Grammar α ) (w : Word α ) (v : Word α ) : Prop :=
   ∃ n : Nat , NSchrittableitungsregel G w v n
   
 
-def AllElementsOfWordInSet {α : Type u} (w: Word α) (S: Set α ) :=
-  match w with 
-  | Word.mk (a::as)  => a ∈ S ∧ AllElementsOfWordInSet (Word.mk as) S
-  | _ => True
+
 
 def ErzeugteSpracheGrammar {α : Type u} (G : @Grammar α): Language α  :=
   fun w: Word α  => 
-    SternSchrittableitungsregel G (Word.mk [G.S]) w ∧ (AllElementsOfWordInSet w G.E)
+    SternSchrittableitungsregel G (Word.mk [G.S]) w 
 
 
 structure NFA {α : Type u} where 
@@ -698,6 +703,7 @@ structure NFA {α : Type u} where
           t.fst.snd ∈ E ∧ 
           t.snd ∈ Q
        ) 
+  
 
 structure DFA {α : Type u} extends (@ NFA α ) where 
   q0 : α 
@@ -711,6 +717,7 @@ structure DFA {α : Type u} extends (@ NFA α ) where
       ∀ t1 t2 : ((α × α) × α),
        ¬ ((t1 ∈ δ) ∧ (t2 ∈ δ)) ∨ 
         (¬ ( t1.fst = t2.fst) ∨ t1.snd = t2.snd)
+
 
 
 
@@ -956,7 +963,16 @@ def ConstructRegularGrammarOutOfDFA {α : Type u} (dfa: @ DFA α ) : @RegularGra
           simp [k1, k2]
 
     { V := V, E := E, S := S, P := P, bed_VEdisj := bed_VEdisj, bed_SinV := bed_SinV, bed_VarInLeft := bed_VarInLeft, bed_reg := bed_reg : RegularGrammar}
-          
+
+
+#check NSchrittableitungsregel
+
+theorem RGwordlengthEQn {α : Type u} (G : RegularGrammar α ) (w1 w2 : Word α) (n : Nat) : 
+  NSchrittableitungsregel G w1 w2 n → (n = (Word.len w2 - Word.len w1) + 1) ∨ (n = (Word.len w2 - Word.len w1) + 2) := sorry
+  -- S-> eps  n = 1 diff = -1
+  -- S-> a    n = 1 diff = 0
+  -- S ->* abcd diff = 3
+
 theorem languageDFAeqConstructedRegularGrammar {α : Type u} (dfa : @DFA α) : (@ErzeugteSpracheGrammar α (ConstructRegularGrammarOutOfDFA dfa).toGrammar) = (@NFASprache α dfa.toNFA) := by 
   apply Set.setext
   intro word
@@ -990,31 +1006,16 @@ theorem languageDFAeqConstructedRegularGrammar {α : Type u} (dfa : @DFA α) : (
       simp [Set.intersection, q0inQ] at hff
       apply False.elim (hff weesr)
     | inr nsucc =>
-      sorry
-    -- have q : NSchrittableitungsregel (ConstructRegularGrammarOutOfDFA dfa).toGrammar { data := [(ConstructRegularGrammarOutOfDFA dfa).toGrammar.S] } word n1
-    --   = match n1 with
-    --   | 0 => 
-    --     { data := [(ConstructRegularGrammarOutOfDFA dfa).toGrammar.S] } = word
-    --   | (Nat.succ m) => 
-    --     ∃ w1 : Word α , (EinSchrittableitungsregel (ConstructRegularGrammarOutOfDFA dfa).toGrammar { data := [(ConstructRegularGrammarOutOfDFA dfa).toGrammar.S] } w1) ∧ (NSchrittableitungsregel (ConstructRegularGrammarOutOfDFA dfa).toGrammar w1 word m) := by
-    --       sorry
-    -- rw [q] at weesn1
-    simp [ConstructRegularGrammarOutOfDFA] at weesn1
-    rw [Set.element, NFASprache]
-    exists dfa.q0
-    exists dfa.q0
-    rw [SternSchrittableitungsregelNFA]
-    have k3 := ∃ n, @NSchrittableitungsregelNFA α ( dfa.toNFA NFA.q0) dfa.q0 word ε n := by
-
-    exists n1
-
-  simp [Set.element, NFASprache]
+      simp [Set.element, NFASprache]
+      let (Nat.succ m) := n1
+      simp [nsucc, NSchrittableitungsregel] at weesn1
+      
+      
 
 def TotalerDFAConstruct {α : Type u} (dfa: @ DFA α ) (fang: α ) (p1: ¬fang ∈ dfa.Q ∧ ¬fang ∈ dfa.E) : @TotalerDFA α :=
   let Q2: Set α  := fun w => (w ∈ dfa.Q) ∨ (w=fang) 
   let δ2: Set ((α × α) × α) := fun ⟨⟨ w1, w2⟩ , w3⟩  => ⟨ ⟨ w1, w2⟩ , w3⟩  ∈ dfa.δ ∨ (¬ (∃ a : α ,⟨ ⟨ w1, w2⟩ , a⟩ ∈ dfa.δ )∧ Q2 w1 ∧ dfa.E w2 ∧ w3 = fang)
   
-  -- wie zeigt man diese reflexivität?
   have delta_def_rfl : ( fun ⟨⟨ w1, w2⟩ , w3⟩  => ⟨ ⟨ w1, w2⟩ , w3⟩  ∈ dfa.δ ∨ (¬ (∃ a : α ,⟨ ⟨ w1, w2⟩ , a⟩ ∈ dfa.δ )∧ Q2 w1 ∧ dfa.E w2 ∧ w3 = fang) ) = δ2 := 
     by rfl
 
@@ -1040,7 +1041,7 @@ def TotalerDFAConstruct {α : Type u} (dfa: @ DFA α ) (fang: α ) (p1: ¬fang �
     have hq := dfa.QEdisj
     simp [Set.intersection, setEmpty_rfl] at hq
     have hp : ((fun e => e ∈ dfa.Q ∧ e ∈ dfa.E) = fun x => False) → (∀e : α, (e ∈ dfa.Q ∧ e ∈ dfa.E) = False):= by
-      intro l
+      intro _
       intro n
       rw [←Set.intersection, dfa.QEdisj, Set.empty]
     have hl := hp hq
