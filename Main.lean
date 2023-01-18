@@ -275,7 +275,7 @@ theorem inter_comm {α : Type u} (X Y:Set α ) : X ∩ Y = Y ∩ X := by
   exact ⟨n.right, n.left ⟩ 
 
 
-theorem Set.union_or {α : Type u} (X Y : Set α) (e : α) : (e ∈ (X ∪ Y)) = (e ∈ X ∨ e ∈ Y) := by rfl
+theorem union_or {α : Type u} (X Y : Set α) (e : α) : (e ∈ (X ∪ Y)) = (e ∈ X ∨ e ∈ Y) := by rfl
 
 theorem union_comm {α :Type u} (X Y : Set α ) : X ∪ Y = Y ∪ X :=
   by
