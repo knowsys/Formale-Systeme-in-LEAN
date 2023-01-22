@@ -718,6 +718,14 @@ structure DFA {α : Type u} extends (@ NFA α ) where
        ¬ ((t1 ∈ δ) ∧ (t2 ∈ δ)) ∨ 
         (¬ ( t1.fst = t2.fst) ∨ t1.snd = t2.snd)
 
+def nfaAbleitung {α : Type u} (nfa: @ NFA α ) (q1 qf: α) (w: Word α ) : Prop :=
+  match w with 
+  | Word.mk (x::xs) =>  ∃ qn , nfa.δ ⟨⟨q1 , x ⟩,qn ⟩ ∧ nfaAbleitung nfa qn qf (Word.mk xs) 
+  | Word.mk [] => q1 = qf
+
+def nfaSprache {α : Type u} (nfa: @ NFA α ) : Language α :=
+  fun w => ∃ qs qf, qs ∈ nfa.Q0 ∧ qf ∈ nfa.F ∧ nfaAbleitung nfa qs qf w  
+
 
 
 
@@ -1262,4 +1270,125 @@ def TotalerDFAConstruct {α : Type u} (dfa: @ DFA α ) (fang: α ) (p1: ¬fang �
 
 
     {tot := tot2, uniqueness := uniqueness2, Tfunction := Tfunction2, Q0 := dfa.Q0,  Q:= Q2, E := dfa.E, δ := δ2, QEdisj := Q2Edisj, F := dfa.F, Q0subset := Q0SubsetQ2, Fsubset := FSubsetQ2, q0 := dfa.q0, bed_Q0 := dfa.bed_Q0  : TotalerDFA}
+
+
+def LaufRegularGrammarSub {α : Type u} (ql qg : α) (G : @RegularGrammar α) (lauf: List (Word α × Word α))  (w : Word α) : Prop :=
+
+    match w with 
+    | (Word.mk (word::ws1)) =>
+      match lauf with 
+      | (p1 ::xs) =>
+          p1 ∈ G.P ∧ 
+          p1.fst = (Word.mk [ql]) ∧ 
+          (∃ t1 : α , (Word.mk [word, t1] = p1.snd)   
+                  ∧ LaufRegularGrammarSub t1 qg G xs (Word.mk ws1) 
+            )
+          
+      | _ => False 
+
+
+    | _ => 
+      ql = qg
+        --  (let p := ⟨Word.mk [ql],  Word.mk [] ⟩
+        --  lauf = [p] ∧ G.P p   )
+        
+
+theorem ableitungenEQ1 {α : Type u} (dfa: @ DFA α )   (w: Word α ) :  
+     ∀ q1 q2 :α , (nfaAbleitung dfa.toNFA q1 q2 w ) -> (
+      (∃ lauf, LaufRegularGrammarSub q1 q2 (ConstructRegularGrammarOutOfDFA dfa) lauf  w )):= by
+  have hp := Word.objects_equal w 
+  rw [← hp] 
+  induction w.data with
+  | nil => 
+    intro q1
+    intro q2
+    intro ableitung 
+    simp [nfaAbleitung] at ableitung 
+    exists []
+  | cons x xs iv => 
+    intro q11
+    intro q22
+    intro ableitung 
+    simp [nfaAbleitung] at ableitung
+    match ableitung with
+    | ⟨qn, abl1 ⟩ =>
+      have hh := iv qn q22 abl1.right 
+      simp [ Word.concat]
+      match hh with 
+      | ⟨lauf, hhz1 ⟩ =>
+        exists  ⟨Word.mk [q11] , Word.mk [x,qn]⟩ ::lauf
+        simp [Word.concat]
+        simp [LaufRegularGrammarSub]
+        have hll : ∃ t1, (t1 = qn) ∧ (LaufRegularGrammarSub t1 q22 (ConstructRegularGrammarOutOfDFA dfa) lauf { data := xs }) := 
+          by exists qn
+        simp [hll]
+        have inDelta := abl1.left
+        simp [Set.element, ConstructRegularGrammarOutOfDFA]
+        apply Or.inl 
+        exists q11 
+        exists x 
+        exists qn
+
+
+theorem ableitungenEQ2 {α : Type u} (dfa: @ DFA α )   (w: Word α ) :  
+     ∀ q1 q2 ,( ∃ lauf,
+      ( LaufRegularGrammarSub q1 q2 (ConstructRegularGrammarOutOfDFA dfa) lauf  w ))  -> (nfaAbleitung dfa.toNFA q1 q2 w ) := by
+  have hp := Word.objects_equal w 
+  rw [← hp] 
+  induction w.data with
+  | nil => 
+    intro q1
+    intro q2
+    intro laufex
+    match laufex with 
+    | ⟨ lauf, laufwo ⟩ =>
+      simp [LaufRegularGrammarSub] at laufwo 
+      simp [nfaAbleitung, laufwo]
+  | cons x xs iv => 
+    intro q11
+    intro q22
+    intro laufex
+    match laufex with 
+    | ⟨ lauf2, laufwo ⟩ =>
+      cases (Classical.em ( ∃ laufx laufxs,  lauf2 = laufx:: laufxs )) with 
+      | inl laufwoH =>
+        match laufwoH with 
+        | ⟨laufx, laufxs, laufwoH2 ⟩ =>
+          simp [laufwoH2, LaufRegularGrammarSub] at laufwo 
+          simp [nfaAbleitung]
+          have laufwo2 := laufwo.right.right 
+          match laufwo2 with
+          | ⟨qn, laufwo3 ⟩ =>
+            exists qn
+            have laufwo4ex : ∃ lauf,  LaufRegularGrammarSub qn q22 (ConstructRegularGrammarOutOfDFA dfa) lauf { data := xs } := by
+              exists laufxs 
+              exact laufwo3.right
+            have iv2 := iv qn q22 laufwo4ex
+            simp [iv2]
+            have pinG := laufwo.left
+            have laufFirst := laufwo.right.left 
+            have laufRight := laufwo3.left
+            simp [Set.element, ConstructRegularGrammarOutOfDFA] at pinG 
+            cases pinG with 
+            | inl hll =>
+              match hll with 
+              | ⟨q_1, w_1, q_r, pingnoE ⟩ => 
+                simp [Word.concat, laufFirst, ←laufRight] at pingnoE
+                simp [pingnoE]
+            | inr hrr =>
+              cases hrr with 
+              | inl hrl => 
+                match hrl with
+                | ⟨q_1, w_1, q_r, pingnoE ⟩ => 
+                  have falseelimarg := pingnoE.right.left
+                  simp [← laufRight] at falseelimarg
+              | inr hrr => 
+                have falseelimarg := hrr.right.left
+                simp [← laufRight] at falseelimarg
+      | inr hnexlauf => 
+        have laufeqempty : lauf2 = [] := sorry
+        simp [laufeqempty] at laufwo
+        simp [LaufRegularGrammarSub] at laufwo
+        
+   
 
