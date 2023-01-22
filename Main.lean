@@ -776,12 +776,10 @@ def ConstructRegularGrammarOutOfDFA {α : Type u} (dfa: @ DFA α ) : @RegularGra
   let P : Set ((Word α) × (Word α)) := 
     fun rule : (Word α) × (Word α) => 
       (∃ql a qr : α , rule.fst = Word.mk [ql] ∧ rule.snd = Word.mk [a] ∘ Word.mk [qr] ∧ ⟨⟨ql,a⟩,qr⟩ ∈ dfa.δ)
-      ∨ (∃q a qf : α , rule.fst = Word.mk [q] ∧ rule.snd = Word.mk [a] ∧ qf ∈ dfa.F ∧ ⟨⟨q,a⟩,qf⟩ ∈ dfa.δ)
-      ∨ (rule.fst = Word.mk [S] ∧ rule.snd = Word.epsilon ∧ S ∈ dfa.F)
+      ∨ (∃ q, rule.fst = Word.mk [q] ∧ rule.snd = Word.epsilon ∧ (q ∈ dfa.F))
   have P_def_refl : P = fun rule : (Word α) × (Word α) => 
       (∃ql a qr : α , rule.fst = Word.mk [ql] ∧ rule.snd = Word.mk [a] ∘ Word.mk [qr] ∧ ⟨⟨ql,a⟩,qr⟩ ∈ dfa.δ)
-      ∨ (∃q a qf : α , rule.fst = Word.mk [q] ∧ rule.snd = Word.mk [a] ∧ qf ∈ dfa.F ∧ ⟨⟨q,a⟩,qf⟩ ∈ dfa.δ)
-      ∨ (rule.fst = Word.mk [S] ∧ rule.snd = Word.epsilon ∧ S ∈ dfa.F) := by rfl
+      ∨ (∃ q, rule.fst = Word.mk [q] ∧ rule.snd = Word.epsilon ∧ (q ∈ dfa.F)) := by rfl
   
   have bed_VEdisj : V ∩ E = ∅ := by
     have QEdisj := dfa.QEdisj
@@ -834,43 +832,22 @@ def ConstructRegularGrammarOutOfDFA {α : Type u} (dfa: @ DFA α ) : @RegularGra
           exact Tfunction31
         have k1Andk2 := And.intro k1 k2
         exact k1Andk2
-    | inr disjB =>
-      cases disjB with
-      | inl disj2 =>
-        match disj2 with
-        | ⟨q, a, qf, disj2woE⟩ => 
+    | inr disjB => 
+        match disjB with
+        | ⟨q, disjB2⟩ =>
+
           exists Word.mk []
           exists Word.mk [q]
           exists Word.mk []
           simp [Word.concat]
-          have k1 := disj2woE.left
-          have k2 : ∃ t, t = q ∧ t ∈ V := by
+          have k2 : ∃ t, t = q ∧ t ∈ dfa.toNFA.Q := by
             exists q
-            -- have q_refl : (q = q) ↔ True := by rfl
-            -- simp [q_refl]
-            simp []
-            have disj3 := disj2woE.right.right
-            rw [Set.element] at disj3
-            have Tfunction := dfa.Tfunction
-            have Tfunction2 := Tfunction ⟨⟨q, a⟩,qf⟩
-            rw [not_or_eq_implication] at Tfunction2
-            have Tfunction3 := Tfunction2 disj3.right
-            simp [] at Tfunction3
-            have Tfunction31 := Tfunction3.left
-            exact Tfunction31
-          have k1Andk2 := And.intro k1 k2
-          exact k1Andk2
-      | inr disj3 =>
-        exists Word.mk []
-        exists Word.mk [S]
-        exists Word.mk []
-        simp [Word.concat]
-        have k1 := disj3.left
-        have k2 : ∃ t, t = S ∧ t ∈ V := by
-          exists S
-        have k1Andk2 := And.intro k1 k2
-        exact k1Andk2
-
+            have qInQ : q ∈ dfa.Q := by
+              have FsbQ := dfa.Fsubset
+              have qInQ2 := FsbQ q disjB2.right.right 
+              exact qInQ2
+            simp [qInQ]
+          simp [disjB2.left, k2]
   have bed_reg: ∀ pair : ((Word α) × (Word α)), 
     (pair ∈ P) -> 
     (
@@ -926,99 +903,24 @@ def ConstructRegularGrammarOutOfDFA {α : Type u} (dfa: @ DFA α ) : @RegularGra
           simp [←k1woE.left]
           exact k1woE.right
       | inr disjB =>
-        cases disjB with
-        | inl disj2 =>
-          match disj2 with
-          | ⟨ql, a, qr, disj2woE⟩ => 
-            simp [Word.concat]
-            have k1 : ∃ t, t = ql ∧ t ∈ V := by
-              exists ql
-              -- have ql_refl : (ql = ql) ↔ True := by rfl
-              -- simp [ql_refl]
-              simp []
-              have disj3 := disj2woE.right.right
-              rw [Set.element] at disj3
-              have Tfunction := dfa.Tfunction
-              have Tfunction2 := Tfunction ⟨⟨ql, a⟩,qr⟩
-              rw [not_or_eq_implication] at Tfunction2
-              have Tfunction3 := Tfunction2 disj3.right
-              simp [] at Tfunction3
-              have Tfunction31 := Tfunction3.left
-              exact Tfunction31
-            have k2 : ∃ t: α , Word.mk [t] = pair.snd ∧ t ∈ E := by 
-              exists a
-              have disj3 := disj2woE.right.right
-              have Tfunction := dfa.Tfunction
-              have Tfunction2 := Tfunction ⟨⟨ql, a⟩,qr⟩
-              rw [not_or_eq_implication] at Tfunction2
-              have Tfunction3 := Tfunction2 disj3.right
-              simp [] at Tfunction3
-              have Tfunction31 := Tfunction3.right.left
-              rw [E_def_refl]
-              simp [disj2woE.right.left, Tfunction31]
-            simp [k2]
-            exists ql
-            simp [disj2woE.left]
-            match k1 with 
-            | ⟨qrr, k2woE⟩ =>
-            simp [←k2woE.left, k2woE.right]
-        | inr disj3 =>
-          have k1 : (∃ t, { data := [t] } = pair.fst ∧ t ∈ V) := by
-            exists S
-            simp [disj3.left, bed_SinV]
-          have k2 : pair.snd = { data := [] } := by 
-            simp [disj3.right.left]
-          simp [k1, k2]
+          match disjB with
+          | ⟨q, disjB2⟩ =>
+            have k1 : (∃ t, { data := [t] } = pair.fst ∧ t ∈ V) := by
+              exists q
+              have qInQ : q ∈ dfa.Q := by
+                have FsbQ := dfa.Fsubset
+                have qInQ2 := FsbQ q disjB2.right.right 
+                exact qInQ2
+              simp [qInQ, disjB2.left]
+            have k2: ((∃ t1 t2, { data := [t1, t2] } = pair.snd ∧ t1 ∈ E ∧ t2 ∈ V) ∨ (∃ t, { data := [t] } = pair.snd ∧ t ∈ E) ∨ pair.snd = { data := [] }) := by
+              apply Or.inr
+              apply Or.inr
+              simp [disjB2.right]
+            simp [k1, k2]
 
     { V := V, E := E, S := S, P := P, bed_VEdisj := bed_VEdisj, bed_SinV := bed_SinV, bed_VarInLeft := bed_VarInLeft, bed_reg := bed_reg : RegularGrammar}
 
-
-#check NSchrittableitungsregel
-
-theorem RGwordlengthEQn {α : Type u} (G : RegularGrammar α ) (w1 w2 : Word α) (n : Nat) : 
-  NSchrittableitungsregel G w1 w2 n → (n = (Word.len w2 - Word.len w1) + 1) ∨ (n = (Word.len w2 - Word.len w1) + 2) := sorry
-  -- S-> eps  n = 1 diff = -1
-  -- S-> a    n = 1 diff = 0
-  -- S ->* abcd diff = 3
-
-theorem languageDFAeqConstructedRegularGrammar {α : Type u} (dfa : @DFA α) : (@ErzeugteSpracheGrammar α (ConstructRegularGrammarOutOfDFA dfa).toGrammar) = (@NFASprache α dfa.toNFA) := by 
-  apply Set.setext
-  intro word
-  apply Iff.intro
-  intro wees
-  rw [Set.element, ErzeugteSpracheGrammar, SternSchrittableitungsregel] at wees
-   match wees.left with
-  | ⟨n1, weesn1⟩ =>
-    cases (Classical.em (n1 = 0)) with
-    | inl n0 => 
-      simp [n0, NSchrittableitungsregel, ConstructRegularGrammarOutOfDFA] at weesn1
-      simp [Set.element, NFASprache]
-      exists dfa.q0, dfa.q0
-      have weesr := wees.right
-      simp [← weesn1, AllElementsOfWordInSet, ConstructRegularGrammarOutOfDFA] at weesr
-      have qoinQ := dfa.bed_Q0
-      have nfa := dfa.toNFA
-      have QEdisj :=  dfa.QEdisj
-      have Q0sbQ :=  dfa.Q0subset
-      have q0inQ0 : dfa.q0 ∈ dfa.Q0 := by
-        simp [qoinQ, Set.element]
-      have q0inQ : dfa.q0 ∈ dfa.Q := by
-        simp [Set.element]
-        apply Q0sbQ
-        exact q0inQ0
-      have setEmpty_rfl : @Set.empty α = (fun _ => False) := by rfl
-      have hff : (dfa.toNFA.Q ∩ dfa.toNFA.E) dfa.q0 →  False := by
-        intro n 
-        rw [QEdisj, setEmpty_rfl] at n
-        exact n 
-      simp [Set.intersection, q0inQ] at hff
-      apply False.elim (hff weesr)
-    | inr nsucc =>
-      simp [Set.element, NFASprache]
-      let (Nat.succ m) := n1
-      simp [nsucc, NSchrittableitungsregel] at weesn1
-      
-      
+       
 
 def TotalerDFAConstruct {α : Type u} (dfa: @ DFA α ) (fang: α ) (p1: ¬fang ∈ dfa.Q ∧ ¬fang ∈ dfa.E) : @TotalerDFA α :=
   let Q2: Set α  := fun w => (w ∈ dfa.Q) ∨ (w=fang) 
@@ -1289,9 +1191,11 @@ def LaufRegularGrammarSub {α : Type u} (ql qg : α) (G : @RegularGrammar α) (l
 
     | _ => 
       ql = qg
-        --  (let p := ⟨Word.mk [ql],  Word.mk [] ⟩
-        --  lauf = [p] ∧ G.P p   )
-        
+
+def LanguageRegularGrammar {α : Type u} (G : @RegularGrammar α) : Language α :=
+  fun w => ∃ qn lauf, (LaufRegularGrammarSub G.S qn G lauf w ∧ ⟨Word.mk [qn], Word.mk []⟩ ∈ G.P
+    ∨ ∃ w1, ∃ z : α, (w = w1 ∘ Word.mk [z]) ∧ LaufRegularGrammarSub G.S qn G lauf w1 ∧ ⟨Word.mk [qn], Word.mk [z]⟩ ∈ G.P)
+
 
 theorem ableitungenEQ1 {α : Type u} (dfa: @ DFA α )   (w: Word α ) :  
      ∀ q1 q2 :α , (nfaAbleitung dfa.toNFA q1 q2 w ) -> (
@@ -1324,11 +1228,11 @@ theorem ableitungenEQ1 {α : Type u} (dfa: @ DFA α )   (w: Word α ) :
         simp [hll]
         have inDelta := abl1.left
         simp [Set.element, ConstructRegularGrammarOutOfDFA]
-        apply Or.inl 
+        apply Or.inl
         exists q11 
         exists x 
         exists qn
-
+    
 
 theorem ableitungenEQ2 {α : Type u} (dfa: @ DFA α )   (w: Word α ) :  
      ∀ q1 q2 ,( ∃ lauf,
@@ -1376,19 +1280,101 @@ theorem ableitungenEQ2 {α : Type u} (dfa: @ DFA α )   (w: Word α ) :
                 simp [Word.concat, laufFirst, ←laufRight] at pingnoE
                 simp [pingnoE]
             | inr hrr =>
-              cases hrr with 
-              | inl hrl => 
-                match hrl with
-                | ⟨q_1, w_1, q_r, pingnoE ⟩ => 
-                  have falseelimarg := pingnoE.right.left
-                  simp [← laufRight] at falseelimarg
-              | inr hrr => 
-                have falseelimarg := hrr.right.left
+              match hrr with
+              | ⟨q, hrr2⟩ =>
+                have falseelimarg := hrr2.right.left
                 simp [← laufRight] at falseelimarg
       | inr hnexlauf => 
-        have laufeqempty : lauf2 = [] := sorry
+        have laufeqempty : lauf2 = [] := sorry --TODOS
         simp [laufeqempty] at laufwo
         simp [LaufRegularGrammarSub] at laufwo
-        
-   
 
+theorem languageDFAeqConstructedRegularGrammar2 {α : Type u} (dfa : @DFA α) :  (@nfaSprache α dfa.toNFA) = (@LanguageRegularGrammar α (ConstructRegularGrammarOutOfDFA dfa)) := by 
+  apply Set.setext
+  intro w
+  apply Iff.intro
+  intro wInNFALanguage
+  simp [Set.element, nfaSprache] at wInNFALanguage
+  match wInNFALanguage with
+  | ⟨qs, qn, wInNFALanguage2⟩ =>
+    simp [Set.element, LanguageRegularGrammar]
+    exists qn
+    have laufExists := ableitungenEQ1 dfa w qs qn wInNFALanguage2.right.right
+    match laufExists with
+    | ⟨lauf, laufExists2⟩ =>
+      exists lauf 
+      have qsEqConstructedGrammarS : (ConstructRegularGrammarOutOfDFA dfa).toGrammar.S = qs := by
+        simp [ConstructRegularGrammarOutOfDFA]
+        have bedQ0 := dfa.bed_Q0
+        have h := wInNFALanguage2.left
+        rw [bedQ0] at h
+        exact h
+      rw [qsEqConstructedGrammarS]
+      simp [laufExists2]
+      have qnToEpsilon : Grammar.P (ConstructRegularGrammarOutOfDFA dfa).toGrammar ({ data := [qn] }, { data := [] }) := by
+        have qnInF := wInNFALanguage2.right.left
+        simp [ConstructRegularGrammarOutOfDFA] 
+        apply Or.inr
+        exists qn
+      simp [qnToEpsilon]
+  intro wInGrammarLanguage
+  simp [Set.element, LanguageRegularGrammar] at wInGrammarLanguage
+  match wInGrammarLanguage with
+  | ⟨qn, lauf, wInGrammarLanguage2⟩ =>
+    have kfalse : (∃ w1 z,
+    w = w1 ∘ { data := [z] } ∧
+      LaufRegularGrammarSub (ConstructRegularGrammarOutOfDFA dfa).toGrammar.S qn (ConstructRegularGrammarOutOfDFA dfa)
+          lauf w1 ∧
+        Grammar.P (ConstructRegularGrammarOutOfDFA dfa).toGrammar ({ data := [qn] }, { data := [z] })) -> False := by
+      
+      intro kfalse2
+      match kfalse2 with
+      | ⟨w1, z, kfalse3⟩ =>
+        have kfalse4 := kfalse3.right.right 
+        simp [ConstructRegularGrammarOutOfDFA] at kfalse4
+        cases (kfalse4) with
+        | inl hl =>
+          match hl with
+          | ⟨ql, a, qr, hl2⟩ =>
+            have hl3 := hl2.right.left
+            simp [Word.concat] at hl3 
+        | inr hr => 
+          match hr with
+          | ⟨q, hr2⟩ =>
+            exact hr2
+    cases (wInGrammarLanguage2) with 
+    | inl hl =>
+      simp [Set.element, nfaSprache]
+      have bed : ( ∃ lauf, ( LaufRegularGrammarSub (ConstructRegularGrammarOutOfDFA dfa).toGrammar.S qn (ConstructRegularGrammarOutOfDFA dfa) lauf  w )) := by
+        exists lauf
+        simp [hl.left]
+      have q2 := ableitungenEQ2 dfa w (ConstructRegularGrammarOutOfDFA dfa).toGrammar.S qn bed
+      exists (ConstructRegularGrammarOutOfDFA dfa).toGrammar.S 
+      exists qn
+      simp [q2]
+      simp [ConstructRegularGrammarOutOfDFA]
+      have hlr := hl.right
+      simp [ConstructRegularGrammarOutOfDFA] at hlr
+      cases hlr with
+      | inl hl5 =>
+        match hl5 with 
+        | ⟨ql, a , qr, hl51⟩ => 
+          have q0InQ0 := dfa.bed_Q0
+          rw [q0InQ0]
+          simp [hl51.left]
+          have hfalse := hl51.right.left
+          simp [Word.concat] at hfalse
+      | inr hl6 =>
+        match hl6 with
+        | ⟨qz, hl7⟩ => 
+          rw [Set.element] at hl7
+          simp [hl7.left, hl7.right]
+          have q0InQ0 := dfa.bed_Q0
+          rw [q0InQ0]
+    | inr hr =>
+      have kfalse2 := kfalse hr
+      apply False.elim
+      exact kfalse2
+      
+
+      
