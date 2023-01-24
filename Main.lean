@@ -196,26 +196,7 @@ def Sigma.kleene {α :Type u}: Language α :=
       
 def Language.complement {α :Type u} (X: Language α ) : Language α  :=
   fun w: Word α =>
-  --braucht man sigma kleene w hier? eigentlich kann ein wort hier eh nur über sigma sein, ist das nicht schon zu limitierend ->-es sind keine wörter aus nicht alpha zugelassen , sinnvoll?
     ¬(w ∈ X)
-
--- inductive TypeUnion (α : Type u) (β : Type v) where
---   | first (whatever : α) : TypeUnion α β
---   | second (whatever : β) : TypeUnion α β
-
-
--- structure Grammar2 {V : Type v} {E : Type u} where 
---   P : Set ((Word (TypeUnion V E)) × (Word (TypeUnion V E)))
---   S : V
---   bed2: ∀ pair : (Word (TypeUnion V E)) × (Word (TypeUnion V E)), 
---   -- wenn pair in p folgt dass es die bedingungen hat sonst keine einschränkung
---     ¬ P pair ∨ (
---       ∃ v1 v2 v3 : Word (TypeUnion V E), 
---         ((pair.fst) = (v1 ∘ v2 ∘ v3)) 
---         -- TODO v2 soll (ein Wort) über V sein
---         ∧ ∃ t, t = TypeUnion.first v2 
---         ∧ ¬(v2 = Word.epsilon) 
---     )
 
 theorem Or.comm (a b:Prop) : a ∨ b ↔ b ∨ a := by
 constructor
@@ -606,11 +587,6 @@ L1 ∘ₗ (L2 ∪ L3) = (L1 ∘ₗ L2) ∪ (L1 ∘ₗ L3) :=
             exact ⟨h1, Or.inr h2, h3⟩
 
 @[simp] theorem eq_rfl {a : Type α} : (a = a) ↔ True := by simp[]
-  -- constructor
-  -- intro _
-  -- simp []
-  -- intro _
-  -- simp []
   
 
 structure Grammar {α : Type u} where
@@ -640,21 +616,31 @@ structure RegularGrammar {α  : Type u} extends (@Grammar α) where
     )
 
 
--- structure RegularGrammar2 {V : Type v} {E : Type u} extends (@Grammar V E) where
---   bed1 : ∀ pair : (Word (TypeUnion V E)) × (Word (TypeUnion V E)), pair.first ∈ V
---   bed3 : ∀ pair : (Word (TypeUnion V E)) × (Word (TypeUnion V E)), 
---     (∃ v1 v2: TypeUnion V E, 
---       ((pair.second) = ({data := List.cons v1 List.nil}) ∘ ({data := List.cons v2 List.nil}))
---       ∧ (v1 ∈ E) ∧ (v2 ∈ V))
---     ∨ (pair.second ∈ E) 
---     ∨ (pair.second = {data := []}) 
-
-
 structure EpsilonFreeRegularGrammar {α  : Type u} extends (@RegularGrammar α ) where
   epsilonFree : ∀ pair : (Word α ) × (Word α), 
   ¬ (pair  ∈ P) ∨ (
     pair.fst = Word.mk ([S]) ∨ ¬ (pair.snd = Word.epsilon)
   )
+
+
+
+def LaufRegularGrammarSub {α : Type u} (ql qg : α) (G : @RegularGrammar α) (lauf: List (Word α × Word α))  (w : Word α) : Prop :=
+    match w with 
+    | (Word.mk (word::ws1)) =>
+      match lauf with 
+      | (p1 ::xs) =>
+          p1 ∈ G.P ∧ 
+          p1.fst = (Word.mk [ql]) ∧ 
+          (∃ t1 : α , (Word.mk [word, t1] = p1.snd)   
+                  ∧ LaufRegularGrammarSub t1 qg G xs (Word.mk ws1) 
+            )
+      | _ => False 
+    | _ => 
+      ql = qg
+
+def LanguageRegularGrammar {α : Type u} (G : @RegularGrammar α) : Language α :=
+  fun w => ∃ qn lauf, (LaufRegularGrammarSub G.S qn G lauf w ∧ ⟨Word.mk [qn], Word.mk []⟩ ∈ G.P
+    ∨ ∃ w1, ∃ z : α, (w = w1 ∘ Word.mk [z]) ∧ LaufRegularGrammarSub G.S qn G lauf w1 ∧ ⟨Word.mk [qn], Word.mk [z]⟩ ∈ G.P)
 
 def AllElementsOfWordInSet {α : Type u} (w: Word α) (S: Set α ) :=
   match w with 
@@ -675,13 +661,9 @@ def NSchrittableitungsregel {α : Type u} (G : @Grammar α ) (w : Word α ) (v :
   | (Nat.succ m) => 
       ∃ w1 : Word α , (EinSchrittableitungsregel G w w1) ∧ (NSchrittableitungsregel G w1 v m) ∧ (AllElementsOfWordInSet v G.E)
 
-
 def SternSchrittableitungsregel {α : Type u} (G : @Grammar α ) (w : Word α ) (v : Word α ) : Prop :=
   ∃ n : Nat , NSchrittableitungsregel G w v n
   
-
-
-
 def ErzeugteSpracheGrammar {α : Type u} (G : @Grammar α): Language α  :=
   fun w: Word α  => 
     SternSchrittableitungsregel G (Word.mk [G.S]) w 
@@ -727,34 +709,6 @@ def nfaSprache {α : Type u} (nfa: @ NFA α ) : Language α :=
   fun w => ∃ qs qf, qs ∈ nfa.Q0 ∧ qf ∈ nfa.F ∧ nfaAbleitung nfa qs qf w  
 
 
-
-
-def EinSchrittableitungsregelNFA {α : Type u} {dfa: @ NFA α } (q1 : α) (q2 : α ) (w : Word α) (v: Word α) : Prop :=
-      q1 ∈ dfa.Q  ∧ q1 ∈ dfa.Q ∧ 
-      ∃ w1: Word α , 
-      (AllElementsOfWordInSet w1 dfa.E ∧ 
-      ∃ a : α, 
-        w = w1 ∘ (Word.mk [a]) ∧ v = w1 ∧ ⟨⟨q1, a⟩, q2⟩ ∈ dfa.δ 
-      )
-      ∨ (q1 = q2 ∧ w = Word.epsilon ∧ v = Word.epsilon)
-
-def NSchrittableitungsregelNFA {α : Type u} {dfa: @ NFA α } (q1 : α) (q2 : α ) (w : Word α) (v: Word α) (n:Nat) : Prop :=
-  match n with 
-  | (Nat.succ m) => 
-    ∃wz : Word α, 
-      ∃qz : α ,  qz ∈ dfa.Q ∧ 
-    @EinSchrittableitungsregelNFA α dfa q1 qz  w wz ∧ 
-    @NSchrittableitungsregelNFA α dfa qz q2 wz v m 
-  | _ => w = v ∧ q1 = q2
-
-def SternSchrittableitungsregelNFA {α : Type u} {dfa: @ NFA α } (q1 : α) (q2 : α ) (w : Word α) (v: Word α): Prop :=
-  ∃ n:Nat,
-    @NSchrittableitungsregelNFA α dfa q1 q2 w v n
-
-def NFASprache {α : Type u} (dfa: @ NFA α ) : Language α :=
-  fun w: Word α => 
-    ∃ f s, f ∈ dfa.F ∧ s ∈ dfa.Q0 ∧ 
-    @SternSchrittableitungsregelNFA α dfa s f w Word.epsilon
 
 structure TotalerDFA {α : Type u} extends (@ DFA α) where 
   tot: ∀ t : ((α × α) × α),
@@ -818,8 +772,6 @@ def ConstructRegularGrammarOutOfDFA {α : Type u} (dfa: @ DFA α ) : @RegularGra
         have k1 := disj1woE.left
         have k2 : ∃ t, t = ql ∧ t ∈ V := by
           exists ql
-          -- have ql_refl : (ql = ql) ↔ True := by rfl
-          -- simp [ql_refl]
           simp []
           have disj3 := disj1woE.right.right
           rw [Set.element] at disj3
@@ -867,8 +819,6 @@ def ConstructRegularGrammarOutOfDFA {α : Type u} (dfa: @ DFA α ) : @RegularGra
           simp [Word.concat]
           have k1 : ∃ t, t = ql ∧ t ∈ V := by
             exists ql
-            -- have ql_refl : (ql = ql) ↔ True := by rfl
-            -- simp [ql_refl]
             simp []
             have disj3 := disj1woE.right.right
             rw [Set.element] at disj3
@@ -946,7 +896,6 @@ def TotalerDFAConstruct {α : Type u} (dfa: @ DFA α ) (fang: α ) (p1: ¬fang �
     simp [Set.intersection]
     apply funext
     intro x
-    -- rw [@And.comm]
     simp [And.distrib_or, Set.element]
     have hq := dfa.QEdisj
     simp [Set.intersection, setEmpty_rfl] at hq
@@ -958,7 +907,6 @@ def TotalerDFAConstruct {α : Type u} (dfa: @ DFA α ) (fang: α ) (p1: ¬fang �
     have hll := hl x
     simp [Set.element] at hll
     rw [And.comm] at hll
-    -- simp [hll]
     simp [Set.intersection, Set.element]
     cases (Classical.em (x = fang)) with 
     | inl xfang => 
@@ -1174,27 +1122,6 @@ def TotalerDFAConstruct {α : Type u} (dfa: @ DFA α ) (fang: α ) (p1: ¬fang �
     {tot := tot2, uniqueness := uniqueness2, Tfunction := Tfunction2, Q0 := dfa.Q0,  Q:= Q2, E := dfa.E, δ := δ2, QEdisj := Q2Edisj, F := dfa.F, Q0subset := Q0SubsetQ2, Fsubset := FSubsetQ2, q0 := dfa.q0, bed_Q0 := dfa.bed_Q0  : TotalerDFA}
 
 
-def LaufRegularGrammarSub {α : Type u} (ql qg : α) (G : @RegularGrammar α) (lauf: List (Word α × Word α))  (w : Word α) : Prop :=
-
-    match w with 
-    | (Word.mk (word::ws1)) =>
-      match lauf with 
-      | (p1 ::xs) =>
-          p1 ∈ G.P ∧ 
-          p1.fst = (Word.mk [ql]) ∧ 
-          (∃ t1 : α , (Word.mk [word, t1] = p1.snd)   
-                  ∧ LaufRegularGrammarSub t1 qg G xs (Word.mk ws1) 
-            )
-          
-      | _ => False 
-
-
-    | _ => 
-      ql = qg
-
-def LanguageRegularGrammar {α : Type u} (G : @RegularGrammar α) : Language α :=
-  fun w => ∃ qn lauf, (LaufRegularGrammarSub G.S qn G lauf w ∧ ⟨Word.mk [qn], Word.mk []⟩ ∈ G.P
-    ∨ ∃ w1, ∃ z : α, (w = w1 ∘ Word.mk [z]) ∧ LaufRegularGrammarSub G.S qn G lauf w1 ∧ ⟨Word.mk [qn], Word.mk [z]⟩ ∈ G.P)
 
 
 theorem ableitungenEQ1 {α : Type u} (dfa: @ DFA α )   (w: Word α ) :  
@@ -1375,6 +1302,4 @@ theorem languageDFAeqConstructedRegularGrammar2 {α : Type u} (dfa : @DFA α) : 
       have kfalse2 := kfalse hr
       apply False.elim
       exact kfalse2
-      
-
-      
+    
