@@ -1160,8 +1160,43 @@ theorem ableitungenEQ1 {α : Type u} (dfa: @ DFA α )   (w: Word α ) :
         exists x 
         exists qn
     
+theorem EmptyNotFull : (∀ x xs, list ≠ (x::xs)) → list = [] := by
+      intro h
+      cases (list) with
+      | nil => rfl
+      | cons x1 xs1 => 
+        exact absurd rfl (h x1 xs1)
 
-theorem ableitungenEQ2 {α : Type u} (dfa: @ DFA α )   (w: Word α ) :  
+theorem notAllEqExists (p : α → Prop) (h: ¬ ∀ x, ¬ p x) : ∃ x, p x :=
+  byContradiction
+    (fun h1 : ¬ ∃ x, p x =>
+      have h2 : ∀ x, ¬ p x :=
+        fun x =>
+        fun h3 : p x =>
+        have h4 : ∃ x, p x := ⟨x, h3⟩
+        show False from h1 h4
+      show False from h h2)
+
+theorem notExistsEqAll (p : α → Prop) : (¬∃ x, p x) → (∀ x, ¬p x) := by
+  intro h2
+  intro x
+  intro px
+  have existsY : ∃y, p y := by exists x
+  exact h2 existsY
+
+
+theorem notExistsEqAllSpecial :( ¬∃ (laufx : Word α × Word α) (laufxs : List (Word α × Word α)), lauf2 = laufx :: laufxs) → ∀ (laufx : Word α × Word α) (laufxs : List (Word α × Word α)), ¬lauf2 = laufx :: laufxs := by
+  intro h1
+  intro h2
+  intro h3
+  intro ab
+  have existsS : ∃ (laufx : Word α × Word α) (laufxs : List (Word α × Word α)), lauf2 = laufx :: laufxs := by 
+    exists h2 
+    exists h3
+  exact h1 existsS
+
+
+theorem ableitungenEQ2 {α : Type u} (dfa: @ DFA α ) (w: Word α ) :  
      ∀ q1 q2 ,( ∃ lauf,
       ( LaufRegularGrammarSub q1 q2 (ConstructRegularGrammarOutOfDFA dfa) lauf  w ))  -> (nfaAbleitung dfa.toNFA q1 q2 w ) := by
   have hp := Word.objects_equal w 
@@ -1212,9 +1247,19 @@ theorem ableitungenEQ2 {α : Type u} (dfa: @ DFA α )   (w: Word α ) :
                 have falseelimarg := hrr2.right.left
                 simp [← laufRight] at falseelimarg
       | inr hnexlauf => 
-        have laufeqempty : lauf2 = [] := sorry --TODOS
+        have laufeqempty : lauf2 = [] := by
+          apply EmptyNotFull
+          have hn : (¬∃ laufx laufxs, lauf2 = laufx :: laufxs) → (∀ laufx laufxs, ¬(lauf2 = laufx :: laufxs)) := by
+            intro h
+            apply notExistsEqAllSpecial
+            exact h
+          apply hn
+          exact hnexlauf
         simp [laufeqempty] at laufwo
         simp [LaufRegularGrammarSub] at laufwo
+
+
+
 
 theorem languageDFAeqConstructedRegularGrammar2 {α : Type u} (dfa : @DFA α) :  (@nfaSprache α dfa.toNFA) = (@LanguageRegularGrammar α (ConstructRegularGrammarOutOfDFA dfa)) := by 
   apply Set.setext
