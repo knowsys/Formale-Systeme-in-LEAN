@@ -6,4 +6,4 @@ The project started and still emerges mostly through student projects. You are w
 ## Notes on Setup:
 
 Using `elan`:  
-`elan default leanprover/lean4:stable``
+`elan default leanprover/lean4:stable`
