@@ -136,15 +136,19 @@ theorem notAllEqExists (p : α → Prop) (h: ¬ ∀ x, ¬ p x) : ∃ x, p x :=
         show False from h1 h4
       show False from h h2)
 
-theorem notExistsEqAll (p : α → Prop) : (¬∃ x, p x) → (∀ x, ¬p x) := by
+theorem notExistsIffAll (p : α → Prop) : (¬∃ x, p x) ↔ (∀ x, ¬p x) := by
+  constructor
   intro h2
   intro x
   intro px
   have existsY : ∃y, p y := by exists x
   exact h2 existsY
+  intro h1 h2
+  match h2 with
+  | ⟨w, hw⟩ => exact ((h1 w) hw)
 
 ----------------------------------LISTS-----------------------------------------
-theorem list_concat_empty {α :Type u} (as : List α) : as ++ [] = as := by
+theorem list_concat_empty { α : Type u } (as : List α) : as ++ [] = as := by
 simp [List.cons]
 
 theorem EmptyNotFull : (∀ x xs, list ≠ (x::xs)) → list = [] := by
@@ -251,44 +255,54 @@ theorem intersection_dist_union {α : Type u} (X Y Z : Set α) : X ∩ (Y ∪ Z)
 
 end Set
 
+structure FinSet (α : Type u)
+  -- TODO
+
+----------------------------------ALPHABETS--------------------------------------
+
+class Alphabet (α : Type u) where
+  (non_empty : α)
+  (elems : FinSet α)
+  -- (complete : ∀ x : α, x ∈ elems)
+
 ----------------------------------WORDS------------------------------------------
-structure Word (α : Type u) where
+structure Word (α : Type u) [Alphabet α] where
   data : List α
   deriving Repr
 
-def Word.concat {α : Type u} (x y : Word α) : Word α := {data := x.data ++ y.data}
+def Word.concat [Alphabet α] (x y : Word α) : Word α := {data := x.data ++ y.data}
 infixr:70 " ∘ " => Word.concat
 
-def Word.epsilon {α : Type u} : Word α := Word.mk List.nil
+def Word.epsilon [Alphabet α] : Word α := Word.mk List.nil
 notation (priority := high) "ε" => Word.epsilon
 
-def Word.len {α : Type u} (w:Word α) : Nat :=
+def Word.len [Alphabet α] (w:Word α) : Nat :=
   match w with 
   | Word.mk List.nil => 0
   | Word.mk (x::xs) => 1 + Word.len (Word.mk (xs))
 
-theorem Word.objects_equal {α : Type u} (w :Word α): Word.mk w.data = w := by rfl 
+theorem Word.objects_equal [Alphabet α] (w : Word α): Word.mk w.data = w := by rfl 
 
-@[simp] theorem Word.epsilon_eq_epsilon {α : Type u} : (@ε α)= (Word.mk List.nil) := by rfl 
+@[simp] theorem Word.epsilon_eq_epsilon [Alphabet α] : (ε : Word α) = (Word.mk List.nil) := by rfl 
 
-def Word.AllElementsOfWordInSet {α : Type u} (w: Word α) (S: Set α) :=
+def Word.AllElementsOfWordInSet [Alphabet α] (w: Word α) (S: Set α) :=
   match w with 
   | Word.mk (a::as)=> a ∈ S ∧ Word.AllElementsOfWordInSet (Word.mk as) S
   | _ => True
 
 ----------------------------------LANGUAGES---------------------------------------
-def Language (α : Type u) := Set (Word α)
+def Language (α : Type u) [Alphabet α] := Set (Word α)
 
-def Language.concat {α : Type u} (X Y : Language α) : Language α := fun w : Word α => ∃ u v : Word α, u ∈ X ∧ v ∈ Y ∧ w = u ∘ v
+def Language.concat [Alphabet α] (X Y : Language α) : Language α := fun w : Word α => ∃ u v : Word α, u ∈ X ∧ v ∈ Y ∧ w = u ∘ v
 infixr:70 " ∘ₗ " => Language.concat
 
-def Language.epsilon {α:Type u} : Language α :=
+def Language.epsilon [Alphabet α] : Language α :=
   fun w =>
   match w with
   | Word.mk List.nil => True
   | Word.mk (_::_) => False
 
-def Language.power {α : Type u} (n:Nat) (X: Language α) : Language α := 
+def Language.power [Alphabet α] (n:Nat) (X: Language α) : Language α := 
   match n with
   | 0 => 
     Language.epsilon
@@ -296,28 +310,28 @@ def Language.power {α : Type u} (n:Nat) (X: Language α) : Language α :=
     fun (w:Word α)=> 
       ∃ w1 w2 : Word α, w2 ∈ (Language.power m X) ∧ w1 ∈ X ∧ w = w1 ∘ w2
 
-def Language.kleene {α :Type u} (X: Language α) : Language α :=
+def Language.kleene [Alphabet α] (X : Language α) : Language α :=
   fun w: Word α =>
     ∃ n : Nat, w ∈ Language.power n X
 
-def Language.plus {α :Type u} (X :Language α) : Language α :=
+def Language.plus [Alphabet α] (X: Language α) : Language α :=
   fun w: Word α => ∃ n:Nat, ¬ (n = 0) ∧ w ∈ Language.power n X
 
-def Sigma.language {α : Type u}: Language α := 
+def Sigma.language [Alphabet α] : Language α := 
   fun w: Word α =>
     match w with
     | (Word.mk (_::[])) => True
     | _ => False
 
-def Sigma.kleene {α :Type u}: Language α :=
-  fun w: Word α => (@Language.kleene _ Sigma.language) w
-      
-def Language.complement {α :Type u} (X: Language α) : Language α :=
+def Sigma.kleene [Alphabet α] : Language α :=
+  fun _: Word α => True
+
+def Language.complement [Alphabet α] (X: Language α) : Language α :=
   fun w: Word α =>
     ¬(w ∈ X)
 
 
-theorem Lanuage.eps_element_only_element_in_eps_lang_il {α :Type u} (w : Word α) : Language.epsilon w -> w = {data := []} := by
+theorem Lanuage.eps_element_only_element_in_eps_lang_il [Alphabet α] (w : Word α) : Language.epsilon w -> w = {data := []} := by
 intro n
 rw [← Word.objects_equal w] at n
 cases h:w.data with
@@ -329,13 +343,13 @@ cases h:w.data with
   rw [h] at n
   simp [Language.epsilon] at n
 
-theorem Language.eps_element_only_element_in_eps_lang {α :Type u} {w: Word α} : w ∈ Language.epsilon ↔ (w = Word.mk []) := by
+theorem Language.eps_element_only_element_in_eps_lang [Alphabet α] {w: Word α} : w ∈ Language.epsilon ↔ (w = Word.mk []) := by
 constructor
 exact Lanuage.eps_element_only_element_in_eps_lang_il w
 intro n 
 simp [Set.element,n, Language.epsilon]
 
-theorem Language.kleene_eq_plus_eps {α :Type u} {X: Language α} : Language.plus X ∪ Language.epsilon = Language.kleene X := by 
+theorem Language.kleene_eq_plus_eps [Alphabet α] {X: Language α} : Language.plus X ∪ Language.epsilon = Language.kleene X := by 
   apply funext
   intro w
   apply propext
@@ -372,7 +386,7 @@ theorem Language.kleene_eq_plus_eps {α :Type u} {X: Language α} : Language.plu
       simp [Set.element]
       exact r 
 
-theorem Language.lan_eps_eq_lan {α : Type u} (L : Language α): L ∘ₗ Language.epsilon = L := by
+theorem Language.lan_eps_eq_lan [Alphabet α] (L : Language α): L ∘ₗ Language.epsilon = L := by
   apply funext
   intro w
   apply propext
@@ -396,7 +410,7 @@ theorem Language.lan_eps_eq_lan {α : Type u} (L : Language α): L ∘ₗ Langua
   simp [Word.epsilon, Language.epsilon]
   simp [Word.concat]
 
-theorem Language.eps_lan_eq_lan {α : Type u} (L : Language α): Language.epsilon ∘ₗ L = L := by
+theorem Language.eps_lan_eq_lan [Alphabet α] (L : Language α): Language.epsilon ∘ₗ L = L := by
   apply funext
   intro w
   apply propext
@@ -414,7 +428,7 @@ theorem Language.eps_lan_eq_lan {α : Type u} (L : Language α): Language.epsilo
   exists (Word.mk [])
   exists w
 
-theorem Language.empty_lan_eq_empty {α :Type u} (L : Language α) : L ∘ₗ ∅ = ∅ := by
+theorem Language.empty_lan_eq_empty [Alphabet α] (L : Language α) : L ∘ₗ ∅ = ∅ := by
   apply Set.setext 
   intro w 
   constructor
@@ -428,7 +442,7 @@ theorem Language.empty_lan_eq_empty {α :Type u} (L : Language α) : L ∘ₗ �
   rw [Set.element, Set.empty] at n
   apply False.elim n 
 
-theorem Language.lan_empty_eq_empty {α :Type u} (L : Language α) : ∅ ∘ₗ L = ∅ := by
+theorem Language.lan_empty_eq_empty [Alphabet α] (L : Language α) : ∅ ∘ₗ L = ∅ := by
   apply Set.setext 
   intro w 
   constructor
@@ -442,7 +456,7 @@ theorem Language.lan_empty_eq_empty {α :Type u} (L : Language α) : ∅ ∘ₗ 
   rw [Set.element, Set.empty] at n 
   apply False.elim n 
 
-theorem Language.concat_dist_union_r {α : Type u} (L1 L2 L3 : Language α) : (L1 ∪ L2) ∘ₗ L3 = (L1 ∘ₗ L3) ∪ (L2 ∘ₗ L3) := by
+theorem Language.concat_dist_union_r [Alphabet α] (L1 L2 L3 : Language α) : (L1 ∪ L2) ∘ₗ L3 = (L1 ∘ₗ L3) ∪ (L2 ∘ₗ L3) := by
   apply Set.setext 
   intro w 
   constructor 
@@ -484,14 +498,14 @@ theorem Language.concat_dist_union_r {α : Type u} (L1 L2 L3 : Language α) : (L
       exists v
       exact ⟨Or.inr h1, h2, h3⟩ 
       
-theorem Language.morgan_union {α : Type u} (L1 L2 : Language α) : (L1 ∪ L2) = Language.complement (Language.complement L1 ∩ Language.complement L2):= by
+theorem Language.morgan_union [Alphabet α] (L1 L2 : Language α) : (L1 ∪ L2) = Language.complement (Language.complement L1 ∩ Language.complement L2):= by
   apply Set.setext
   intro w 
   repeat (first | rw [Set.element] | rw [Set.union] | rw [Set.intersection] | rw [Set.union] |rw [Language.complement] )
   rw [← Or.morgan, not_not_p]constructor
   repeat (first | intro n | exact n)
 
-theorem Language.morgan_inter {α : Type u} (L1 L2: Language α) : (L1 ∩ L2) = Language.complement (Language.complement L1 ∪ Language.complement L2) := by 
+theorem Language.morgan_inter [Alphabet α] (L1 L2: Language α) : (L1 ∩ L2) = Language.complement (Language.complement L1 ∪ Language.complement L2) := by 
   apply Set.setext 
   intro w 
   repeat (first | rw [Set.element] | rw [Set.union] | rw [Set.intersection] | rw [Set.union] |rw [Language.complement] )
@@ -499,7 +513,7 @@ theorem Language.morgan_inter {α : Type u} (L1 L2: Language α) : (L1 ∩ L2) =
   constructor
   repeat (first | intro n | exact n)
 
-theorem Language.concat_dist_union_l {α : Type u} (L1 L2 L3 : Language α) :
+theorem Language.concat_dist_union_l [Alphabet α] (L1 L2 L3 : Language α) :
 L1 ∘ₗ (L2 ∪ L3) = (L1 ∘ₗ L2) ∪ (L1 ∘ₗ L3) :=
   by
     apply funext
@@ -542,7 +556,7 @@ L1 ∘ₗ (L2 ∪ L3) = (L1 ∘ₗ L2) ∪ (L1 ∘ₗ L3) :=
   
 
 ----------------------------------GRAMMARS---------------------------------------
-structure Grammar {α : Type u} where
+structure Grammar [Alphabet α] where
   V : Set α 
   E : Set α 
   S: α 
@@ -557,7 +571,7 @@ structure Grammar {α : Type u} where
         (∃ t: α, (Word.mk ([t]) = v2 ∧ t ∈ V))
    )
 
-structure RegularGrammar {α : Type u} extends (@Grammar α) where
+structure RegularGrammar [Alphabet α] extends (@Grammar α _) where
   bed_reg: ∀ pair : ((Word α) × (Word α)), 
     (pair ∈ P) -> 
     (
@@ -568,34 +582,34 @@ structure RegularGrammar {α : Type u} extends (@Grammar α) where
      )
    )
 
-structure EpsilonFreeRegularGrammar {α : Type u} extends (@RegularGrammar α) where
+structure EpsilonFreeRegularGrammar [Alphabet α] extends (@RegularGrammar α _) where
   epsilonFree : ∀ pair : (Word α) × (Word α), 
   ¬ (pair ∈ P) ∨ (
     pair.fst = Word.mk ([S]) ∨ ¬ (pair.snd = Word.epsilon)
  )
 
-def OneStepDerivation {α : Type u} (G : @Grammar α) (w : Word α) (v : Word α) : Prop :=
+def OneStepDerivation [Alphabet α] (G : @Grammar α _) (w : Word α) (v : Word α) : Prop :=
     ∃ w1 w2 w3: Word α,
       ∃ v1 v2 v3: Word α,
       have p1 := w = w1 ∘ w2 ∘ w3
       have p2 := v = v1 ∘ v2 ∘ v3
       (v1 = w1) ∧ (v3 = w3) ∧ p1 ∧ p2 ∧ G.P ⟨w2, v2⟩
         
-def NstepDerivation {α : Type u} (G : @Grammar α) (w : Word α) (v : Word α) (n:Nat) : Prop :=
+def NstepDerivation [Alphabet α] (G : @Grammar α _) (w : Word α) (v : Word α) (n:Nat) : Prop :=
   match n with
   | 0 => 
     w = v
   | (Nat.succ m) => 
       ∃ w1 : Word α, (OneStepDerivation G w w1) ∧ (NstepDerivation G w1 v m) ∧ (Word.AllElementsOfWordInSet v G.E)
 
-def StarDerivation {α : Type u} (G : @Grammar α) (w : Word α) (v : Word α) : Prop :=
+def StarDerivation [Alphabet α] (G : @Grammar α _) (w : Word α) (v : Word α) : Prop :=
   ∃ n : Nat, NstepDerivation G w v n
   
-def GeneratedLanguageGrammar {α : Type u} (G : @Grammar α): Language α :=
+def GeneratedLanguageGrammar [Alphabet α] (G : @Grammar α _): Language α :=
   fun w: Word α => 
     StarDerivation G (Word.mk [G.S]) w
 
-def RunRegularGrammarSub {α : Type u} (ql qg : α) (G : @RegularGrammar α) (run: List (Word α × Word α))(w : Word α) : Prop :=
+def RunRegularGrammarSub [Alphabet α] (ql qg : α) (G : @RegularGrammar α _) (run: List (Word α × Word α))(w : Word α) : Prop :=
     match w with 
     | (Word.mk (word::ws1)) =>
       match run with 
@@ -609,12 +623,12 @@ def RunRegularGrammarSub {α : Type u} (ql qg : α) (G : @RegularGrammar α) (ru
     | _ => 
       ql = qg
 
-def LanguageRegularGrammar {α : Type u} (G : @RegularGrammar α) : Language α :=
+def LanguageRegularGrammar [Alphabet α] (G : @RegularGrammar α _) : Language α :=
   fun w => ∃ qn run, (RunRegularGrammarSub G.S qn G run w ∧ ⟨Word.mk [qn], Word.mk []⟩ ∈ G.P
     ∨ ∃ w1, ∃ z : α, (w = w1 ∘ Word.mk [z]) ∧ RunRegularGrammarSub G.S qn G run w1 ∧ ⟨Word.mk [qn], Word.mk [z]⟩ ∈ G.P)
 
 ----------------------------------AUTOMATA------------------------------------------
-structure NFA {α : Type u} where 
+structure NFA [Alphabet α] where 
   Q : Set α 
   E : Set α 
   δ : Set ((α × α) × α)
@@ -631,7 +645,7 @@ structure NFA {α : Type u} where
           t.snd ∈ Q
       ) 
   
-structure DFA {α : Type u} extends (@ NFA α) where 
+structure DFA [Alphabet α] extends (@ NFA α _) where 
   q0 : α 
   bed_Q0:
   (Q0 = 
@@ -644,21 +658,21 @@ structure DFA {α : Type u} extends (@ NFA α) where
        ¬ ((t1 ∈ δ) ∧ (t2 ∈ δ)) ∨ 
         (¬ (t1.fst = t2.fst) ∨ t1.snd = t2.snd)
 
-def nfaDerivation {α : Type u} (nfa: @ NFA α) (q1 qf: α) (w: Word α) : Prop :=
+def nfaDerivation [Alphabet α] (nfa: @ NFA α _) (q1 qf: α) (w: Word α) : Prop :=
   match w with 
   | Word.mk (x::xs) => ∃ qn, nfa.δ ⟨⟨q1, x⟩,qn⟩ ∧ nfaDerivation nfa qn qf (Word.mk xs) 
   | Word.mk [] => q1 = qf
 
-def nfaLanguage {α : Type u} (nfa: @ NFA α) : Language α :=
+def nfaLanguage [Alphabet α] (nfa: @ NFA α _) : Language α :=
   fun w => ∃ qs qf, qs ∈ nfa.Q0 ∧ qf ∈ nfa.F ∧ nfaDerivation nfa qs qf w
 
-structure TotalDFA {α : Type u} extends (@ DFA α) where 
+structure TotalDFA [Alphabet α] extends (@ DFA α _) where 
   tot: ∀ t : ((α × α) × α),
   (¬ (t.fst.snd ∈ E ∧ t.fst.fst ∈ Q) ∨ 
     ∃ q2 : α, ⟨⟨t.fst.fst, t.fst.snd⟩, q2⟩ ∈ δ
  )
 
-def TotalDFAConstruct {α : Type u} (dfa: @ DFA α) (fang: α) (p1: ¬fang ∈ dfa.Q ∧ ¬fang ∈ dfa.E) : @TotalDFA α :=
+def TotalDFAConstruct [Alphabet α] (dfa: @ DFA α _) (fang: α) (p1: ¬fang ∈ dfa.Q ∧ ¬fang ∈ dfa.E) : @TotalDFA α _ :=
   let Q2: Set α := fun w => (w ∈ dfa.Q) ∨ (w=fang) 
   let δ2: Set ((α × α) × α) := fun ⟨⟨w1, w2⟩, w3⟩ => ⟨⟨w1, w2⟩, w3⟩ ∈ dfa.δ ∨ (¬ (∃ a : α,⟨⟨w1, w2⟩, a⟩ ∈ dfa.δ)∧ Q2 w1 ∧ dfa.E w2 ∧ w3 = fang)
   
@@ -901,7 +915,7 @@ def TotalDFAConstruct {α : Type u} (dfa: @ DFA α) (fang: α) (p1: ¬fang ∈ d
 
 
 ----------------------------------GRAMMARS & AUTOMATA------------------------------
-def ConstructRegularGrammarFromDFA {α : Type u} (dfa: @ DFA α) : @RegularGrammar α:= 
+def ConstructRegularGrammarFromDFA [Alphabet α] (dfa: @ DFA α _) : @RegularGrammar α _:= 
   let E : Set α := dfa.E
   have E_def_refl : E = dfa.E := by rfl
   
@@ -970,7 +984,6 @@ def ConstructRegularGrammarFromDFA {α : Type u} (dfa: @ DFA α) : @RegularGramm
     | inr disjB => 
         match disjB with
         | ⟨q, disjB2⟩ =>
-
           exists Word.mk []
           exists Word.mk [q]
           exists Word.mk []
@@ -983,6 +996,7 @@ def ConstructRegularGrammarFromDFA {α : Type u} (dfa: @ DFA α) : @RegularGramm
               exact qInQ2
             simp [qInQ]
           simp [disjB2.left, k2]
+          exact disjB2.left
   have bed_reg: ∀ pair : ((Word α) × (Word α)), 
     (pair ∈ P) -> 
     (
@@ -1030,11 +1044,12 @@ def ConstructRegularGrammarFromDFA {α : Type u} (dfa: @ DFA α) : @RegularGramm
             simp [k21, k22]
           simp [k2]
           exists ql
-          simp [disj1woE.left]
+          rw [disj1woE.left]
+          simp
           match k1 with 
           | ⟨qrr, k1woE⟩ =>
-          simp [←k1woE.left]
-          exact k1woE.right
+            rw [← k1woE.left]
+            exact k1woE.right
       | inr disjB =>
           match disjB with
           | ⟨q, disjB2⟩ =>
@@ -1044,16 +1059,17 @@ def ConstructRegularGrammarFromDFA {α : Type u} (dfa: @ DFA α) : @RegularGramm
                 have FsbQ := dfa.Fsubset
                 have qInQ2 := FsbQ q disjB2.right.right 
                 exact qInQ2
+              rw [disjB2.left]
               simp [qInQ, disjB2.left]
             have k2: ((∃ t1 t2, {data := [t1, t2]} = pair.snd ∧ t1 ∈ E ∧ t2 ∈ V) ∨ (∃ t, {data := [t]} = pair.snd ∧ t ∈ E) ∨ pair.snd = {data := []}) := by
               apply Or.inr
               apply Or.inr
-              simp [disjB2.right]
+              rw [disjB2.right.left]
             simp [k1, k2]
 
     {V := V, E := E, S := S, P := P, bed_VEdisj := bed_VEdisj, bed_SinV := bed_SinV, bed_VarInLeft := bed_VarInLeft, bed_reg := bed_reg : RegularGrammar}
        
-theorem deriviationsEQ1 {α : Type u} (dfa: @ DFA α)(w: Word α) : 
+theorem deriviationsEQ1 [Alphabet α] (dfa: @ DFA α _)(w: Word α) : 
      ∀ q1 q2 :α, (nfaDerivation dfa.toNFA q1 q2 w) -> (
       (∃ run, RunRegularGrammarSub q1 q2 (ConstructRegularGrammarFromDFA dfa) run w)):= by
   have hp := Word.objects_equal w 
@@ -1089,17 +1105,7 @@ theorem deriviationsEQ1 {α : Type u} (dfa: @ DFA α)(w: Word α) :
         exists x 
         exists qn
 
-theorem notExistsEqAllSpecial : (¬∃ (runx : Word α × Word α) (runxs : List (Word α × Word α)), run2 = runx::runxs) → ∀ (runx : Word α × Word α) (runxs : List (Word α × Word α)), ¬run2 = runx::runxs := by
-  intro h1
-  intro h2
-  intro h3
-  intro ab
-  have existsS : ∃ (runx : Word α × Word α) (runxs : List (Word α × Word α)), run2 = runx::runxs := by 
-    exists h2 
-    exists h3
-  exact h1 existsS
-
-theorem deriviationsEQ2 {α : Type u} (dfa: @ DFA α) (w: Word α) : 
+theorem deriviationsEQ2 [Alphabet α] (dfa: @ DFA α _) (w: Word α) : 
      ∀ q1 q2,(∃ run,
       (RunRegularGrammarSub q1 q2 (ConstructRegularGrammarFromDFA dfa) run w))-> (nfaDerivation dfa.toNFA q1 q2 w) := by
   have hp := Word.objects_equal w 
@@ -1152,16 +1158,16 @@ theorem deriviationsEQ2 {α : Type u} (dfa: @ DFA α) (w: Word α) :
       | inr hnexrun => 
         have runeqempty : run2 = [] := by
           apply EmptyNotFull
-          have hn : (¬∃ runx runxs, run2 = runx::runxs) → (∀ runx runxs, ¬(run2 = runx::runxs)) := by
-            intro h
-            apply notExistsEqAllSpecial
-            exact h
-          apply hn
-          exact hnexrun
+          intro x xs
+          intro p
+          have existThing: ∃runx runxs, run2 = runx::runxs := by
+            exists x
+            exists xs
+          exact (hnexrun existThing)
         simp [runeqempty] at runwo
         simp [RunRegularGrammarSub] at runwo
 
-theorem languageDFAeqConstructedRegularGrammar2 {α : Type u} (dfa : @DFA α) : (@nfaLanguage α dfa.toNFA) = (@LanguageRegularGrammar α (ConstructRegularGrammarFromDFA dfa)) := by 
+theorem languageDFAeqConstructedRegularGrammar2 [Alphabet α] (dfa : @DFA α _) : (@nfaLanguage α _ dfa.toNFA) = (@LanguageRegularGrammar α _ (ConstructRegularGrammarFromDFA dfa)) := by 
   apply Set.setext
   intro w
   apply Iff.intro
