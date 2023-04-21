@@ -41,14 +41,12 @@ theorem And.distrib_or : a ∧ (b ∨ c) ↔ (a ∧ b) ∨ (a ∧ c) := by
 theorem Or.morgan : ¬(p ∨ q) ↔ ¬p ∧ ¬q :=
   Iff.intro
   (fun hnpq: ¬(p ∨ q) => 
-    ⟨fun hp:p => hnpq (Or.intro_left q hp), fun hq:q => hnpq (Or.intro_right p hq)⟩ 
- )
+    ⟨fun hp:p => hnpq (Or.intro_left q hp), fun hq:q => hnpq (Or.intro_right p hq)⟩)
   (fun hnpq : ¬p ∧ ¬q =>
     fun hpq : (p ∨ q) =>
       Or.elim hpq
       (fun hp:p => hnpq.left hp)
-      (fun hq:q => hnpq.right hq)
- )
+      (fun hq:q => hnpq.right hq))
 
 theorem And.morgan : ¬(p ∧ q) ↔ ¬p ∨ ¬q :=
   Iff.intro
@@ -95,20 +93,7 @@ theorem np_and_p_imp_false {p : Prop}: ¬p ∧ p → False := by
   intro npp
   exact npp.left npp.right
 
-theorem not_not_p {p : Prop}: (¬¬p) ↔ p := by
-  apply Iff.intro
-  intro nnp
-  cases (Classical.em p) with 
-  | inl hp => 
-    exact hp
-  | inr hr => 
-    apply False.elim (nnp hr)
-  intro hp 
-  cases (Classical.em ¬ p) with 
-  | inl hl => 
-    apply False.elim (hl hp)
-  | inr hr =>
-    exact hr 
+theorem not_not_elim {p : Prop}: (¬¬p) → p := Classical.byContradiction
 
 theorem Or.comm (a b:Prop) : a ∨ b ↔ b ∨ a := by
   constructor
@@ -125,27 +110,26 @@ theorem Or.comm (a b:Prop) : a ∨ b ↔ b ∨ a := by
   intro ha 
   exact Or.intro_left b ha
 
-
-theorem notAllEqExists (p : α → Prop) (h: ¬ ∀ x, ¬ p x) : ∃ x, p x :=
-  byContradiction
-    (fun h1 : ¬ ∃ x, p x =>
-      have h2 : ∀ x, ¬ p x :=
-        fun x =>
-        fun h3 : p x =>
-        have h4 : ∃ x, p x := ⟨x, h3⟩
-        show False from h1 h4
-      show False from h h2)
-
-theorem notExistsIffAll (p : α → Prop) : (¬∃ x, p x) ↔ (∀ x, ¬p x) := by
+theorem notExistsIffAll (p : α -> Prop) : (¬∃ x, p x) ↔ (∀ x, ¬p x) := by
   constructor
-  intro h2
-  intro x
-  intro px
+  intro h2 x px
   have existsY : ∃y, p y := by exists x
   exact h2 existsY
   intro h1 h2
   match h2 with
   | ⟨w, hw⟩ => exact ((h1 w) hw)
+
+theorem forallNotNot { p : α -> Prop } : (∀ x, ¬¬p x) ↔ (∀ x, p x) := by
+  constructor
+  intro h
+  exact fun x => Classical.byContradiction (h x)
+  intro h
+  exact fun x => not_not_intro (h x)
+
+theorem notAllIfExists (p : α -> Prop ) : (∃ x, ¬p x) → (¬∀ x, p x) := by
+  intro h h2
+  match h with
+  | ⟨w, hw⟩ => exact hw (h2 w)
 
 ----------------------------------LISTS-----------------------------------------
 theorem list_concat_empty { α : Type u } (as : List α) : as ++ [] = as := by
@@ -349,42 +333,46 @@ exact Lanuage.eps_element_only_element_in_eps_lang_il w
 intro n 
 simp [Set.element,n, Language.epsilon]
 
-theorem Language.kleene_eq_plus_eps [Alphabet α] {X: Language α} : Language.plus X ∪ Language.epsilon = Language.kleene X := by 
+theorem Language.kleene_eq_plus_eps [Alphabet α] {L: Language α} : Language.plus L ∪ Language.epsilon = Language.kleene L := by 
   apply funext
   intro w
   apply propext
   constructor
-  intro x
-  simp [Set.union] at x
-  rw[Set.element] at x 
-  rw [Language.kleene]
-  cases x with 
-  |inl p => 
-    rw [Language.plus] at p 
-    cases p with
-    | intro n r =>
-      exists n 
-      exact r.right 
-  |inr e => 
-    exists 0
-  intro n 
-  rw [Set.union]
-  simp [Language.kleene] at n 
-  cases n with 
-  | intro nn r => 
-    cases nn with 
-    | succ m => 
-      apply Or.inl 
-      simp [Set.element, Language.plus]
-      exists (Nat.succ m)
-      rw [Set.element] at r
-      exact ⟨Nat.succ_ne_zero m, r⟩ 
-    | zero => 
-      apply Or.inr
-      simp [Set.element] at r
-      simp [Language.power] at r
-      simp [Set.element]
-      exact r 
+
+  case mp =>
+    intro l_as_union
+    simp [Set.union] at l_as_union
+    rw [Set.element] at l_as_union
+    rw [Language.kleene]
+    cases l_as_union with 
+    |inl p => 
+      rw [Language.plus] at p 
+      cases p with
+      | intro n r =>
+        exists n 
+        exact r.right 
+    |inr e => 
+      exists 0
+
+  case mpr =>
+    intro n
+    rw [Set.union]
+    simp [Language.kleene] at n 
+    cases n with 
+    | intro nn r => 
+      cases nn with 
+      | succ m => 
+        apply Or.inl 
+        simp [Set.element, Language.plus]
+        exists (Nat.succ m)
+        rw [Set.element] at r
+        exact ⟨Nat.succ_ne_zero m, r⟩ 
+      | zero => 
+        apply Or.inr
+        simp [Set.element] at r
+        simp [Language.power] at r
+        simp [Set.element]
+        exact r 
 
 theorem Language.lan_eps_eq_lan [Alphabet α] (L : Language α): L ∘ₗ Language.epsilon = L := by
   apply funext
@@ -498,20 +486,19 @@ theorem Language.concat_dist_union_r [Alphabet α] (L1 L2 L3 : Language α) : (L
       exists v
       exact ⟨Or.inr h1, h2, h3⟩ 
       
-theorem Language.morgan_union [Alphabet α] (L1 L2 : Language α) : (L1 ∪ L2) = Language.complement (Language.complement L1 ∩ Language.complement L2):= by
+theorem Language.morgan_union [Alphabet α] (L1 L2 : Language α) : Language.complement (L1 ∪ L2) = (Language.complement L1 ∩ Language.complement L2):= by
   apply Set.setext
   intro w 
-  repeat (first | rw [Set.element] | rw [Set.union] | rw [Set.intersection] | rw [Set.union] |rw [Language.complement] )
-  rw [← Or.morgan, not_not_p]constructor
-  repeat (first | intro n | exact n)
-
-theorem Language.morgan_inter [Alphabet α] (L1 L2: Language α) : (L1 ∩ L2) = Language.complement (Language.complement L1 ∪ Language.complement L2) := by 
+  repeat (first | rw [Set.element] | rw [Set.union] | rw [Set.intersection] | rw [Set.union] | rw [Language.complement] )
+  rw [← Or.morgan]
+  simp
+ 
+theorem Language.morgan_inter [Alphabet α] (L1 L2: Language α) : Language.complement (L1 ∩ L2) = (Language.complement L1 ∪ Language.complement L2) := by 
   apply Set.setext 
   intro w 
   repeat (first | rw [Set.element] | rw [Set.union] | rw [Set.intersection] | rw [Set.union] |rw [Language.complement] )
-  rw [← And.morgan, not_not_p]
-  constructor
-  repeat (first | intro n | exact n)
+  rw [← And.morgan]
+  simp
 
 theorem Language.concat_dist_union_l [Alphabet α] (L1 L2 L3 : Language α) :
 L1 ∘ₗ (L2 ∪ L3) = (L1 ∘ₗ L2) ∪ (L1 ∘ₗ L3) :=
@@ -691,7 +678,7 @@ def TotalDFAConstruct [Alphabet α] (dfa: @ DFA α _) (fang: α) (p1: ¬fang ∈
     apply Or.inl 
     exact w
 
-  have Q2Edisj : Q2 ∩ dfa.E = Set.empty:= by
+  have Q2Edisj : Q2 ∩ dfa.E = Set.empty := by
     rw [setEmpty_rfl]
     simp [Set.intersection]
     apply funext
@@ -1112,60 +1099,45 @@ theorem deriviationsEQ2 [Alphabet α] (dfa: @ DFA α _) (w: Word α) :
   rw [← hp] 
   induction w.data with
   | nil => 
-    intro q1
-    intro q2
-    intro runex
+    intro _ _ runex
     match runex with 
     | ⟨run, runwo⟩ =>
       simp [RunRegularGrammarSub] at runwo 
       simp [nfaDerivation, runwo]
   | cons x xs iv => 
-    intro q11
-    intro q22
-    intro runex
+    intro _ q22 runex
     match runex with 
     | ⟨run2, runwo⟩ =>
-      cases (Classical.em (∃ runx runxs, run2 = runx::runxs)) with 
-      | inl runwoH =>
-        match runwoH with 
-        | ⟨runx, runxs, runwoH2⟩ =>
-          simp [runwoH2, RunRegularGrammarSub] at runwo 
-          simp [nfaDerivation]
-          have runwo2 := runwo.right.right 
-          match runwo2 with
-          | ⟨qn, runwo3⟩ =>
-            exists qn
-            have runwo4ex : ∃ run, RunRegularGrammarSub qn q22 (ConstructRegularGrammarFromDFA dfa) run {data := xs} := by
-              exists runxs 
-              exact runwo3.right
-            have iv2 := iv qn q22 runwo4ex
-            simp [iv2]
-            have pinG := runwo.left
-            have runFirst := runwo.right.left 
-            have runRight := runwo3.left
-            simp [Set.element, ConstructRegularGrammarFromDFA] at pinG 
-            cases pinG with 
-            | inl hll =>
-              match hll with 
-              | ⟨q_1, w_1, q_r, pingnoE⟩ => 
-                simp [Word.concat, runFirst, ←runRight] at pingnoE
-                simp [pingnoE]
-            | inr hrr =>
-              match hrr with
-              | ⟨q, hrr2⟩ =>
-                have falseelimarg := hrr2.right.left
-                simp [← runRight] at falseelimarg
-      | inr hnexrun => 
-        have runeqempty : run2 = [] := by
-          apply EmptyNotFull
-          intro x xs
-          intro p
-          have existThing: ∃runx runxs, run2 = runx::runxs := by
-            exists x
-            exists xs
-          exact (hnexrun existThing)
-        simp [runeqempty] at runwo
+      cases run2 with 
+      | nil => 
         simp [RunRegularGrammarSub] at runwo
+      | cons runx runxs =>
+        simp [RunRegularGrammarSub] at runwo 
+        simp [nfaDerivation]
+        have runwo2 := runwo.right.right 
+        match runwo2 with
+        | ⟨qn, runwo3⟩ =>
+          exists qn
+          have runwo4ex : ∃ run, RunRegularGrammarSub qn _ (ConstructRegularGrammarFromDFA dfa) run {data := xs} := by
+            exists runxs 
+            exact runwo3.right
+          have iv2 := iv qn q22 runwo4ex
+          simp [iv2]
+          have pinG := runwo.left
+          have runFirst := runwo.right.left 
+          have runRight := runwo3.left
+          simp [Set.element, ConstructRegularGrammarFromDFA] at pinG 
+          cases pinG with 
+          | inl hll =>
+            match hll with 
+            | ⟨q_1, w_1, q_r, pingnoE⟩ => 
+              simp [Word.concat, runFirst, ←runRight] at pingnoE
+              simp [pingnoE]
+          | inr hrr =>
+            match hrr with
+            | ⟨q, hrr2⟩ =>
+              have falseelimarg := hrr2.right.left
+              simp [← runRight] at falseelimarg
 
 theorem languageDFAeqConstructedRegularGrammar2 [Alphabet α] (dfa : @DFA α _) : (@nfaLanguage α _ dfa.toNFA) = (@LanguageRegularGrammar α _ (ConstructRegularGrammarFromDFA dfa)) := by 
   apply Set.setext
