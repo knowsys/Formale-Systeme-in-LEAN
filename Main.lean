@@ -1,273 +1,39 @@
-open Classical
-
-----------------------------------LOGIC-----------------------------------------
-theorem Or.distrib_and : p ∨ (q ∧ r) ↔ (p ∨ q) ∧ (p ∨ r) := 
-  Iff.intro
-  (fun hpqr : p ∨ (q ∧ r) =>
-    Or.elim hpqr
-    (fun hp:p => show (p ∨ q) ∧ (p ∨ r) from ⟨(Or.intro_left q hp), (Or.intro_left r hp)⟩)
-    (fun hqr: (q ∧ r) => show (p ∨ q) ∧ (p ∨ r) from ⟨(Or.intro_right p hqr.left), (Or.intro_right p hqr.right)⟩))
-  (fun hpqpr: (p ∨ q) ∧ (p ∨ r) => 
-    have hpq := hpqpr.left
-    have hpr := hpqpr.right
-    Or.elim hpq
-    (fun hp:p => show p ∨ (q ∧ r) from Or.intro_left (q ∧ r) hp)
-    (fun hq:q =>
-    Or.elim hpr
-    (fun hp:p => show p ∨ (q ∧ r) from Or.intro_left (q ∧ r) hp)
-    (fun hr:r => show p ∨ (q ∧ r) from Or.intro_right p ⟨hq, hr⟩))
- )
-
-theorem And.assoc : (a ∧ b) ∧ c ↔ a ∧ (b ∧ c) := by
-  constructor
-  case mp => intro ⟨⟨ha, hb⟩, hc⟩; exact ⟨ha, ⟨hb, hc⟩⟩
-  case mpr => intro ⟨ha, ⟨hb, hc⟩⟩; exact ⟨⟨ha, hb⟩, hc⟩
-
-theorem And.distrib_or : a ∧ (b ∨ c) ↔ (a ∧ b) ∨ (a ∧ c) := by
-  constructor
-
-  case mp =>
-    intro ⟨ha, hor⟩
-    cases hor with
-    | inl hl => exact Or.inl ⟨ha, hl⟩
-    | inr hr => exact Or.inr ⟨ha, hr⟩
-
-  case mpr =>
-    intro h
-    match h with
-    | Or.inl ⟨ha, hb⟩ => exact ⟨ha, Or.inl hb⟩
-    | Or.inr ⟨ha, hc⟩ => exact ⟨ha, Or.inr hc⟩
-
-theorem Or.morgan : ¬(p ∨ q) ↔ ¬p ∧ ¬q :=
-  Iff.intro
-  (fun hnpq: ¬(p ∨ q) => 
-    ⟨fun hp:p => hnpq (Or.intro_left q hp), fun hq:q => hnpq (Or.intro_right p hq)⟩)
-  (fun hnpq : ¬p ∧ ¬q =>
-    fun hpq : (p ∨ q) =>
-      Or.elim hpq
-      (fun hp:p => hnpq.left hp)
-      (fun hq:q => hnpq.right hq))
-
-theorem And.morgan : ¬(p ∧ q) ↔ ¬p ∨ ¬q :=
-  Iff.intro
-  (fun hpq : ¬(p ∧ q) =>
-    Or.elim (em p)
-    (fun hp:p =>
-      Or.elim (em q)
-      (fun hq : q => show ¬p ∨ ¬q from False.elim (hpq ⟨hp, hq⟩))
-      (fun nq : ¬q => (Or.intro_right (¬p) nq)))
-    (fun np:¬p => (Or.intro_left (¬q) np)))
-  (fun hpoq : ¬p ∨ ¬q =>
-    Or.elim hpoq
-    (fun hp:¬p =>
-      fun hpnq : p ∧ q => hp hpnq.left)
-    (fun hp:¬q =>
-      fun hpnq : p ∧ q => hp hpnq.right))
-
-theorem not_or_eq_implication: (¬p ∨ q) ↔ (p → q) :=
-  Iff.intro
-  ( fun hpq : ¬p ∨ q =>
-    Or.elim hpq
-    (fun hnp: ¬p => 
-      fun hp:p => show q from False.elim (hnp hp))
-    (fun hq: q => 
-      fun _:p => hq))
-  ( fun hpq : (p → q) =>
-    Or.elim (em q)
-    (fun hq:q => Or.intro_right (¬p) hq)
-    (fun nq:¬q =>
-      Or.elim (em p)
-      (fun hp:p => show (¬p ∨ q) from False.elim (nq (hpq hp)))
-      (fun np:¬p => show (¬p ∨ q) from Or.intro_left q np)
-   ))
-
-theorem And.elimination : p ∧ (¬p ∨ q) ↔ p ∧ q := by
-  apply Iff.intro
-  intro pnpq
-  rw [not_or_eq_implication] at pnpq
-  exact ⟨pnpq.left, pnpq.right pnpq.left⟩ 
-  intro pq
-  exact ⟨pq.left, Or.intro_right (¬p) pq.right⟩ 
-
-theorem np_and_p_imp_false {p : Prop}: ¬p ∧ p → False := by
-  intro npp
-  exact npp.left npp.right
-
-theorem not_not_elim {p : Prop}: (¬¬p) → p := Classical.byContradiction
-
-theorem Or.comm (a b:Prop) : a ∨ b ↔ b ∨ a := by
-  constructor
-  intro ab
-  apply Or.elim ab
-  intro ha
-  exact Or.intro_right b ha
-  intro hb
-  exact Or.intro_left a hb
-  intro ba 
-  apply Or.elim ba 
-  intro hb 
-  exact Or.intro_right a hb
-  intro ha 
-  exact Or.intro_left b ha
-
-theorem notExistsIffAll (p : α -> Prop) : (¬∃ x, p x) ↔ (∀ x, ¬p x) := by
-  constructor
-  intro h2 x px
-  have existsY : ∃y, p y := by exists x
-  exact h2 existsY
-  intro h1 h2
-  match h2 with
-  | ⟨w, hw⟩ => exact ((h1 w) hw)
-
-theorem forallNotNot { p : α -> Prop } : (∀ x, ¬¬p x) ↔ (∀ x, p x) := by
-  constructor
-  intro h
-  exact fun x => Classical.byContradiction (h x)
-  intro h
-  exact fun x => not_not_intro (h x)
-
-theorem notAllIfExists (p : α -> Prop ) : (∃ x, ¬p x) → (¬∀ x, p x) := by
-  intro h h2
-  match h with
-  | ⟨w, hw⟩ => exact hw (h2 w)
-
-----------------------------------LISTS-----------------------------------------
-theorem list_concat_empty { α : Type u } (as : List α) : as ++ [] = as := by
-simp [List.cons]
-
-theorem EmptyNotFull : (∀ x xs, list ≠ (x::xs)) → list = [] := by
-      intro h
-      cases (list) with
-      | nil => rfl
-      | cons x1 xs1 => 
-        exact absurd rfl (h x1 xs1)
-
-----------------------------------SETS------------------------------------------
-def Set (α : Type u) := α -> Prop
-
-namespace Set
-def element {α : Type u} (e : α) (X : Set α) : Prop := X e
-infixr:75 " ∈ " => element
-
-def union {α : Type u} (X Y : Set α) : Set α := fun a => a ∈ X ∨ a ∈ Y
-infixr:65 " ∪ " => union
-
-def subset {α : Type u} (X Y : Set α) : Prop := ∀ e : α, e ∈ X → e ∈ Y
-infixr:50 " ⊆ " => subset
-
-def intersection {α : Type u} (X Y : Set α) : Set α := fun (e: α) => e ∈ X ∧ e ∈ Y
-infixr:80 " ∩ " => intersection
-
-def diff {α : Type u} (X Y : Set α) : Set α := fun (e: α) => e ∈ X ∧ ¬(e ∈ Y)
---infixr:80 " \\ " => intersection
-
-def empty {α :Type u}: Set α := fun _ => False
-
-notation (priority := high) "∅" => empty
-
-
-theorem setext {α :Type u} {a b : Set α} (h : ∀ x, x ∈ a ↔ x ∈ b) : a = b :=
- funext (fun x => propext (h x))
-
-theorem inter_self {α :Type u} (a : Set α) : a ∩ a = a := by
-  apply setext
-  intro x
-  constructor
-  intro n 
-  rw [element, intersection] at n
-  exact n.left 
-  intro n 
-  exact ⟨n,n⟩ 
-
-theorem inter_empty {α :Type u} (X : Set α) : X ∩ ∅ = ∅ := by 
-  apply setext
-  intro n
-  constructor
-  intro x 
-  rw [element, intersection] at x
-  exact x.right 
-  intro x 
-  rw [element] at x 
-  rw [empty] at x 
-  exact False.elim x 
-
-theorem inter_comm {α : Type u} (X Y:Set α) : X ∩ Y = Y ∩ X := by 
-  apply setext 
-  intro x 
-  constructor 
-  intro n 
-  rw [element, intersection] at n
-  rw [element, intersection]
-  exact ⟨n.right, n.left⟩ 
-  intro n 
-  rw [element, intersection] at n
-  rw [element, intersection]
-  exact ⟨n.right, n.left⟩ 
-
-theorem union_or {α : Type u} (X Y : Set α) (e : α) : (e ∈ (X ∪ Y)) = (e ∈ X ∨ e ∈ Y) := by rfl
-
-theorem union_comm {α :Type u} (X Y : Set α) : X ∪ Y = Y ∪ X :=
-  by
-  apply funext
-  intro f
-  rw [union]
-  rw [union]
-  rw [Or.comm]
-
-theorem empty_inter {α :Type u} (a : Set α) : ∅ ∩ a = ∅ := by 
-  rw [inter_comm]
-  apply inter_empty
-
-theorem intersection_and {α : Type u} (X Y : Set α) (e:α) : (e ∈ (X ∩ Y)) = (e ∈ X ∧ e ∈ Y) := by rfl
-
-theorem union_dist_intersection {α : Type u} (X Y Z : Set α) : X ∪ (Y ∩ Z) = (X ∪ Y) ∩ (X ∪ Z) := by
-  apply funext
-  intro x
-  rw [union, intersection]
-  repeat rw [element]
-  rw [union, union, intersection]
-  rw [Or.distrib_and]
-  rfl
-
-theorem intersection_dist_union {α : Type u} (X Y Z : Set α) : X ∩ (Y ∪ Z) = (X ∩ Y) ∪ (X ∩ Z) := by
-  apply funext
-  intro x
-  rw [intersection, union]
-  repeat rw [element]
-  rw [union, intersection, intersection,And.distrib_or]
-  rfl
-
-end Set
-
-structure FinSet (α : Type u)
-  -- TODO
+import Logic
+import Set
+import Monoid
+import FinSet
 
 ----------------------------------ALPHABETS--------------------------------------
 
 class Alphabet (α : Type u) where
   (non_empty : α)
   (elems : FinSet α)
-  -- (complete : ∀ x : α, x ∈ elems)
+  (complete : ∀ x : α, x ∈ elems)
 
 ----------------------------------WORDS------------------------------------------
 structure Word (α : Type u) [Alphabet α] where
   data : List α
   deriving Repr
 
-def Word.concat [Alphabet α] (x y : Word α) : Word α := {data := x.data ++ y.data}
-infixr:70 " ∘ " => Word.concat
-
 def Word.epsilon [Alphabet α] : Word α := Word.mk List.nil
 notation (priority := high) "ε" => Word.epsilon
+
+instance [Alphabet α] : Monoid (Word α) where
+  mident := ε
+  mconcat u v := { data := u.data ++ v.data }
+  identity := {
+    left := fun w => by simp [Word.epsilon]
+    right := fun w => by simp [Word.epsilon]
+  }
+  assoc := by 
+    simp [Associative]
+    intro u v w
+    exact List.append_assoc u.data v.data w.data
 
 def Word.len [Alphabet α] (w:Word α) : Nat :=
   match w with 
   | Word.mk List.nil => 0
   | Word.mk (x::xs) => 1 + Word.len (Word.mk (xs))
-
-theorem Word.objects_equal [Alphabet α] (w : Word α): Word.mk w.data = w := by rfl 
-
-@[simp] theorem Word.epsilon_eq_epsilon [Alphabet α] : (ε : Word α) = (Word.mk List.nil) := by rfl 
 
 def Word.AllElementsOfWordInSet [Alphabet α] (w: Word α) (S: Set α) :=
   match w with 
@@ -277,72 +43,51 @@ def Word.AllElementsOfWordInSet [Alphabet α] (w: Word α) (S: Set α) :=
 ----------------------------------LANGUAGES---------------------------------------
 def Language (α : Type u) [Alphabet α] := Set (Word α)
 
-def Language.concat [Alphabet α] (X Y : Language α) : Language α := fun w : Word α => ∃ u v : Word α, u ∈ X ∧ v ∈ Y ∧ w = u ∘ v
+instance [Alphabet α] : Membership (Word α) (Language α) where
+  mem x L := Set.contains L x
+
+def Language.concat [Alphabet α] (X Y : Language α) : Language α := 
+  Set.mk fun w : Word α => ∃ u v : Word α, u ∈ X ∧ v ∈ Y ∧ w = u ∘ₘ v
 infixr:70 " ∘ₗ " => Language.concat
 
 def Language.epsilon [Alphabet α] : Language α :=
-  fun w =>
-  match w with
-  | Word.mk List.nil => True
-  | Word.mk (_::_) => False
+  Set.mk fun w => w = ε
 
 def Language.power [Alphabet α] (n:Nat) (X: Language α) : Language α := 
   match n with
-  | 0 => 
-    Language.epsilon
-  | (Nat.succ m) => 
-    fun (w:Word α)=> 
-      ∃ w1 w2 : Word α, w2 ∈ (Language.power m X) ∧ w1 ∈ X ∧ w = w1 ∘ w2
+  | 0 => Language.epsilon
+  | (Nat.succ m) => Set.mk fun (w:Word α) => 
+      ∃ w1 w2 : Word α, w2 ∈ (Language.power m X) ∧ w1 ∈ X ∧ w = w1 ∘ₘ w2
 
 def Language.kleene [Alphabet α] (X : Language α) : Language α :=
-  fun w: Word α =>
+  Set.mk fun w: Word α =>
     ∃ n : Nat, w ∈ Language.power n X
 
 def Language.plus [Alphabet α] (X: Language α) : Language α :=
-  fun w: Word α => ∃ n:Nat, ¬ (n = 0) ∧ w ∈ Language.power n X
+  Set.mk fun w: Word α => 
+    ∃ n:Nat, ¬ (n = 0) ∧ w ∈ Language.power n X
 
 def Sigma.language [Alphabet α] : Language α := 
-  fun w: Word α =>
+  Set.mk fun w: Word α =>
     match w with
     | (Word.mk (_::[])) => True
     | _ => False
 
 def Sigma.kleene [Alphabet α] : Language α :=
-  fun _: Word α => True
+  Set.mk fun _: Word α => True
 
-def Language.complement [Alphabet α] (X: Language α) : Language α :=
-  fun w: Word α =>
-    ¬(w ∈ X)
+def Language.complement [Alphabet α] (L : Language α) := Set.complement L
 
-
-theorem Lanuage.eps_element_only_element_in_eps_lang_il [Alphabet α] (w : Word α) : Language.epsilon w -> w = {data := []} := by
-intro n
-rw [← Word.objects_equal w] at n
-cases h:w.data with
-| nil =>
-  rw [h] at n 
-  rw [← Word.objects_equal w]
-  rw [h]
-| cons a as =>
-  rw [h] at n
-  simp [Language.epsilon] at n
-
-theorem Language.eps_element_only_element_in_eps_lang [Alphabet α] {w: Word α} : w ∈ Language.epsilon ↔ (w = Word.mk []) := by
-constructor
-exact Lanuage.eps_element_only_element_in_eps_lang_il w
-intro n 
-simp [Set.element,n, Language.epsilon]
-
-theorem Language.kleene_eq_plus_eps [Alphabet α] {L: Language α} : Language.plus L ∪ Language.epsilon = Language.kleene L := by 
-  apply funext
+theorem Language.kleene_eq_plus_eps [Alphabet α] {L: Language α} 
+: Language.plus L ∪ Language.epsilon = Language.kleene L := by 
+  apply Set.equ ∘ funext
   intro w
   apply propext
   constructor
 
-  case mp =>
+  case a.mp =>
     intro l_as_union
     simp [Set.union] at l_as_union
-    rw [Set.element] at l_as_union
     rw [Language.kleene]
     cases l_as_union with 
     |inl p => 
@@ -354,7 +99,7 @@ theorem Language.kleene_eq_plus_eps [Alphabet α] {L: Language α} : Language.pl
     |inr e => 
       exists 0
 
-  case mpr =>
+  case a.mpr =>
     intro n
     rw [Set.union]
     simp [Language.kleene] at n 
@@ -363,71 +108,69 @@ theorem Language.kleene_eq_plus_eps [Alphabet α] {L: Language α} : Language.pl
       cases nn with 
       | succ m => 
         apply Or.inl 
-        simp [Set.element, Language.plus]
+        simp [Language.plus]
         exists (Nat.succ m)
-        rw [Set.element] at r
         exact ⟨Nat.succ_ne_zero m, r⟩ 
       | zero => 
         apply Or.inr
-        simp [Set.element] at r
         simp [Language.power] at r
-        simp [Set.element]
         exact r 
 
 theorem Language.lan_eps_eq_lan [Alphabet α] (L : Language α): L ∘ₗ Language.epsilon = L := by
-  apply funext
+  apply Set.equ ∘ funext
   intro w
   apply propext
   constructor
-  rw [Language.concat]
-  intro ⟨u,v, h1, h2, h3⟩
-  rw [Word.concat] at h3
-  rw [Set.element] at h1
-  rw [Language.eps_element_only_element_in_eps_lang] at h2
-  simp [h2] at h3
-  rw [(Word.objects_equal u)] at h3
-  simp [*]
-  intro n 
-  rw [Language.concat]
-  exists w 
-  exists Word.mk []
-  apply And.intro 
-  exact n 
-  apply And.intro 
-  rw [Set.element]
-  simp [Word.epsilon, Language.epsilon]
-  simp [Word.concat]
+
+  case a.mp =>
+    rw [Language.concat]
+    intro ⟨u,v, h1, h2, h3⟩
+    simp [Language.epsilon, Membership.mem, Word.epsilon] at h2
+    simp [h2, Monoid.mconcat, Monoid.identity.right] at h3
+    simp [h3]
+    exact h1
+
+  case a.mpr =>
+    intro h
+    simp [Language.concat]
+    exists w ; exists ε
+    apply And.intro
+    simp [Membership.mem, h]
+    apply And.intro
+    simp [Language.epsilon, Membership.mem]
+    simp [Word.epsilon, Monoid.mconcat]
 
 theorem Language.eps_lan_eq_lan [Alphabet α] (L : Language α): Language.epsilon ∘ₗ L = L := by
-  apply funext
+  apply Set.equ ∘ funext
   intro w
   apply propext
   constructor
-  rw [Language.concat]
-  intro ⟨u,v, h1, h2, h3⟩
-  rw [Word.concat] at h3
-  rw [Language.eps_element_only_element_in_eps_lang] at h1
-  simp [h2] at h3
-  rw [Set.element] at h2
-  simp [h1,Word.objects_equal] at h3
-  simp [*]
-  intro n 
-  rw [Language.concat]
-  exists (Word.mk [])
-  exists w
 
+  case a.mp =>
+    rw [Language.concat]
+    intro ⟨u,v, h1, h2, h3⟩
+    simp [Language.epsilon, Membership.mem] at h1
+    simp [Monoid.mconcat, h1, Word.epsilon] at h3
+    simp [h3]
+    exact h2
+
+  case a.mpr =>
+    intro h
+    simp [Language.concat]
+    exists ε ; exists w
+  
 theorem Language.empty_lan_eq_empty [Alphabet α] (L : Language α) : L ∘ₗ ∅ = ∅ := by
   apply Set.setext 
   intro w 
   constructor
-  intro n 
-  rw [Set.element, Language.concat] at n 
+  intro n
+  rw [Language.concat] at n
   match n with 
   | ⟨u,v,_,h2,h3⟩ =>
-    rw [Set.element, Set.empty] at h2
+    rw [Set.empty] at h2
     apply False.elim h2 
   intro n 
-  rw [Set.element, Set.empty] at n
+  rw [Set.empty] at n
   apply False.elim n 
 
 theorem Language.lan_empty_eq_empty [Alphabet α] (L : Language α) : ∅ ∘ₗ L = ∅ := by
@@ -435,13 +178,13 @@ theorem Language.lan_empty_eq_empty [Alphabet α] (L : Language α) : ∅ ∘ₗ
   intro w 
   constructor
   intro n 
-  rw [Set.element, Language.concat] at n
+  rw [Language.concat] at n
   match n with 
   | ⟨u,v, h1,h2,h3⟩ => 
-    rw [Set.element, Set.empty] at h1
+    rw [Set.empty] at h1
     apply False.elim h1 
   intro n 
-  rw [Set.element, Set.empty] at n 
+  rw [Set.empty] at n 
   apply False.elim n 
 
 theorem Language.concat_dist_union_r [Alphabet α] (L1 L2 L3 : Language α) : (L1 ∪ L2) ∘ₗ L3 = (L1 ∘ₗ L3) ∪ (L2 ∘ₗ L3) := by
@@ -449,11 +192,11 @@ theorem Language.concat_dist_union_r [Alphabet α] (L1 L2 L3 : Language α) : (L
   intro w 
   constructor 
   intro n 
-  rw [Set.element, Language.concat] at n
+  rw [Language.concat] at n
   match n with 
   | ⟨u,v,h1,h2,h3⟩ => 
-    rw [Set.element,Set.union, Set.element]
-    rw [Set.element, Set.union] at h1
+    rw [Set.union]
+    rw [Set.union] at h1
     cases h1 with 
     | inl hl => 
       apply Or.inl
@@ -462,85 +205,66 @@ theorem Language.concat_dist_union_r [Alphabet α] (L1 L2 L3 : Language α) : (L
       exists v 
     | inr hr =>
       apply Or.inr 
-      rw [Set.element, Language.concat]
+      rw [Language.concat]
       exists u
       exists v
   intro n 
-  rw [Set.element, Set.union] at n
+  rw [Set.union] at n
   cases n with 
   | inl hl =>
-    rw [Set.element, Language.concat]
-    rw [Set.element, Language.concat] at hl
+    rw [Language.concat]
+    rw [Language.concat] at hl
     match hl with 
     | ⟨u,v,h1,h2,h3⟩ =>
       exists u
       exists v 
-      rw [Set.element,Set.union]
+      rw [Set.union]
       exact ⟨Or.inl h1, h2,h3⟩ 
   |inr hr => 
-    rw [Set.element, Language.concat]
-    rw [Set.element, Language.concat] at hr 
+    rw [Language.concat]
+    rw [Language.concat] at hr 
     match hr with 
     | ⟨u,v,h1,h2,h3⟩ => 
       exists u
       exists v
-      exact ⟨Or.inr h1, h2, h3⟩ 
-      
-theorem Language.morgan_union [Alphabet α] (L1 L2 : Language α) : Language.complement (L1 ∪ L2) = (Language.complement L1 ∩ Language.complement L2):= by
-  apply Set.setext
-  intro w 
-  repeat (first | rw [Set.element] | rw [Set.union] | rw [Set.intersection] | rw [Set.union] | rw [Language.complement] )
-  rw [← Or.morgan]
-  simp
- 
-theorem Language.morgan_inter [Alphabet α] (L1 L2: Language α) : Language.complement (L1 ∩ L2) = (Language.complement L1 ∪ Language.complement L2) := by 
-  apply Set.setext 
-  intro w 
-  repeat (first | rw [Set.element] | rw [Set.union] | rw [Set.intersection] | rw [Set.union] |rw [Language.complement] )
-  rw [← And.morgan]
-  simp
+      exact ⟨Or.inr h1, h2, h3⟩
 
-theorem Language.concat_dist_union_l [Alphabet α] (L1 L2 L3 : Language α) :
-L1 ∘ₗ (L2 ∪ L3) = (L1 ∘ₗ L2) ∪ (L1 ∘ₗ L3) :=
-  by
-    apply funext
-    intro w
-    apply propext
-    constructor
+theorem Language.concat_dist_union_l [Alphabet α] (L1 L2 L3 : Language α) : L1 ∘ₗ (L2 ∪ L3) = (L1 ∘ₗ L2) ∪ (L1 ∘ₗ L3) := by
+  apply Set.equ ∘ funext
+  intro w
+  apply propext
+  constructor
 
-    case mp =>
-      intro h
-      cases h with | intro u pu => cases pu with | intro v pv =>
-        rw [@And.comm (v ∈ (L2 ∪ L3)), ← And.assoc, Set.union_or, And.distrib_or] at pv
+  case a.mp =>
+    intro h
+    cases h with | intro u pu => cases pu with | intro v pv =>
+      rw [@And.comm (v ∈ (L2 ∪ L3)), ← And.assoc, Set.union_or, And.distrib_or] at pv
 
-        cases pv with
-        | inl _ =>
-          apply Or.inl
+      cases pv with
+      | inl _ =>
+        apply Or.inl
+        exists u, v
+        rw [@And.comm (v ∈ L2), ← And.assoc]
+        assumption
+      | inr _ =>
+        apply Or.inr
+        exists u, v
+        rw [@And.comm (v ∈ L3), ← And.assoc]
+        assumption
+
+  case a.mpr =>
+    intro h
+    cases h with
+      | inl hl => cases hl with | intro u pu => cases pu with | intro v pv =>
+        match pv with
+        | ⟨h1, h2, h3⟩ =>
           exists u, v
-          rw [@And.comm (v ∈ L2), ← And.assoc]
-          assumption
-        | inr _ =>
-          apply Or.inr
+          exact ⟨h1, Or.inl h2, h3⟩
+      | inr hr => cases hr with | intro u pu => cases pu with | intro v pv =>
+        match pv with
+        | ⟨h1, h2, h3⟩ =>
           exists u, v
-          rw [@And.comm (v ∈ L3), ← And.assoc]
-          assumption
-
-    case mpr =>
-      intro h
-      cases h with
-        | inl hl => cases hl with | intro u pu => cases pu with | intro v pv =>
-          match pv with
-          | ⟨h1, h2, h3⟩ =>
-            exists u, v
-            exact ⟨h1, Or.inl h2, h3⟩
-        | inr hr => cases hr with | intro u pu => cases pu with | intro v pv =>
-          match pv with
-          | ⟨h1, h2, h3⟩ =>
-            exists u, v
-            exact ⟨h1, Or.inr h2, h3⟩
-
-@[simp] theorem eq_rfl {a : Type α} : (a = a) ↔ True := by simp[]
-  
+          exact ⟨h1, Or.inr h2, h3⟩
 
 ----------------------------------GRAMMARS---------------------------------------
 structure Grammar [Alphabet α] where
@@ -615,14 +339,12 @@ def LanguageRegularGrammar [Alphabet α] (G : @RegularGrammar α _) : Language �
     ∨ ∃ w1, ∃ z : α, (w = w1 ∘ Word.mk [z]) ∧ RunRegularGrammarSub G.S qn G run w1 ∧ ⟨Word.mk [qn], Word.mk [z]⟩ ∈ G.P)
 
 ----------------------------------AUTOMATA------------------------------------------
-structure NFA [Alphabet α] where 
-  Q : Set α 
-  E : Set α 
-  δ : Set ((α × α) × α)
-  Q0 : Set α 
-  F: Set α
-  QEdisj: Q ∩ E = ∅ 
-  Q0subset: Q0 ⊆ Q 
+structure NFA { q } [Alphabet α] where 
+  Q : FinSet q 
+  δ : (q × α) -> Option q
+  Q₀ : FinSet q
+  F : FinSet q
+  Q0subset: Q₀ ⊆ Q 
   Fsubset: F ⊆ Q
   Tfunction: 
     ∀ t : ((α × α) × α),
