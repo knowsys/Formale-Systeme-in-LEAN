@@ -1,24 +1,19 @@
-import Logic
-import Set
-import Monoid
-import FinSet
+import Mathlib.Data.Finset.Basic
 
 ----------------------------------ALPHABETS--------------------------------------
 
 class Alphabet (α : Type u) where
   (non_empty : α)
-  (elems : FinSet α)
+  (elems : Finset α)
   (complete : ∀ x : α, x ∈ elems)
 
 ----------------------------------WORDS------------------------------------------
-structure Word (α : Type u) [Alphabet α] where
-  data : List α
-  deriving Repr
+def Word (α : Type u) := List α
 
-def Word.epsilon [Alphabet α] : Word α := Word.mk List.nil
+def Word.epsilon : Word α := List.nil
 notation (priority := high) "ε" => Word.epsilon
 
-instance [Alphabet α] : Monoid (Word α) where
+instance : Monoid (Word α) where
   mident := ε
   mconcat u v := { data := u.data ++ v.data }
   identity := {
@@ -44,50 +39,49 @@ def Word.AllElementsOfWordInSet [Alphabet α] (w: Word α) (S: Set α) :=
 def Language (α : Type u) [Alphabet α] := Set (Word α)
 
 instance [Alphabet α] : Membership (Word α) (Language α) where
-  mem x L := Set.contains L x
+  mem x L := L x
 
 def Language.concat [Alphabet α] (X Y : Language α) : Language α := 
-  Set.mk fun w : Word α => ∃ u v : Word α, u ∈ X ∧ v ∈ Y ∧ w = u ∘ₘ v
+  fun w : Word α => ∃ u v : Word α, u ∈ X ∧ v ∈ Y ∧ w = u ∘ₘ v
 infixr:70 " ∘ₗ " => Language.concat
 
 def Language.epsilon [Alphabet α] : Language α :=
-  Set.mk fun w => w = ε
+  fun w => w = ε
 
 def Language.power [Alphabet α] (n:Nat) (X: Language α) : Language α := 
   match n with
   | 0 => Language.epsilon
-  | (Nat.succ m) => Set.mk fun (w:Word α) => 
+  | (Nat.succ m) => fun (w:Word α) => 
       ∃ w1 w2 : Word α, w2 ∈ (Language.power m X) ∧ w1 ∈ X ∧ w = w1 ∘ₘ w2
 
 def Language.kleene [Alphabet α] (X : Language α) : Language α :=
-  Set.mk fun w: Word α =>
+  fun w: Word α =>
     ∃ n : Nat, w ∈ Language.power n X
 
 def Language.plus [Alphabet α] (X: Language α) : Language α :=
-  Set.mk fun w: Word α => 
+  fun w: Word α => 
     ∃ n:Nat, ¬ (n = 0) ∧ w ∈ Language.power n X
 
 def Sigma.language [Alphabet α] : Language α := 
-  Set.mk fun w: Word α =>
+  fun w: Word α =>
     match w with
     | (Word.mk (_::[])) => True
     | _ => False
 
 def Sigma.kleene [Alphabet α] : Language α :=
-  Set.mk fun _: Word α => True
+  fun _: Word α => True
 
 def Language.complement [Alphabet α] (L : Language α) := Set.complement L
 
 theorem Language.kleene_eq_plus_eps [Alphabet α] {L: Language α} 
 : Language.plus L ∪ Language.epsilon = Language.kleene L := by 
-  apply Set.equ ∘ funext
+  apply funext
   intro w
   apply propext
   constructor
 
   case a.mp =>
     intro l_as_union
-    simp [Set.union] at l_as_union
     rw [Language.kleene]
     cases l_as_union with 
     |inl p => 

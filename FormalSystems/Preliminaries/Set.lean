@@ -1,4 +1,4 @@
-import Logic
+import FormalSystems.Preliminaries.Logic
 
 def Set (α : Type _) := α -> Prop
 
