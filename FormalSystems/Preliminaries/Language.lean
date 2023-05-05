@@ -1,17 +1,30 @@
 import Mathlib.Data.Fintype.Basic
+import Mathlib.Data.Set.Countable
+import Mathlib.Data.Set.Lattice
+import Mathlib.Algebra.Order.Kleene
 
 ----------------------------------ALPHABETS--------------------------------------
-class Alphabet (α : Type u) extends Fintype α, Inhabited α
+class Alphabet (α : Type u) extends Fintype α, Inhabited α, Encodable α
 
 ----------------------------------WORDS------------------------------------------
 def Word (α : Type u) := List α
 
-instance Word.monoid_instance: Monoid (Word α) where
+instance Word.monoid: CancelMonoid (Word α) where
   mul := List.append
   mul_assoc := List.append_assoc
   one := List.nil
   one_mul := List.nil_append
   mul_one := List.append_nil
+  mul_left_cancel u v w := List.append_left_cancel
+  mul_right_cancel u v w := List.append_right_cancel
+
+def Word.mul_right_cancel {w₁ w₂ t : Word α} (h : w₁ * t = w₂ * t) : w₁ = w₂ :=
+  List.append_right_cancel h
+
+instance [Encodable α] : Encodable (Word α) where
+  encode := List.encodable.encode
+  decode := List.encodable.decode
+  encodek := List.encodable.encodek
 
 def Word.epsilon : Word α := 1
 notation (priority := high) "ε" => Word.epsilon
@@ -28,8 +41,20 @@ def Word.AllElementsOfWordInSet: (w: Word α) → (S: Set α) → Prop
 
 def Language (α : Type u) := Set (Word α)
 
-instance Language.mem_instance: Membership (Word α) (Language α) where
+instance Language.membership: Membership (Word α) (Language α) where
   mem x L := L x
+
+instance : Insert (Word α) (Language α) where
+  insert := Set.insert
+
+instance : Singleton (Word α) (Language α) where
+  singleton := Set.singleton
+
+instance : HasSubset (Language α) where
+  Subset := Set.Subset
+
+def Language.isSingleton (L : Language α) : Prop
+  := ∃w, w ∈ L ∧ ∀v, v ∈ L → v = w
 
 def Language.concat (X Y : Language α) : Language α := 
   fun w : Word α => ∃ u v : Word α, u ∈ X ∧ v ∈ Y ∧ w = u * v
@@ -40,18 +65,14 @@ theorem Language.concat_assoc (X Y Z : Language α): (X ∘ₗ Y) ∘ₗ Z = X �
   intro x
   constructor
   . intro
-    | ⟨u, v, pu, pv, px⟩ =>
-      match pu with
-      | ⟨u1, u2, pu1, pu2, pu⟩ =>
-        rw [pu, Word.monoid_instance.mul_assoc u1 u2 v] at px
-        exact ⟨ u1, u2 * v, pu1, ⟨u2, v, pu2, pv, rfl⟩, px ⟩
+    | ⟨u, v, ⟨u1, u2, pu1, pu2, pu⟩, pv, px⟩ =>
+      rw [pu, Word.monoid.mul_assoc u1 u2 v] at px
+      exact ⟨ u1, u2 * v, pu1, ⟨u2, v, pu2, pv, rfl⟩, px ⟩
 
   . intro
-    | ⟨u, v, pu, pv, px⟩ =>
-      match pv with
-      | ⟨v1, v2, pv1, pv2, pv⟩ =>
-        rw [pv, <- Word.monoid_instance.mul_assoc u v1 v2] at px
-        exact ⟨ u * v1, v2, ⟨u, v1, pu, pv1, rfl⟩, pv2, px ⟩
+    | ⟨u, v, pu, ⟨v1, v2, pv1, pv2, pv⟩, px⟩ =>
+      rw [pv, <- Word.monoid.mul_assoc u v1 v2] at px
+      exact ⟨ u * v1, v2, ⟨u, v1, pu, pv1, rfl⟩, pv2, px ⟩
 
 def Language.epsilon : Language α :=
   fun w => w = ε
@@ -77,7 +98,7 @@ theorem Language.mul_eps (L : Language α): L ∘ₗ Language.epsilon = L := by
     exact h1
   . intro h ; simp [Language.concat]
     exists w ; simp [Membership.mem, h]
-    exists ε ; simp [Language.epsilon, Membership.mem, Word.epsilon]
+    simp [Language.epsilon] ; rfl
 
 theorem Language.eps_mul (L : Language α): Language.epsilon ∘ₗ L = L := by
   apply funext
@@ -116,7 +137,8 @@ theorem Language.empty_mul (L : Language α) : ∅ ∘ₗ L = ∅ := by
   . intro n 
     apply False.elim n
 
-theorem Language.concat_dist_union_r (L1 L2 L3 : Language α) : (L1 ∪ L2) ∘ₗ L3 = (L1 ∘ₗ L3) ∪ (L2 ∘ₗ L3) := by
+theorem Language.concat_dist_union_r (L1 L2 L3 : Language α)
+  : (L1 ∪ L2) ∘ₗ L3 = (L1 ∘ₗ L3) ∪ (L2 ∘ₗ L3) := by
   apply Set.ext 
   intro w 
   constructor 
@@ -133,7 +155,8 @@ theorem Language.concat_dist_union_r (L1 L2 L3 : Language α) : (L1 ∪ L2) ∘�
         match pv with
         | ⟨h1, h2, h3⟩ => exists u, v; exact ⟨Or.inr h1, h2, h3⟩
 
-theorem Language.concat_dist_union_l (L1 L2 L3 : Language α) : L1 ∘ₗ (L2 ∪ L3) = (L1 ∘ₗ L2) ∪ (L1 ∘ₗ L3) := by
+theorem Language.concat_dist_union_l (L1 L2 L3 : Language α)
+  : L1 ∘ₗ (L2 ∪ L3) = (L1 ∘ₗ L2) ∪ (L1 ∘ₗ L3) := by
   apply Set.ext
   intro w
   constructor
@@ -150,7 +173,7 @@ theorem Language.concat_dist_union_l (L1 L2 L3 : Language α) : L1 ∘ₗ (L2 �
         match pv with
         | ⟨h1, h2, h3⟩ => exists u, v; exact ⟨h1, Or.inr h2, h3⟩
 
-instance Language.semiring: Semiring (Language α) where
+instance : Semiring (Language α) where
   mul := Language.concat
   mul_assoc := Language.concat_assoc
   
@@ -171,26 +194,27 @@ instance Language.semiring: Semiring (Language α) where
   right_distrib := Language.concat_dist_union_r
   left_distrib := Language.concat_dist_union_l
 
-def Language.kleene [Alphabet α] (X : Language α) : Language α :=
+def Language.kstar (X : Language α) : Language α :=
   fun w: Word α => ∃ n : Nat, w ∈ X^n
 
-def Language.plus [Alphabet α] (X: Language α) : Language α :=
+def Language.plus (X: Language α) : Language α :=
   fun w: Word α => 
     ∃ n:Nat, ¬ (n = 0) ∧ w ∈ X^n
 
-def Sigma.language [Alphabet α] : Language α := 
-  fun w: Word α =>
-    match w with
-    | _::[] => True
-    | _ => False
+postfix:1024 "⁺" => Language.plus
 
-def Sigma.kleene [Alphabet α] : Language α :=
-  fun _: Word α => True
+instance : KStar (Language α) where
+  kstar := Language.kstar
 
-def Language.complement (L : Language α) := fun x => x ∉ L
+postfix:1024 "∗" => KStar.kstar
+
+def Language.compl (L : Language α) := Set.compl L
+notation:70 L:70 "ᶜ" => Language.compl L
+
+def Language.univ : Language α := Set.univ
 
 theorem Language.kleene_eq_plus_eps [Alphabet α] {L: Language α} 
-: Language.plus L ∪ Language.epsilon = Language.kleene L := by 
+: L⁺ ∪ {ε} = L∗ := by
   apply Set.ext
   intro w
   constructor
@@ -201,7 +225,7 @@ theorem Language.kleene_eq_plus_eps [Alphabet α] {L: Language α}
         exists n 
         exact r.right 
     | Or.inr e => exists 0
-  . simp [Language.kleene]
+  . simp [Language.kstar]
     intro
     | Exists.intro nn r => 
       cases nn with 
@@ -213,3 +237,32 @@ theorem Language.kleene_eq_plus_eps [Alphabet α] {L: Language α}
       | zero => 
         apply Or.inr
         exact r
+
+namespace Alphabet
+
+protected def Sigma : Language α :=
+  fun w: Word α =>
+    match w with
+    | _::[] => True
+    | _ => False
+
+scoped[Alphabet] notation:41 "Σ" => Alphabet.Sigma
+
+theorem Sigma.kleene_contains_all : ∀(w : Word α), w ∈ (Σ)∗
+  | [] => by exists 0
+  | x::xs => by
+    have ⟨n, hn⟩ := Sigma.kleene_contains_all xs
+    exists n + 1; exists [x]; exists xs
+
+theorem Sigma.kleene_eq_univ : @Language.univ α = (Σ)∗ := by
+  apply Set.ext
+  intro w
+  constructor
+  . intros; exact Sigma.kleene_contains_all w
+  . intros; simp [Language.univ, Set.mem_univ]
+
+theorem Sigma.maximal_language [Alphabet α] : ∀(L : Language α), L ⊆ (Σ)∗ := by
+  intro _ w _
+  exact Sigma.kleene_contains_all w
+
+end Alphabet
