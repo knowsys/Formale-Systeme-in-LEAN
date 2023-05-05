@@ -1,11 +1,10 @@
 {"version": 4,
  "packagesDir": "lake-packages",
  "packages":
- [{"path": {"name": "preliminaries", "dir": "./preliminaries"}},
-  {"git":
+ [{"git":
    {"url": "https://github.com/leanprover-community/mathlib4",
     "subDir?": null,
-    "rev": "d8de9b777d16d2c287569a684b0404df900583c9",
+    "rev": "2ff8f30bad14039a495843ac63cdd842c52aa7f9",
     "name": "mathlib",
     "inputRev?": null}},
   {"git":
