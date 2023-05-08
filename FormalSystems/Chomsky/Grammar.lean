@@ -1,7 +1,7 @@
 
 structure Grammar (α : Type _) where
-  V : Set α 
-  E : Set α 
+  V : Set α
+  E : Set α
   S: α 
   P : Set ((Word α) × (Word α))
   bed_VEdisj : V ∩ E = ∅

@@ -14,13 +14,16 @@ class FinDenumerable (α : Type u) extends Fintype α, Encodable α where
 def FinDenumerable.encode_fin [inst: FinDenumerable α] (a : α) : Fin inst.card := 
   ⟨ inst.encode a, inst.encode_lt_card a ⟩
 
-theorem FinDenumerable.encode_fin_injective [inst: FinDenumerable α] : Function.Injective (@encode_fin _ inst) := by
+theorem FinDenumerable.encode_fin_eq_encode [inst: FinDenumerable α] :
+  ∀(a : α), encode_fin a = inst.encode a := by simp [encode_fin]
+
+theorem FinDenumerable.encode_fin_injective [inst: FinDenumerable α] : Function.Injective inst.encode_fin := by
   intro x y; simp [Fin.eq_iff_veq, encode_fin]
 
 def FinDenumerable.encode_embedding [inst: FinDenumerable α] : α ↪ Fin inst.card :=
   ⟨ encode_fin, encode_fin_injective ⟩
 
-def FinDenumerable.encode_fin_bijective [inst: FinDenumerable α] : Function.Bijective (@encode_fin _ inst) := by
+def FinDenumerable.encode_fin_bijective [inst: FinDenumerable α] : Function.Bijective inst.encode_fin := by
   apply (Fintype.bijective_iff_injective_and_card encode_fin).2
   simp; exact encode_fin_injective
 
@@ -39,6 +42,9 @@ theorem FinDenumerable.decode_fin_is_some [inst: FinDenumerable α] (n : Fin ins
 
 def FinDenumerable.decode_fin [inst: FinDenumerable α] (n : Fin inst.card) : α :=
   Option.get (inst.decode n.1) (decode_fin_is_some n)
+
+theorem FinDenumerable.decode_fin_eq_option_get [inst: FinDenumerable α] (n : Fin inst.card) :
+  Option.get (inst.decode n.1) (decode_fin_is_some n) = decode_fin n := by simp [decode_fin]
 
 def FinDenumerable.fin_preimage_exists [inst: FinDenumerable α] (n: Fin inst.card) :
   ∃a, inst.encode a = n := by
@@ -77,11 +83,19 @@ theorem FinDenumerable.encodek_fin_left_inverse [FinDenumerable α] :
   Function.LeftInverse (@decode_fin α _) encode_fin := by
   intro _; simp [encode_fin, decode_fin]
 
+theorem FinDenumerable.decodenk [inst: FinDenumerable α] :
+  ∀(n : Fin inst.card), encode_fin (decode_fin n) = n := by
+  simp [encode_fin, Fin.eq_iff_veq, decode_fin]; intro n
+  have ⟨ a, ph ⟩ := fin_preimage_exists n
+  simp [<- ph]
+
+theorem Set.univ_eq_type { α : Type _ } : @Set.univ α = α := by
+  sorry
+
 theorem FinDenumerable.encode_fin_range [inst: FinDenumerable α] :
   Set.range inst.encode_fin = Fin inst.card := by
   rw [Function.Surjective.range_eq _]
-  rw [Set.univ]
-  sorry
+  exact Set.univ_eq_type
   exact encode_fin_bijective.surjective
 
 def FinDenumerable.equiv_fin [inst: FinDenumerable α] : α ≃ Fin inst.card := by
@@ -125,12 +139,41 @@ decreasing_by Word.decode =>
 
 def Word.encode [inst: Alphabet α]: (w : Word α) → ℕ
   | [] => 0
-  | x :: xs => Word.encode xs * inst.card + 1 + inst.encode x
+  | x :: xs => Nat.succ $ Word.encode xs * inst.card + inst.encode x
 
-instance [Encodable α] : Denumerable (Word α) where
-  encode := List.encodable.encode
-  decode := List.encodable.decode
-  encodek := List.encodable.encodek
+@[simp] theorem Word.encodek [inst: Alphabet α] :
+  ∀(w: Word α), decode (encode w) = w
+  | [] => by simp [encode, decode]
+  | x::xs => by
+    have ih := encodek xs
+    simp [encode, decode, Nat.fin_mod, FinDenumerable.decode_fin]
+    simp [<- Nat.mod_add_mod, Nat.mod_eq_of_lt $ inst.encode_lt_card x]
+    simp [Nat.add_div inst.card_pos, Nat.div_eq_of_lt $ inst.encode_lt_card x]
+    simp [Nat.mul_div_cancel (encode xs) inst.card_pos]
+    rw [<- ite_not _]; simp [Nat.not_le_of_lt _, Nat.mod_lt _ inst.card_pos, ih]
+
+@[simp] theorem Word.decodenk [inst: Alphabet α] :
+  ∀(n : ℕ), encode (decode n : Word α) = n
+  | 0 => by simp [encode, decode]
+  | Nat.succ n => by
+    have ih := @decodenk α _ (n / inst.card)
+    simp [decode, FinDenumerable.decode_fin]
+    simp [encode, inst.decode_fin_is_some (Nat.fin_mod _ _)]
+    simp [ih, FinDenumerable.decode_fin_eq_option_get]
+    rw [<- inst.encode_fin_eq_encode _, inst.decodenk]
+    simp [Nat.fin_mod, Nat.mul_comm, Nat.div_add_mod n inst.card]
+termination_by Word.decodenk n => n
+decreasing_by Word.decodenk =>
+  simp [InvImage]
+  apply Nat.lt_of_le_of_lt
+  exact Nat.div_le_self n inst.card
+  simp
+
+instance [Alphabet α] : Denumerable (Word α) where
+  encode := Word.encode
+  decode := some ∘ Word.decode
+  encodek := by simp
+  decode_inv := by simp
 
 def Word.epsilon : Word α := 1
 notation (priority := high) "ε" => Word.epsilon
