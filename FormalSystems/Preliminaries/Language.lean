@@ -1,193 +1,8 @@
-import Mathlib.Data.Fintype.Basic
-import Mathlib.Data.Set.Countable
-import Mathlib.Data.Set.Lattice
 import Mathlib.Algebra.Order.Kleene
-import Mathlib.Data.Nat.Log
+
+import FormalSystems.Preliminaries.Word
+
 import Mathlib.Data.Fintype.Lattice
-import Mathlib.Logic.Equiv.Fintype
-import Mathlib.Logic.Function.Basic
-
-----------------------------------ALPHABETS--------------------------------------
-class FinDenumerable (α : Type u) extends Fintype α, Encodable α where
-  encode_lt_card: ∀(a : α), encode a < card 
-
-def FinDenumerable.encode_fin [inst: FinDenumerable α] (a : α) : Fin inst.card := 
-  ⟨ inst.encode a, inst.encode_lt_card a ⟩
-
-theorem FinDenumerable.encode_fin_eq_encode [inst: FinDenumerable α] :
-  ∀(a : α), encode_fin a = inst.encode a := by simp [encode_fin]
-
-theorem FinDenumerable.encode_fin_injective [inst: FinDenumerable α] : Function.Injective inst.encode_fin := by
-  intro x y; simp [Fin.eq_iff_veq, encode_fin]
-
-def FinDenumerable.encode_embedding [inst: FinDenumerable α] : α ↪ Fin inst.card :=
-  ⟨ encode_fin, encode_fin_injective ⟩
-
-def FinDenumerable.encode_fin_bijective [inst: FinDenumerable α] : Function.Bijective inst.encode_fin := by
-  apply (Fintype.bijective_iff_injective_and_card encode_fin).2
-  simp; exact encode_fin_injective
-
-theorem FinDenumerable.decode_partial_inv [inst: FinDenumerable α] (n : Fin inst.card): 
-  ∃a ∈ inst.decode n, inst.encode a = n := by
-  have ⟨ a, pa, _ ⟩  := encode_fin_bijective.existsUnique n
-  exists a; simp [Fin.eq_iff_veq, encode_fin] at pa;
-  simp [pa]; simp [<- pa]
-
-theorem FinDenumerable.decode_fin_is_some [inst: FinDenumerable α] (n : Fin inst.card): 
-  (inst.decode n.1).isSome := by
-  apply Option.isSome_iff_exists.2
-  apply (decode_partial_inv n).imp
-  intro _ h
-  exact h.1
-
-def FinDenumerable.decode_fin [inst: FinDenumerable α] (n : Fin inst.card) : α :=
-  Option.get (inst.decode n.1) (decode_fin_is_some n)
-
-theorem FinDenumerable.decode_fin_eq_option_get [inst: FinDenumerable α] (n : Fin inst.card) :
-  Option.get (inst.decode n.1) (decode_fin_is_some n) = decode_fin n := by simp [decode_fin]
-
-def FinDenumerable.fin_preimage_exists [inst: FinDenumerable α] (n: Fin inst.card) :
-  ∃a, inst.encode a = n := by
-  apply (inst.decode_partial_inv n).imp
-  intro _ h; exact h.2
-
-theorem FinDenumerable.fin_decode_eq_decode₂ [inst: FinDenumerable α] (n : Fin inst.card) :
-  inst.decode n = inst.decode₂ n := by
-  rw [← Option.some_get (decode_fin_is_some n)]
-  apply Eq.symm
-  rw [Encodable.decode₂_is_partial_inv]
-  have ⟨ _, h ⟩ := fin_preimage_exists n
-  simp [<- h]
-
-theorem FinDenumerable.decode_fin_inj [inst: FinDenumerable α] {n m : Fin inst.card}
-  (h₁: a = FinDenumerable.decode_fin n)
-  (h₂: b = FinDenumerable.decode_fin m) :
-  a = b ↔ n = m := by
-  have ⟨ _, p₁ ⟩ := fin_preimage_exists n  
-  simp [FinDenumerable.decode_fin, <- p₁] at h₁
-  have ⟨ _, p₂ ⟩ := fin_preimage_exists m  
-  simp [FinDenumerable.decode_fin, <- p₂] at h₂
-  rw [h₁, h₂, Fin.eq_iff_veq, ← p₁, ← p₂]
-  apply Iff.symm; apply Encodable.encode_inj
-
-theorem FinDenumerable.decode_fin_injective [inst: FinDenumerable α] :
-  Function.Injective (@FinDenumerable.decode_fin _ inst) :=
-  fun a b => (FinDenumerable.decode_fin_inj 
-    (@rfl α $ @decode_fin _ inst a)
-    (@rfl α $ @decode_fin _ inst b)).1
-
-def FinDenumerable.decode_embedding [inst: FinDenumerable α] : Fin inst.card ↪ α :=
-  ⟨ decode_fin, decode_fin_injective ⟩
-
-theorem FinDenumerable.encodek_fin_left_inverse [FinDenumerable α] :
-  Function.LeftInverse (@decode_fin α _) encode_fin := by
-  intro _; simp [encode_fin, decode_fin]
-
-theorem FinDenumerable.decodenk [inst: FinDenumerable α] :
-  ∀(n : Fin inst.card), encode_fin (decode_fin n) = n := by
-  simp [encode_fin, Fin.eq_iff_veq, decode_fin]; intro n
-  have ⟨ a, ph ⟩ := fin_preimage_exists n
-  simp [<- ph]
-
-theorem Set.univ_eq_type { α : Type _ } : @Set.univ α = α := by
-  sorry
-
-theorem FinDenumerable.encode_fin_range [inst: FinDenumerable α] :
-  Set.range inst.encode_fin = Fin inst.card := by
-  rw [Function.Surjective.range_eq _]
-  exact Set.univ_eq_type
-  exact encode_fin_bijective.surjective
-
-def FinDenumerable.equiv_fin [inst: FinDenumerable α] : α ≃ Fin inst.card := by
-  have tmp := Equiv.ofLeftInverse encode_fin (fun _ => inst.decode_fin) (fun _ => encodek_fin_left_inverse)
-  rw [encode_fin_range] at tmp
-  exact tmp
-
-class Alphabet (α : Type u) extends FinDenumerable α, Inhabited α
-
-theorem Alphabet.card_pos [alphabet : Alphabet α] : alphabet.card > 0 := by
-  apply Finset.card_pos.mpr
-  exists alphabet.default
-  exact alphabet.complete alphabet.default
-
-----------------------------------WORDS------------------------------------------
-def Word (α : Type u) := List α
-
-instance Word.monoid: CancelMonoid (Word α) where
-  mul := List.append
-  mul_assoc := List.append_assoc
-  one := List.nil
-  one_mul := List.nil_append
-  mul_one := List.append_nil
-  mul_left_cancel u v w := List.append_left_cancel
-  mul_right_cancel u v w := List.append_right_cancel
-
-def Word.mul_right_cancel {w₁ w₂ t : Word α} (h : w₁ * t = w₂ * t) : w₁ = w₂ :=
-  List.append_right_cancel h
-
-def Nat.fin_mod (n : ℕ) (h: N > 0) : Fin N := ⟨ n % N, Nat.mod_lt n h ⟩
-
-def Word.decode [inst: Alphabet α]: (n : ℕ) → Word α
-  | Nat.zero => []
-  | Nat.succ n => inst.decode_fin (Nat.fin_mod n Alphabet.card_pos) :: Word.decode (n / inst.card)
-termination_by Word.decode n => n
-decreasing_by Word.decode =>
-  simp [InvImage]
-  apply Nat.lt_of_le_of_lt
-  exact Nat.div_le_self n inst.card
-  simp
-
-def Word.encode [inst: Alphabet α]: (w : Word α) → ℕ
-  | [] => 0
-  | x :: xs => Nat.succ $ Word.encode xs * inst.card + inst.encode x
-
-@[simp] theorem Word.encodek [inst: Alphabet α] :
-  ∀(w: Word α), decode (encode w) = w
-  | [] => by simp [encode, decode]
-  | x::xs => by
-    have ih := encodek xs
-    simp [encode, decode, Nat.fin_mod, FinDenumerable.decode_fin]
-    simp [<- Nat.mod_add_mod, Nat.mod_eq_of_lt $ inst.encode_lt_card x]
-    simp [Nat.add_div inst.card_pos, Nat.div_eq_of_lt $ inst.encode_lt_card x]
-    simp [Nat.mul_div_cancel (encode xs) inst.card_pos]
-    rw [<- ite_not _]; simp [Nat.not_le_of_lt _, Nat.mod_lt _ inst.card_pos, ih]
-
-@[simp] theorem Word.decodenk [inst: Alphabet α] :
-  ∀(n : ℕ), encode (decode n : Word α) = n
-  | 0 => by simp [encode, decode]
-  | Nat.succ n => by
-    have ih := @decodenk α _ (n / inst.card)
-    simp [decode, FinDenumerable.decode_fin]
-    simp [encode, inst.decode_fin_is_some (Nat.fin_mod _ _)]
-    simp [ih, FinDenumerable.decode_fin_eq_option_get]
-    rw [<- inst.encode_fin_eq_encode _, inst.decodenk]
-    simp [Nat.fin_mod, Nat.mul_comm, Nat.div_add_mod n inst.card]
-termination_by Word.decodenk n => n
-decreasing_by Word.decodenk =>
-  simp [InvImage]
-  apply Nat.lt_of_le_of_lt
-  exact Nat.div_le_self n inst.card
-  simp
-
-instance [Alphabet α] : Denumerable (Word α) where
-  encode := Word.encode
-  decode := some ∘ Word.decode
-  encodek := by simp
-  decode_inv := by simp
-
-def Word.epsilon : Word α := 1
-notation (priority := high) "ε" => Word.epsilon
-
-def Word.len: (w:Word α) → Nat
-  | [] => 0
-  | (_::xs) => 1 + Word.len (xs)
-
-def Word.AllElementsOfWordInSet: (w: Word α) → (S: Set α) → Prop
-  | a::as, S => a ∈ S ∧ Word.AllElementsOfWordInSet as S
-  | _, _ => True
-
-----------------------------------LANGUAGES---------------------------------------
-
 def Language (α : Type u) := Set (Word α)
 
 namespace Language
@@ -203,6 +18,15 @@ instance : Singleton (Word α) (Language α) where
 
 instance : HasSubset (Language α) where
   Subset := Set.Subset
+
+instance : CompleteBooleanAlgebra (Language α) := 
+  Set.instCompleteBooleanAlgebraSet
+
+instance : Inter (Language α) where
+  inter := Set.inter
+
+instance : Union (Language α) where
+  union := Set.union
 
 def isSingleton (L : Language α) : Prop
   := ∃w, w ∈ L ∧ ∀v, v ∈ L → v = w
