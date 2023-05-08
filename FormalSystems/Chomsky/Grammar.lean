@@ -10,7 +10,7 @@ structure Production (α: Type _) (V: Finset nt) where
 structure Grammar (α: Type _) (nt : Type _) where
   V: Finset nt
   start: V
-  productions: Set (Production α V)
+  productions: Finset (Production α V)
 
 structure DerivationStep (α : Type _) (G: Grammar α nt) (u: Word (G.V ⊕ α)) where
   prod: G.productions
