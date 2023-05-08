@@ -183,12 +183,14 @@ instance : KStar (Language α) where
 
 postfix:1024 "∗" => KStar.kstar
 
-def compl (L : Language α) := Set.compl L
-notation:70 L:70 "ᶜ" => Language.compl L
+instance : Complement (Language α) where
+  complement := Set.compl
+
+notation:70 L:70 "ᶜ" => Language.complement L
 
 def univ : Language α := Set.univ
 
-theorem kleene_eq_plus_eps [Alphabet α] {L: Language α} 
+theorem kleene_eq_plus_eps {L: Language α}
 : L⁺ ∪ {ε} = L∗ := by
   apply Set.ext
   intro w
@@ -213,17 +215,13 @@ theorem kleene_eq_plus_eps [Alphabet α] {L: Language α}
         apply Or.inr
         exact r
 
-end Language
-
-namespace Alphabet
-
 protected def Sigma : Language α :=
   fun w: Word α =>
     match w with
     | _::[] => True
     | _ => False
 
-scoped[Alphabet] notation:41 "Σ" => Alphabet.Sigma
+scoped[Language] notation:41 "Σ" => Language.Sigma
 
 theorem Sigma.kleene_contains_all : ∀(w : Word α), w ∈ (Σ)∗
   | [] => by exists 0
@@ -242,4 +240,4 @@ theorem Sigma.maximal_language : ∀(L : Language α), L ⊆ (Σ)∗ := by
   intro _ w _
   exact Sigma.kleene_contains_all w
 
-end Alphabet
+end Language
