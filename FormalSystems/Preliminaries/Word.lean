@@ -79,3 +79,6 @@ def Word.AllElementsOfWordInSet: (w: Word α) → (S: Set α) → Prop
   | a::as, S => a ∈ S ∧ Word.AllElementsOfWordInSet as S
   | _, _ => True
 
+instance : Membership α (Word α) := List.instMembershipList
+
+instance : Functor Word := List.instFunctorList

@@ -17,24 +17,7 @@ structure EpsilonFreeRegularGrammar [Alphabet α] extends (@RegularGrammar α _)
   ¬ (pair ∈ P) ∨ (
     pair.fst = Word.mk ([S]) ∨ ¬ (pair.snd = Word.epsilon)
  )
-
-def OneStepDerivation [Alphabet α] (G : @Grammar α _) (w : Word α) (v : Word α) : Prop :=
-    ∃ w1 w2 w3: Word α,
-      ∃ v1 v2 v3: Word α,
-      have p1 := w = w1 ∘ w2 ∘ w3
-      have p2 := v = v1 ∘ v2 ∘ v3
-      (v1 = w1) ∧ (v3 = w3) ∧ p1 ∧ p2 ∧ G.P ⟨w2, v2⟩
-        
-def NstepDerivation [Alphabet α] (G : @Grammar α _) (w : Word α) (v : Word α) (n:Nat) : Prop :=
-  match n with
-  | 0 => 
-    w = v
-  | (Nat.succ m) => 
-      ∃ w1 : Word α, (OneStepDerivation G w w1) ∧ (NstepDerivation G w1 v m) ∧ (Word.AllElementsOfWordInSet v G.E)
-
-def StarDerivation [Alphabet α] (G : @Grammar α _) (w : Word α) (v : Word α) : Prop :=
-  ∃ n : Nat, NstepDerivation G w v n
-  
+ 
 def GeneratedLanguageGrammar [Alphabet α] (G : @Grammar α _): Language α :=
   fun w: Word α => 
     StarDerivation G (Word.mk [G.S]) w
