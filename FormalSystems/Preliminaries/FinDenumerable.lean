@@ -82,17 +82,12 @@ theorem FinDenumerable.decodenk [inst: FinDenumerable α] :
   have ⟨ a, ph ⟩ := fin_preimage_exists n
   simp [<- ph]
 
-theorem Set.univ_eq_type { α : Type _ } : @Set.univ α = α := by
-  sorry
-
 theorem FinDenumerable.encode_fin_range [inst: FinDenumerable α] :
-  Set.range inst.encode_fin = Fin inst.card := by
+  ↑(Set.range inst.encode_fin) ≃ Fin inst.card := by
   rw [Function.Surjective.range_eq _]
-  exact Set.univ_eq_type
+  exact Equiv.Set.univ (Fin (Fintype.card α))
   exact encode_fin_bijective.surjective
 
-def FinDenumerable.equiv_fin [inst: FinDenumerable α] : α ≃ Fin inst.card := by
+theorem FinDenumerable.equiv_fin [inst: FinDenumerable α] : α ≃ Fin inst.card := by
   have tmp := Equiv.ofLeftInverse encode_fin (fun _ => inst.decode_fin) (fun _ => encodek_fin_left_inverse)
-  rw [encode_fin_range] at tmp
-  exact tmp
-
+  apply Equiv.trans tmp encode_fin_range
