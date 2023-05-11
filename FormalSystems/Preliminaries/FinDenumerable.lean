@@ -82,23 +82,10 @@ theorem FinDenumerable.decodenk [inst: FinDenumerable α] :
   have ⟨ a, ph ⟩ := fin_preimage_exists n
   simp [<- ph]
 
-theorem Set.univ_eq_type { α : Type _ } : ↑(@Set.univ α) ≃ α := by
-  let f : Subtype (λ _ : α ↦ True) -> α := λ a ↦ a.val
-  have inj : Function.Injective f := by
-    intro a b h
-    apply Subtype.ext
-    simp [h]
-  have sur : Function.Surjective f := by
-    intro b
-    let a : Subtype (λ _ : α ↦ True) := { val := b, property := True.intro }
-    exists a
-  have bij : Function.Bijective f := by constructor; exact inj; exact sur
-  exact Equiv.ofBijective f bij
-
 theorem FinDenumerable.encode_fin_range [inst: FinDenumerable α] :
   ↑(Set.range inst.encode_fin) ≃ Fin inst.card := by
   rw [Function.Surjective.range_eq _]
-  exact Set.univ_eq_type
+  exact Equiv.Set.univ (Fin (Fintype.card α))
   exact encode_fin_bijective.surjective
 
 theorem FinDenumerable.equiv_fin [inst: FinDenumerable α] : α ≃ Fin inst.card := by
