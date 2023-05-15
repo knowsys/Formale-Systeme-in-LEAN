@@ -1,45 +1,6 @@
 import Mathlib.Data.Finset.Basic
 import FormalSystems.Preliminaries.Language
 
-structure RegularGrammar [Alphabet α] extends (@Grammar α _) where
-  bed_reg: ∀ pair : ((Word α) × (Word α)), 
-    (pair ∈ P) -> 
-    (
-      (∃ t: α, (Word.mk [t] = pair.fst) ∧ t ∈ V) ∧ (
-        (∃ t1 t2 : α, (Word.mk [t1, t2] = pair.snd) ∧ t1 ∈ E ∧ t2 ∈ V) ∨ 
-        (∃ t: α, Word.mk [t] = pair.snd ∧ t ∈ E) ∨ 
-        pair.snd = Word.mk []
-     )
-   )
-
-structure EpsilonFreeRegularGrammar [Alphabet α] extends (@RegularGrammar α _) where
-  epsilonFree : ∀ pair : (Word α) × (Word α), 
-  ¬ (pair ∈ P) ∨ (
-    pair.fst = Word.mk ([S]) ∨ ¬ (pair.snd = Word.epsilon)
- )
- 
-def GeneratedLanguageGrammar [Alphabet α] (G : @Grammar α _): Language α :=
-  fun w: Word α => 
-    StarDerivation G (Word.mk [G.S]) w
-
-def RunRegularGrammarSub [Alphabet α] (ql qg : α) (G : @RegularGrammar α _) (run: List (Word α × Word α))(w : Word α) : Prop :=
-    match w with 
-    | (Word.mk (word::ws1)) =>
-      match run with 
-      | (p1::xs) =>
-          p1 ∈ G.P ∧ 
-          p1.fst = (Word.mk [ql]) ∧ 
-          (∃ t1 : α, (Word.mk [word, t1] = p1.snd)
-                  ∧ RunRegularGrammarSub t1 qg G xs (Word.mk ws1) 
-           )
-      | _ => False 
-    | _ => 
-      ql = qg
-
-def LanguageRegularGrammar [Alphabet α] (G : @RegularGrammar α _) : Language α :=
-  fun w => ∃ qn run, (RunRegularGrammarSub G.S qn G run w ∧ ⟨Word.mk [qn], Word.mk []⟩ ∈ G.P
-    ∨ ∃ w1, ∃ z : α, (w = w1 ∘ Word.mk [z]) ∧ RunRegularGrammarSub G.S qn G run w1 ∧ ⟨Word.mk [qn], Word.mk [z]⟩ ∈ G.P)
-
 ----------------------------------AUTOMATA------------------------------------------
 structure NFA { q } [Alphabet α] where 
   Q : Finset q 
