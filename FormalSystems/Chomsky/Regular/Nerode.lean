@@ -17,11 +17,16 @@ theorem Nerode.not_right_congruent (L : Language α) (u v : Word α) (pre: u ≠
   cases singl_inter.left
   case inl e =>
     have vw_in_l := h2.mp $ e ▸ singl_inter.right
-    have vw_in_union : v*w ∈ ({u*w, v*w} : Set (Word α)) := by simp
-    have vw_eq_uw := e ▸ h (v*w) ⟨ vw_in_union, vw_in_l ⟩
+    have vw_eq_uw := e ▸ h (v*w) ⟨ Or.inr rfl, vw_in_l ⟩
     exact pre <| Eq.symm <| Word.mul_right_cancel vw_eq_uw
   case inr e =>
     have uw_in_l := h2.mpr $ e ▸ singl_inter.right
-    have uw_in_union : u*w ∈ ({u*w, v*w} : Set (Word α)) := by simp
-    have uw_eq_vw := e ▸ h (u*w) ⟨ uw_in_union, uw_in_l ⟩
+    have uw_eq_vw := e ▸ h (u*w) ⟨ Or.inl rfl, uw_in_l ⟩
     exact pre <| Word.mul_right_cancel uw_eq_vw
+
+theorem Nerode.not_right_congruent1 (L : Language α) (u v : Word α):
+  (∃w, u*w ∈ L ∧ v*w ∉ L) → ¬ u ≃(L) v := by
+  intro ⟨ w, uw_in_l, vw_nin_l ⟩ contra
+  apply vw_nin_l
+  apply (contra w).mp
+  exact uw_in_l

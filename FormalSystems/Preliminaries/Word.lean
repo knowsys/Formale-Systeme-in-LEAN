@@ -18,6 +18,9 @@ instance Word.monoid: CancelMonoid (Word α) where
 def Word.mul_right_cancel {w₁ w₂ t : Word α} (h : w₁ * t = w₂ * t) : w₁ = w₂ :=
   List.append_right_cancel h
 
+def Word.mul_left_cancel {w₁ w₂ t : Word α} (h : t * w₁ = t * w₂) : w₁ = w₂ :=
+  List.append_left_cancel h
+
 def Nat.fin_mod (n : ℕ) (h: N > 0) : Fin N := ⟨ n % N, Nat.mod_lt n h ⟩
 
 def Word.decode [inst: Alphabet α]: (n : ℕ) → Word α
@@ -82,3 +85,7 @@ def Word.AllElementsOfWordInSet: (w: Word α) → (S: Set α) → Prop
 instance : Membership α (Word α) := List.instMembershipList
 
 instance : Functor Word := List.instFunctorList
+
+instance [DecidableEq α] : DecidableEq (Word α) := List.hasDecEq
+
+@[simp] theorem Word.map_append (f : α → β) : ∀ (u v : Word _), f <$> (u * v) = (f <$> u) * (f <$> v) := List.map_append f
