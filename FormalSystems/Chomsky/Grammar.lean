@@ -90,29 +90,51 @@ theorem NStepDerivationRelation.cancel_left (w: Word _) (a: NStepDerivationRelat
     . apply OneStepDerivationRelation.cancel_left; assumption
     . apply cancel_left; assumption
 
-theorem NStepDerivationRelation.concat_right (a: NStepDerivationRelation s (w * v) n) (b: NStepDerivationRelation v u m) :
-  NStepDerivationRelation s (w * u) (n + m) := by
+theorem NStepDerivationRelation.concat (a: NStepDerivationRelation v u n) (b: NStepDerivationRelation u w m) :
+  NStepDerivationRelation v w (n+m) := by
   cases n with
   | zero => 
     unfold NStepDerivationRelation at a
-    rw [a, Nat.zero_add]; apply cancel_left; assumption
+    rw [a, Nat.zero_add]; assumption
   | succ n' => 
     unfold NStepDerivationRelation at a
     have ⟨ w', p, q ⟩ := a
     unfold NStepDerivationRelation; rw [Nat.succ_add]; simp
     exists w'; simp [p]
-    exact concat_right q b
+    exact concat q b
 
 def DerivationRelation { G: Grammar α nt } (u v: Word (G.V ⊕ G.Z)) :=
   ∃n, NStepDerivationRelation u v n 
 
 notation:40 u:40 " ᴳ⇒* " v:41 => DerivationRelation u v
 
-theorem DerivationRelation.concat_right (v: Word _) (h1: S ᴳ⇒* w * v) (h2: v ᴳ⇒* u) : S ᴳ⇒* w * u := by
+namespace DerivationRelation
+
+theorem cancel_left (h: v ᴳ⇒* u) : w*v ᴳ⇒* w*u := by
+  have ⟨ n, _ ⟩ := h
+  exists n
+  apply NStepDerivationRelation.cancel_left
+  assumption
+
+theorem trans (h1: v ᴳ⇒* u) (h2: u ᴳ⇒* w) : v ᴳ⇒* w := by
   have ⟨ n1, _ ⟩ := h1; have ⟨ n2, _ ⟩ := h2
   exists n1 + n2
-  apply NStepDerivationRelation.concat_right
+  apply NStepDerivationRelation.concat
   assumption; assumption
+
+theorem concat_right (v: Word _) (h1: S ᴳ⇒* w * v) (h2: v ᴳ⇒* u) : S ᴳ⇒* w * u := by
+  apply DerivationRelation.trans
+  . assumption
+  . apply cancel_left; assumption
+
+theorem refl {G: Grammar α nt} (w: Word (G.V ⊕ G.Z)) : w ᴳ⇒* w := by exists 0
+
+instance preorder (G: Grammar α nt) : Preorder (Word (G.V ⊕ G.Z)) where
+  le u v := u ᴳ⇒* v
+  le_refl w := DerivationRelation.refl w
+  le_trans _ _ _ h1 h2 := DerivationRelation.trans h1 h2
+
+end DerivationRelation
 
 def GeneratedLanguage (G: Grammar α nt) : Language G.Z :=
   fun w => [.inl ↑G.start] ᴳ⇒* (.inr <$> w)
