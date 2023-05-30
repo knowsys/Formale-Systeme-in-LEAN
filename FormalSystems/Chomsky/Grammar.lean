@@ -89,79 +89,54 @@ theorem DerivationStep.concat_left_result (step: DerivationStep G u) (w: Word (G
 
 namespace Grammar
 
-variable { G: Grammar Prod } { u: Word (G.V ⊕ G.Z) }
-
 def OneStepDerivationRelation (G: Grammar Prod) (u v: Word (G.V ⊕ G.Z)) : Prop :=
   ∃(step: DerivationStep G u), step.result = v 
 
 notation:40 u:40 " (" G:40 ")⇒ " v:41 => OneStepDerivationRelation G u v
 
-theorem OneStepDerivationRelation.cancel_left (w: Word _) (a: (v (G)⇒ u)):
+variable { G: Grammar Prod }
+
+theorem OneStepDerivationRelation.cancel_left {u v: Word _} (w: Word _) (a: (v (G)⇒ u)):
   (w * v) (G)⇒ (w * u) := by
   have ⟨ step, _ ⟩ := a
   exists step.concat_left w
   rw [step.concat_left_result w]
   simp; assumption
 
-def NStepDerivationRelation (G: Grammar Prod) (u v: Word (G.V ⊕ G.Z)) : ℕ → Prop
-  | 0 => u = v
-  | Nat.succ n => ∃w, u (G)⇒ w ∧ NStepDerivationRelation G w v n
-
-theorem NStepDerivationRelation.cancel_left (w: Word _) (a: NStepDerivationRelation G v u n):
-  NStepDerivationRelation G (w * v) (w * u) n := by
-  cases n with
-  | zero => unfold NStepDerivationRelation at a; rw [a]; rfl
-  | succ n' =>
-    have ⟨ v', _, _ ⟩ := a
-    exists w * v'; constructor
-    . apply OneStepDerivationRelation.cancel_left; assumption
-    . apply cancel_left; assumption
-
-theorem NStepDerivationRelation.concat (a: NStepDerivationRelation G v u n) (b: NStepDerivationRelation G u w m) :
-  NStepDerivationRelation G v w (n+m) := by
-  cases n with
-  | zero => 
-    unfold NStepDerivationRelation at a
-    rw [a, Nat.zero_add]; assumption
-  | succ n' => 
-    unfold NStepDerivationRelation at a
-    have ⟨ w', p, q ⟩ := a
-    unfold NStepDerivationRelation; rw [Nat.succ_add]; simp
-    exists w'; simp [p]
-    exact concat q b
-
-def DerivationRelation (G: Grammar Prod) (u v: Word (G.V ⊕ G.Z)) :=
-  ∃n, NStepDerivationRelation G u v n 
+inductive DerivationRelation (G: Grammar Prod) : Word (G.V ⊕ G.Z) → Word (G.V ⊕ G.Z) → Prop
+| same {u: Word (G.V ⊕ G.Z)} : DerivationRelation G u u
+| step {u u' v: Word (G.V ⊕ G.Z)} (_: u (G)⇒ u') (_: DerivationRelation G u' v) : DerivationRelation G u v
 
 notation:40 u:40 " (" G:40 ")⇒* " v:41 => DerivationRelation G u v
 
 namespace DerivationRelation
 
-theorem cancel_left (h: v (G)⇒* u) : (w*v) (G)⇒* w*u := by
-  have ⟨ n, _ ⟩ := h
-  exists n
-  apply NStepDerivationRelation.cancel_left
-  assumption
+theorem cancel_left {u v w: Word _} (h: u (G)⇒* v) :
+  (w * u) (G)⇒* (w * v) := by
+  induction h with
+  | same => exact same
+  | step l _ => 
+    apply step
+    . exact l.cancel_left w
+    . assumption
 
-theorem trans (h1: v (G)⇒* u) (h2: u (G)⇒* w) : v (G)⇒* w := by
-  have ⟨ n1, _ ⟩ := h1; have ⟨ n2, _ ⟩ := h2
-  exists n1 + n2
-  apply NStepDerivationRelation.concat
-  assumption; assumption
+theorem trans {u v w: Word _} (h1: u (G)⇒* v) (h2: v (G)⇒* w) : u (G)⇒* w := by
+  induction h1 with
+  | same => exact h2
+  | step l _ ih => exact step l (ih h2)
 
-theorem concat_right (v: Word _) (h1: S (G)⇒* w * v) (h2: v (G)⇒* u) : S (G)⇒* w * u := by
+theorem concat_right {S u w: Word _} (v: Word _) (h1: S (G)⇒* w * v) (h2: v (G)⇒* u) :
+  S (G)⇒* w * u := by
   apply DerivationRelation.trans
   . assumption
   . apply cancel_left; assumption
 
-theorem refl (w: Word (G.V ⊕ G.Z)) : w (G)⇒* w := by exists 0
+theorem refl (w: Word (G.V ⊕ G.Z)) : w (G)⇒* w := same
 
-/-
-instance preorder (G: Grammar Z V Prod) : Preorder (Word (V ⊕ Z)) where
+instance preorder (G: Grammar Prod) : Preorder (Word (G.V ⊕ G.Z)) where
   le u v := u (G)⇒* v
   le_refl w := DerivationRelation.refl w
   le_trans _ _ _ := DerivationRelation.trans
--/
 
 end DerivationRelation
 
@@ -209,7 +184,6 @@ def ExampleGrammar.lang: Language ({ 'b', 'z' } : Finset _) :=
   { [⟨ 'b', by simp ⟩] } ∘ₗ { [⟨ 'b', by simp ⟩], [⟨ 'z', by simp ⟩] }∗
 
 theorem ExampleGrammar.gen_lang_subs : ExampleGrammar.GeneratedLanguage ⊆ ExampleGrammar.lang := by
-  intro w ⟨ step_len, h ⟩
   sorry
 
 theorem ExampleGrammar.gen_lang_supers : ExampleGrammar.lang ⊆ ExampleGrammar.GeneratedLanguage := by
@@ -222,10 +196,9 @@ theorem ExampleGrammar.gen_lang_supers : ExampleGrammar.lang ⊆ ExampleGrammar.
       pre := ε, suf := ε,
       sound := by simp [Word.epsilon]
     }
-    exists 1; exists Production.rhs step.prod.val; constructor
-    . exact ⟨ step, by unfold DerivationStep.result; sorry ⟩
-    . unfold NStepDerivationRelation; simp [HMul.hMul, Mul.mul]
-      sorry
+    apply DerivationRelation.step
+    exists step
+    sorry
   . sorry
 
 theorem ExampleGrammar.gen_lang : ExampleGrammar.GeneratedLanguage = ExampleGrammar.lang := by

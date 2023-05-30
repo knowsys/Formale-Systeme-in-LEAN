@@ -17,6 +17,17 @@ def RegularProduction.rhs : RegularProduction Z V → Word (V ⊕ Z)
   | alpha _ a => [.inr a]
   | cons _ ⟨ a, A ⟩ => [.inr a, .inl A]
 
+def RegularProduction.isEps : RegularProduction Z V → Prop
+  | eps _ => True
+  | _ => False
+
+instance { α nt: Type } { Z: Finset α } { V: Finset nt } :
+  DecidablePred (@RegularProduction.isEps α Z nt V) := fun x =>
+  match x with
+  | RegularProduction.eps _ => Decidable.isTrue trivial
+  | RegularProduction.alpha _ _ => Decidable.isFalse (λh => h)
+  | RegularProduction.cons _ _ => Decidable.isFalse (λh => h)
+
 instance : Coe (RegularProduction Z V) (ContextFreeProduction Z V) where
   coe p := {
     lhs := p.lhs,
@@ -51,14 +62,14 @@ def RegularProduction.toProduction : RegularProduction Z V ↪ GenericProduction
 instance : Production α nt RegularProduction :=
   Production.fromEmbedding $ fun _ _ => RegularProduction.toProduction
 
-def RegularGrammar { α nt: Type } := @Grammar α nt RegularProduction _
+def RegularGrammar (α nt: Type) := @Grammar α nt RegularProduction _
 
-instance : Coe (@RegularGrammar α nt) (@ContextFreeGrammar α nt) where
+instance : Coe (RegularGrammar α nt) (ContextFreeGrammar α nt) where
   coe g := { g with
     productions := g.productions.map RegularProduction.toContextFree
   }
 
-instance : Coe (@RegularGrammar α nt) (@Grammar α nt GenericProduction _) where
+instance : Coe (RegularGrammar α nt) (@Grammar α nt GenericProduction _) where
   coe g := { g with
     productions := g.productions.map RegularProduction.toProduction
   }

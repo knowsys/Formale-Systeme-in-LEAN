@@ -1,6 +1,8 @@
 import FormalSystems.Chomsky.Regular.RegularGrammar
 
-structure NFA (α: Type _) (qs: Type _) where
+import Mathlib.Data.Finset.Option
+
+structure NFA (α qs: Type) where
   Z: Finset α
   Q: Finset qs
   δ: (Q × Z) → Finset Q
@@ -9,23 +11,54 @@ structure NFA (α: Type _) (qs: Type _) where
 
 namespace NFA
 
-class run (M: NFA α qs) (w: Word M.Z) (states: List M.Q): Prop where
-  states_len: states.length = Nat.succ w.length
+def accept_from (M: NFA α qs) (current: Finset M.Q) : Word M.Z → List M.Q → Prop
+  | List.nil, x :: [] => x ∈ current ∧ x ∈ M.F
+  | w :: ws, x :: xs => x ∈ current ∧ M.accept_from (M.δ (x, w)) ws xs
+  | _, _ => False
 
-  start: 
-    have q₀ := states[0]'(states_len ▸ Nat.zero_lt_succ _)
-    q₀ ∈ M.Q₀
+def GeneratedLanguage (M: NFA α qs) : Language M.Z :=
+  fun w => ∃run: List M.Q, M.accept_from M.Q₀ w run
 
-  finish:
-    have qₑ := states[w.length]'(states_len ▸ Nat.lt_succ_of_le (Nat.le_refl _))
-    qₑ ∈ M.F
+end NFA
 
-  step: ∀(i: Fin w.length),
-    have qa := states[i]'(states_len ▸ Nat.lt_succ_of_lt i.2)
-    have qb := states[Nat.succ i]'
-    (states_len ▸ Nat.lt_succ_of_le (Nat.le_of_lt_succ $ Nat.succ_lt_succ_iff.mpr i.2))
-    qb ∈ M.δ ⟨ qa, w.get i ⟩
+inductive SingAcceptingState
+  | accept
 
-def generatedLanguage (M: NFA α qs) : Language M.Z :=
-  fun w => ∃r: List M.Q, M.run w r
+instance : Fintype SingAcceptingState where
+  elems := { SingAcceptingState.accept }
+  complete := by simp
 
+instance : DecidableEq SingAcceptingState := fun _ _ => Decidable.isTrue rfl
+
+variable { Z: Finset α } [DecidableEq α]
+variable { V: Finset nt } [DecidableEq nt]
+
+def RegularProduction.nextState (a: Z) (current: V):
+  RegularProduction Z V → Option (V ⊕ SingAcceptingState)
+  | RegularProduction.eps _ => .none
+  | RegularProduction.alpha l r => if l = current ∧ r = a then .some (.inr .accept) else .none
+  | RegularProduction.cons l ⟨ r1, r2 ⟩ => if l = current ∧ r1 = a then .some (.inl r2) else .none
+
+def Fintype.wrap [inst: Fintype t] (a: t) : inst.elems := ⟨ a, Fintype.complete _ ⟩
+
+def RegularGrammar.toNFA (G: RegularGrammar α nt) : NFA α (G.V ⊕ SingAcceptingState) where
+  Z := G.Z
+
+  Q := Fintype.elems
+  Q₀ := { ⟨ .inl G.start, Fintype.complete _ ⟩ }
+
+  F := { ⟨ .inr .accept, Fintype.complete _ ⟩ } ∪
+    (G.productions.filter (fun p => p.isEps)).image λp => ⟨ .inl p.lhs, Fintype.complete _ ⟩
+
+  δ := fun (q, a) =>
+    match q.val with
+    | .inr _ => {}
+    | .inl q => Finset.eraseNone $ 
+        G.productions.image ((Fintype.wrap <$> .) ∘ RegularProduction.nextState a q)
+
+variable (G: RegularGrammar α nt)
+def M := RegularGrammar.toNFA G
+
+theorem nfa_lang_subs_grammar : (M G).GeneratedLanguage ⊆ G.GeneratedLanguage := by
+  intro word ⟨ run, runh ⟩
+  sorry

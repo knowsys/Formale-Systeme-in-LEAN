@@ -23,9 +23,9 @@ def ContextFreeProduction.toProduction : ContextFreeProduction Z V ↪ GenericPr
 instance : Production α nt ContextFreeProduction :=
   Production.fromEmbedding (fun _ _ => ContextFreeProduction.toProduction)
 
-def ContextFreeGrammar { α nt: Type } := @Grammar α nt ContextFreeProduction _
+def ContextFreeGrammar (α nt: Type) := @Grammar α nt ContextFreeProduction _
 
-instance : Coe (@ContextFreeGrammar α nt) (@Grammar α nt GenericProduction _) where
+instance : Coe (ContextFreeGrammar α nt) (@Grammar α nt GenericProduction _) where
   coe g := {
     Z := g.Z,
     V := g.V,
