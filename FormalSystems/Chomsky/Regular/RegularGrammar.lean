@@ -2,13 +2,63 @@ import FormalSystems.Chomsky.ContextFree.ContextFreeGrammar
 
 import Mathlib.Data.Finset.Basic
 
-class inductive Production.ContextFree.Regular (prod: Production Z V) [prod.ContextFree] where
-  | eps (h: prod.rhs = ε)
-  | alpha (rhs: Z) (h: prod.rhs = [.inr rhs])
-  | cons (rhs: Z × V) (h: prod.rhs = [.inr rhs.1, .inl rhs.2])
+inductive RegularProduction (Z: Finset α) (V: Finset nt) where
+  | eps (lhs: V)
+  | alpha (lhs: V) (rhs: Z)
+  | cons (lhs: V) (rhs: Z × V)
 
-structure RegularGrammar (α: Type _) (nt : Type _) extends ContextFreeGrammar α nt where
-  regularity: ∀(p: productions), (context_freedom p).Regular
+def RegularProduction.lhs : RegularProduction Z V → V
+  | eps l => l
+  | alpha l _ => l
+  | cons l _ => l
 
-structure RegularProduction (Z: Finset α) (V: Finset nt) extends ContextFreeProduction Z V where
-  regularity: toContextFreeProduction.contextFree.Regular
+def RegularProduction.rhs : RegularProduction Z V → Word (V ⊕ Z)
+  | eps _ => ε
+  | alpha _ a => [.inr a]
+  | cons _ ⟨ a, A ⟩ => [.inr a, .inl A]
+
+instance : Coe (RegularProduction Z V) (ContextFreeProduction Z V) where
+  coe p := {
+    lhs := p.lhs,
+    rhs := p.rhs,
+  }
+
+def RegularProduction.toContextFree : RegularProduction Z V ↪ ContextFreeProduction Z V where
+  toFun := Coe.coe
+  inj' p₁ p₂ := by 
+    simp [Coe.coe]
+    intro hl hr
+    match p₁ with
+    | eps _ => 
+      match p₂ with
+      | eps _ => simp [lhs] at hl; rw [hl]
+    | alpha _ _ =>
+      match p₂ with
+      | alpha _ _ => 
+        simp [lhs] at hl; simp [rhs] at hr
+        rw [List.cons_eq_cons] at hr; simp at hr
+        simp [hl, hr]
+    | cons _ ⟨ _, _ ⟩ =>
+      match p₂ with
+      | cons _ _ =>
+        simp [lhs] at hl; simp [rhs] at hr
+        rw [List.cons_eq_cons] at hr; simp at hr
+        simp [hl, hr]
+
+def RegularProduction.toProduction : RegularProduction Z V ↪ GenericProduction Z V :=
+  toContextFree.trans ContextFreeProduction.toProduction
+
+instance : Production α nt RegularProduction :=
+  Production.fromEmbedding $ fun _ _ => RegularProduction.toProduction
+
+def RegularGrammar { α nt: Type } := @Grammar α nt RegularProduction _
+
+instance : Coe (@RegularGrammar α nt) (@ContextFreeGrammar α nt) where
+  coe g := { g with
+    productions := g.productions.map RegularProduction.toContextFree
+  }
+
+instance : Coe (@RegularGrammar α nt) (@Grammar α nt GenericProduction _) where
+  coe g := { g with
+    productions := g.productions.map RegularProduction.toProduction
+  }

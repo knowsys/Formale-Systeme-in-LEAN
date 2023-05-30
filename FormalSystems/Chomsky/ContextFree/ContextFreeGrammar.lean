@@ -1,40 +1,34 @@
 import FormalSystems.Chomsky.Grammar
 import Mathlib.Data.Finset.Functor
 
-class Production.ContextFree (prod: Production (Z: Finset α) (V: Finset nt)) where
-  lhs_var: V
-  lhs_eq_lhs_var: prod.lhs = [.inl lhs_var]
+structure ContextFreeProduction (Z: Finset α) (V: Finset nt) where
+  lhs: V
+  rhs: Word (V ⊕ Z)
 
-structure ContextFreeProduction (Z: Finset α) (V: Finset nt) extends Production Z V where
-  lhs_var: V
-  lhs_eq_lhs_var: lhs = [.inl lhs_var]
+instance : Coe (ContextFreeProduction Z V) (GenericProduction Z V) where
+  coe p := {
+    lhs := [.inl p.lhs],
+    rhs := p.rhs,
+    lhs_contains_var := ⟨ p.lhs, List.Mem.head _ ⟩
+  }
 
-instance : Coe (ContextFreeProduction Z V) (Production Z V) where
-  coe cf := cf.toProduction
+def ContextFreeProduction.toProduction : ContextFreeProduction Z V ↪ GenericProduction Z V where
+  toFun := Coe.coe
+  inj' := by
+    intro p₁ p₂; simp [Coe.coe]; intro h1 h2
+    rw [List.cons_eq_cons] at h1; simp at h1
+    match p₁ with
+    | ⟨l, r⟩ => simp at h1; simp at h2; simp_rw [h1, h2]
 
-instance ContextFreeProduction.contextFree (cf: ContextFreeProduction Z V) : Production.ContextFree cf.toProduction where
-  lhs_var := cf.lhs_var
-  lhs_eq_lhs_var := cf.lhs_eq_lhs_var
+instance : Production α nt ContextFreeProduction :=
+  Production.fromEmbedding (fun _ _ => ContextFreeProduction.toProduction)
 
-structure ContextFreeGrammar (α: Type _) (nt: Type _) extends Grammar α nt where
-  context_freedom: ∀(p : productions), p.val.ContextFree
+def ContextFreeGrammar { α nt: Type } := @Grammar α nt ContextFreeProduction _
 
-class Grammar.ContextFree (G: Grammar α nt) where
-  context_freedom: ∀(p: G.productions), p.val.ContextFree 
-
-instance (G: ContextFreeGrammar α nt) : G.ContextFree where
-  context_freedom := G.context_freedom
-
-structure EpsilonFreeContextFreeGrammar (α: Type _) (nt: Type _) extends ContextFreeGrammar α nt where
-  rhs_no_start: ∀(p: productions), .inl start ∉ p.val.rhs
-  rhs_not_eps: ∀(p: productions), p.val.lhs = [.inl start] ∨ p.val.rhs ≠ ε
-
-def ContextFreeGrammar.toEpsilonFree (G: ContextFreeGrammar α nt): EpsilonFreeContextFreeGrammar α (nt ⊕ Unit) := {
-  V := Finset.cons (.inr ()) (G.V.map .inl) (by simp),
-  Z := G.Z,
-  start := ⟨ .inr (), by simp ⟩,
-  productions := sorry,
-  context_freedom := sorry,
-  rhs_no_start := sorry,
-  rhs_not_eps := sorry
-}
+instance : Coe (@ContextFreeGrammar α nt) (@Grammar α nt GenericProduction _) where
+  coe g := {
+    Z := g.Z,
+    V := g.V,
+    start := g.start,
+    productions := g.productions.map ContextFreeProduction.toProduction
+  }

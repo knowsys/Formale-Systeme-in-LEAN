@@ -88,4 +88,11 @@ instance : Functor Word := List.instFunctorList
 
 instance [DecidableEq α] : DecidableEq (Word α) := List.hasDecEq
 
-@[simp] theorem Word.map_append (f : α → β) : ∀ (u v : Word _), f <$> (u * v) = (f <$> u) * (f <$> v) := List.map_append f
+def Word.get (w: Word α) (i: Fin w.length) : α := List.get w i
+
+instance : GetElem (Word α) ℕ α (λw i ↦ i < w.length) where
+  getElem w i h := List.get w ⟨ i, h ⟩
+
+@[simp] theorem Word.map_append (f : α → β) : 
+  ∀ (u v : Word _), f <$> (u * v) = (f <$> u) * (f <$> v) := 
+  List.map_append f
