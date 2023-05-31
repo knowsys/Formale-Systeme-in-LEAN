@@ -6,6 +6,7 @@ inductive RegularProduction (Z: Finset α) (V: Finset nt) where
   | eps (lhs: V)
   | alpha (lhs: V) (rhs: Z)
   | cons (lhs: V) (rhs: Z × V)
+  deriving DecidableEq
 
 def RegularProduction.lhs : RegularProduction Z V → V
   | eps l => l
