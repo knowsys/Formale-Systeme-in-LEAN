@@ -88,7 +88,7 @@ theorem eps_mul (L : Language α): Language.epsilon ∘ₗ L = L := by
   . intro h
     simp [Language.concat]
     exists ε ; simp [Language.epsilon, Membership.mem]
-    exists w
+    assumption
 
 theorem mul_empty (L : Language α) : L ∘ₗ ∅ = ∅ := by
   apply Set.ext

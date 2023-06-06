@@ -15,6 +15,10 @@ instance Word.monoid: CancelMonoid (Word α) where
   mul_left_cancel u v w := List.append_left_cancel
   mul_right_cancel u v w := List.append_right_cancel
 
+theorem Word.mul_eq_cons { w v : Word α } :
+  w * v = x :: xs ↔ w = [] ∧ v = x :: xs ∨ ∃ (w': Word _), w = x :: w' ∧ xs = w' * v :=
+  List.append_eq_cons
+
 def Word.mul_right_cancel {w₁ w₂ t : Word α} (h : w₁ * t = w₂ * t) : w₁ = w₂ :=
   List.append_right_cancel h
 
@@ -73,6 +77,14 @@ instance [Alphabet α] : Denumerable (Word α) where
 
 def Word.epsilon : Word α := 1
 notation (priority := high) "ε" => Word.epsilon
+
+theorem Word.eps_eq_nil : (ε : Word α) = ([] : Word _) := by rfl
+
+@[simp] theorem Word.cons_eps : w :: ε = [w] := by simp; rfl
+
+@[simp] theorem Word.mul_eps : w * ε = w := by simp; rfl
+
+@[simp] theorem Word.eps_mul : ε * w = w := by simp; rfl
 
 def Word.len: (w:Word α) → Nat
   | [] => 0

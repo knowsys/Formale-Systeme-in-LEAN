@@ -87,6 +87,16 @@ theorem DerivationStep.concat_left_result (step: DerivationStep G u) (w: Word (G
   unfold concat_left
   simp [mul_assoc]
 
+def DerivationStep.fromRule (p: G.productions) : DerivationStep G (Production.lhs (p.val)) where
+  prod := p
+  pre := ε
+  suf := ε
+  sound := by simp [Word.epsilon]
+
+theorem DerivationStep.from_rule_result { p: G.productions } :
+  (DerivationStep.fromRule p).result = (Production.rhs (p.val)) := by
+  simp [result, DerivationStep.fromRule, Word.epsilon]
+
 namespace Grammar
 
 def OneStepDerivationRelation (G: Grammar Prod) (u v: Word (G.V ⊕ G.Z)) : Prop :=
@@ -103,6 +113,15 @@ theorem OneStepDerivationRelation.cancel_left {u v: Word _} (w: Word _) (a: (v (
   rw [step.concat_left_result w]
   simp; assumption
 
+theorem OneStepDerivationRelation.cancel_left_cons {u v: Word _} (w: _) (a: (v (G)⇒ u)):
+  (w :: v) (G)⇒ (w :: u) := by
+  have ⟨ step, _ ⟩ := a
+  exists step.concat_left [w]
+  rw [step.concat_left_result [w]]
+  simp [Word.mul_eq_cons]
+  exists ε; simp; apply Eq.symm
+  assumption
+
 inductive DerivationRelation (G: Grammar Prod) : Word (G.V ⊕ G.Z) → Word (G.V ⊕ G.Z) → Prop
 | same {u: Word (G.V ⊕ G.Z)} : DerivationRelation G u u
 | step {u u' v: Word (G.V ⊕ G.Z)} (_: u (G)⇒ u') (_: DerivationRelation G u' v) : DerivationRelation G u v
@@ -118,6 +137,15 @@ theorem cancel_left {u v w: Word _} (h: u (G)⇒* v) :
   | step l _ => 
     apply step
     . exact l.cancel_left w
+    . assumption
+
+theorem cancel_left_cons {u v: Word _} (h: u (G)⇒* v) :
+  (w :: u) (G)⇒* (w :: v) := by
+  induction h with
+  | same => exact same
+  | step l _ =>
+    apply step
+    . exact l.cancel_left_cons w
     . assumption
 
 theorem trans {u v w: Word _} (h1: u (G)⇒* v) (h2: v (G)⇒* w) : u (G)⇒* w := by
