@@ -55,6 +55,8 @@ structure Grammar (Prod: Finset α → Finset nt → Type) [Production α nt Pro
 
 variable { Prod: Finset α → Finset nt → Type } [Production α nt Prod]
 
+namespace Grammar
+
 structure DerivationStep (G: Grammar Prod) (u: Word (G.V ⊕ G.Z)) where
   prod: G.productions
   pre: Word (G.V ⊕ G.Z)
@@ -97,73 +99,143 @@ theorem DerivationStep.from_rule_result { p: G.productions } :
   (DerivationStep.fromRule p).result = (Production.rhs (p.val)) := by
   simp [result, DerivationStep.fromRule, Word.epsilon]
 
-namespace Grammar
+theorem DerivationStep.lhs_singleton (step: DerivationStep G [.inl v]) :
+  (Production.lhs step.prod.val) = [.inl v] ∧ step.pre = ε ∧ step.suf = ε := by
+  match hpre:step.pre with
+  | .cons _ _ =>
+    have tmp := Eq.symm $ hpre ▸ step.sound
+    rw [mul_assoc, <- Word.cons_eq, Word.cons_mul, List.cons_eq_cons] at tmp
+    have ⟨_, tmp⟩ := tmp
+    simp_rw [<- Word.eps_eq_nil] at tmp
+    have ⟨_, tmp⟩ := Word.mul_eq_eps.mp tmp
+    have ⟨tmp, _⟩ := Word.mul_eq_eps.mp tmp
+    have ⟨_, h⟩ := Production.lhs_contains_var step.prod.val
+    rw [tmp] at h
+    contradiction
 
-def OneStepDerivationRelation (G: Grammar Prod) (u v: Word (G.V ⊕ G.Z)) : Prop :=
-  ∃(step: DerivationStep G u), step.result = v 
+  | .nil =>
+    have tmp := Eq.symm $ hpre ▸ step.sound
+    simp [<- Word.eps_eq_nil, Word.mul_eq_cons] at tmp
+    cases tmp
 
-notation:40 u:40 " (" G:40 ")⇒ " v:41 => OneStepDerivationRelation G u v
+    case inl h =>
+      have ⟨_, c⟩ := Production.lhs_contains_var step.prod.val
+      have ⟨h, _⟩ := h
+      rw [h] at c
+      contradiction
 
-variable { G: Grammar Prod }
+    case inr h =>
+      have ⟨_, ⟨h₁, h₂⟩ ⟩ := h
+      have tmp := Word.mul_eq_eps.mp $ Eq.symm h₂
+      have tmp' := tmp.1 ▸ h₁
+      simp at tmp'
+      constructor
+      . assumption
+      . constructor; rfl; exact tmp.right
 
-theorem OneStepDerivationRelation.cancel_left {u v: Word _} (w: Word _) (a: (v (G)⇒ u)):
-  (w * v) (G)⇒ (w * u) := by
-  have ⟨ step, _ ⟩ := a
-  exists step.concat_left w
-  rw [step.concat_left_result w]
-  simp; assumption
+inductive Derivation (G: Grammar Prod) : Word (G.V ⊕ G.Z) → Type
+| same (u: Word _) : G.Derivation u
+| step
+  { u: Word _ }
+  (steps: G.Derivation w)
+  (step: G.DerivationStep w)
+  (sound: u = step.result):
+  Derivation G u
 
-theorem OneStepDerivationRelation.cancel_left_cons {u v: Word _} (w: _) (a: (v (G)⇒ u)):
-  (w :: v) (G)⇒ (w :: u) := by
-  have ⟨ step, _ ⟩ := a
-  exists step.concat_left [w]
-  rw [step.concat_left_result [w]]
-  simp [Word.mul_eq_cons]
-  exists ε; simp; apply Eq.symm
-  assumption
+def Derivation.lhs : Derivation G w → Word (G.V ⊕ G.Z)
+| same u => u
+| step l _ _ => l.lhs
 
-inductive DerivationRelation (G: Grammar Prod) : Word (G.V ⊕ G.Z) → Word (G.V ⊕ G.Z) → Prop
-| same {u: Word (G.V ⊕ G.Z)} : DerivationRelation G u u
-| step {u u' v: Word (G.V ⊕ G.Z)} (_: u (G)⇒ u') (_: DerivationRelation G u' v) : DerivationRelation G u v
+def DerivationRelation (G: Grammar Prod) (v w: Word (G.V ⊕ G.Z)) : Prop :=
+  ∃d: G.Derivation w, d.lhs = v 
 
 notation:40 u:40 " (" G:40 ")⇒* " v:41 => DerivationRelation G u v
 
+namespace Derivation
+
+def compose (b: G.Derivation w) (a: G.Derivation b.lhs) : G.Derivation w :=
+  match b with
+  | same _ => a
+  | step xs x h => step (xs.compose a) x h
+
+theorem compose_lhs { b: G.Derivation w } { a: G.Derivation b.lhs } : lhs (b.compose a) = lhs a := by
+  induction b with
+  | same _ => unfold compose; rfl
+  | step _ _ _ ih => simp [compose, lhs]; rw [ih]
+
+def augment_left_mul {v w: Word _} (d: G.Derivation v) :
+  G.Derivation (w * v) := by
+  match d with
+  | same _ => exact same _
+  | step xs x h =>
+    rw [h, <- DerivationStep.concat_left_result]
+    exact step (xs.augment_left_mul) (x.concat_left w) rfl
+
+def augment_left_cons {u: Word _} (w: _) (d: G.Derivation u) :
+  G.Derivation (w :: u) := by
+  match d with
+  | same _ => exact same _
+  | step xs x sound =>
+    have ih := xs.augment_left_cons w
+    apply step ih (x.concat_left [w])
+    rw [sound]
+    simp [DerivationStep.concat_left_result]
+    rfl
+
+theorem augment_left_cons_lhs (w: _) (d: G.Derivation u) :
+  (d.augment_left_cons w).lhs = w :: d.lhs := by
+  induction d with
+  | same _ => rfl
+  | step _ _ =>
+    unfold augment_left_cons; simp [lhs]
+    assumption
+
+theorem lhs_eps_imp_rhs_eps (d: G.Derivation w) : d.lhs = ε → w = ε := by
+  match d with
+  | same _ => intro h; unfold lhs at h; assumption
+  | step xs x _ =>
+    intro h; unfold lhs at h
+    have h' := Eq.symm x.sound
+    simp_rw [xs.lhs_eps_imp_rhs_eps h] at h'
+    simp [Word.mul_eq_eps] at h'
+    have ⟨_, y⟩ := Production.lhs_contains_var x.prod.val
+    rw [h'.1.2] at y
+    contradiction
+
+def prepend (d: G.Derivation w) (s: G.DerivationStep v) (h: s.result = d.lhs):
+  G.Derivation w := by
+  match d with
+  | same _ => 
+    exact .step (.same v) s h.symm
+  | step xs x _ =>
+    apply Grammar.Derivation.step
+    unfold lhs at h
+    exact xs.prepend s h
+    assumption
+
+theorem prepend_lhs { d: G.Derivation w } { s: G.DerivationStep v } { h: _ } :
+  (d.prepend s h).lhs = v := by
+  induction d with
+  | same _ => unfold prepend; rfl
+  | step _ _ => sorry
+
+end Derivation
+
 namespace DerivationRelation
 
-theorem cancel_left {u v w: Word _} (h: u (G)⇒* v) :
-  (w * u) (G)⇒* (w * v) := by
-  induction h with
-  | same => exact same
-  | step l _ => 
-    apply step
-    . exact l.cancel_left w
-    . assumption
+theorem trans { u v w: Word _ } (h₁: u (G)⇒* v) (h₂: v (G)⇒* w) : u (G)⇒* w := by
+  have ⟨d₂, h₂⟩ := h₂
+  have ⟨d₁, h₁⟩ := (Eq.symm h₂) ▸ h₁
+  exists d₂.compose d₁
+  rw [<- h₁]
+  apply Derivation.compose_lhs
 
-theorem cancel_left_cons {u v: Word _} (h: u (G)⇒* v) :
-  (w :: u) (G)⇒* (w :: v) := by
-  induction h with
-  | same => exact same
-  | step l _ =>
-    apply step
-    . exact l.cancel_left_cons w
-    . assumption
-
-theorem trans {u v w: Word _} (h1: u (G)⇒* v) (h2: v (G)⇒* w) : u (G)⇒* w := by
-  induction h1 with
-  | same => exact h2
-  | step l _ ih => exact step l (ih h2)
-
-theorem concat_right {S u w: Word _} (v: Word _) (h1: S (G)⇒* w * v) (h2: v (G)⇒* u) :
-  S (G)⇒* w * u := by
-  apply DerivationRelation.trans
-  . assumption
-  . apply cancel_left; assumption
-
-theorem refl (w: Word (G.V ⊕ G.Z)) : w (G)⇒* w := same
+theorem refl { u: Word _ } : u (G)⇒* u := by
+  exists .same _
 
 instance preorder (G: Grammar Prod) : Preorder (Word (G.V ⊕ G.Z)) where
   le u v := u (G)⇒* v
-  le_refl w := DerivationRelation.refl w
+  le_refl _ := DerivationRelation.refl
   le_trans _ _ _ := DerivationRelation.trans
 
 end DerivationRelation
@@ -218,16 +290,7 @@ theorem ExampleGrammar.gen_lang_supers : ExampleGrammar.lang ⊆ ExampleGrammar.
   intro w ⟨ b, bz, hb, hz, wbz ⟩
   have : b = [⟨'b', _ ⟩] := hb
   rw [wbz, this, Set.mem_def, Grammar.GeneratedLanguage, Word.map_append _ _ _]
-  apply Grammar.DerivationRelation.concat_right [ .inl ⟨ 'A', by simp ⟩ ]
-  . have step: DerivationStep ExampleGrammar [Sum.inl ExampleGrammar.start] := { 
-      prod := ⟨ ExampleProductions[0], by simp [ExampleGrammar] ⟩,
-      pre := ε, suf := ε,
-      sound := by simp [Word.epsilon]
-    }
-    apply DerivationRelation.step
-    exists step
-    sorry
-  . sorry
+  sorry
 
 theorem ExampleGrammar.gen_lang : ExampleGrammar.GeneratedLanguage = ExampleGrammar.lang := by
   apply Set.eq_of_subset_of_subset

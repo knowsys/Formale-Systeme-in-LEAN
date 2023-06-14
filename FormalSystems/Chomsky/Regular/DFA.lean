@@ -17,15 +17,16 @@ namespace DFA
 
 def toNFA (M: DFA α qs) : NFA α qs := M
 
-def accept_from (M: DFA α qs)  (start: M.Q) (w: Word M.Z) (run: List M.Q) : Prop := 
-  M.toNFA.accept_from { start } w run
+def Run (M: DFA α qs) := M.toNFA.Run
 
 def GeneratedLanguage (M: DFA α qs) : Language M.Z :=
-  fun w => ∃run: List M.Q, M.accept_from M.q₀ w run
+  fun w => ∃run: M.Run M.q₀ w, run.last ∈ M.F
 
-theorem generated_lang_eq { M: DFA α qs } : M.GeneratedLanguage = M.toNFA.GeneratedLanguage := by
-  unfold GeneratedLanguage; unfold toNFA; unfold NFA.GeneratedLanguage; simp
-  apply funext; intro w; unfold accept_from; unfold toNFA; rfl
+theorem generated_lang_eq { M: DFA α qs } :
+  M.GeneratedLanguage = M.toNFA.GeneratedLanguage := by
+  unfold GeneratedLanguage
+  unfold toNFA; unfold NFA.GeneratedLanguage
+  simp; rfl
 
 def transitionToRule (M: DFA α qs) : (M.Q × M.Z) → Option (RegularProduction M.Z M.Q)
   | (q, a) => (.cons q ∘ (a,·)) <$> M.δ (q, a)
@@ -39,76 +40,142 @@ def toGrammar (M: DFA α qs) : RegularGrammar α qs where
   productions := (Finset.eraseNone $ Fintype.elems.image M.transitionToRule) ∪
     M.F.map ⟨ .eps, by intro _ _; simp ⟩
 
-theorem final_state_imp_derivation : start ∈ M.F → [.inl start] (M.toGrammar)⇒ ε := by
-  intro _
-  have ⟨p, hp⟩ : ∃p: M.toGrammar.productions, p.val = RegularProduction.eps start := by
+def final_state_to_derivation_step (state: M.F) : M.toGrammar.DerivationStep [.inl state.val] where
+  pre := ε
+  suf := ε
+  prod := by
     constructor
-    case w =>
-      constructor
-      unfold toGrammar; simp
-      apply Or.inr
-      exists start, start.2
-    case h => simp
-
-  have lhs : Production.lhs p.val = [.inl start] := by
-    rw [hp]; exact RegularProduction.eps_lhs
-
-  rw [<- lhs]
-  exists DerivationStep.fromRule p
-  apply RegularProduction.eps_step_result
-  exact hp
-
-theorem state_transition_imp_derivation : q₂ ∈ M.δ (q₁, a) →
-  [.inl q₁] (M.toGrammar)⇒ [.inr a, .inl q₂] := by
-  intro h
-  have ⟨p, hp⟩ : ∃p: M.toGrammar.productions, p.val = RegularProduction.cons q₁ (a, q₂) := by
+    dsimp [toGrammar]
+    simp
+    apply Or.inr
+    exists state.val, state.val.property
     constructor
-    case w =>
-      constructor
-      unfold toGrammar; simp
-      apply Or.inl
-      exists q₁, q₁.2, a, a.2
-      simp [Fintype.complete]
-      unfold transitionToRule
-      simp
-      exists q₂, q₂.2
-    case h => simp
+    exact state.property
+    rfl
 
-  have lhs : Production.lhs p.val = [.inl q₁] := by
-    rw [hp]; exact RegularProduction.eps_lhs
+  sound := by
+    rfl
 
-  rw [<- lhs]
-  exists DerivationStep.fromRule p
-  apply RegularProduction.cons_step_result
-  exact hp
+theorem final_state_to_derivation_step_rhs (state: M.F) :
+  (M.final_state_to_derivation_step state).result = ε := by
+  rfl
 
-theorem run_to_derivation (h: M.accept_from start word run) :
-  [.inl start] (M.toGrammar)⇒* (.inr <$> word) := by
-  cases h
-  case final h₁ h₂ =>
-    simp at h₂
-    simp_rw [h₂, toNFA] at h₁
-    apply Grammar.DerivationRelation.step
-    . exact final_state_imp_derivation _ h₁
-    . apply Grammar.DerivationRelation.same
-  
-  case step x w _ _ h₁ h₂ =>
-    match hδ:M.δ (x, w) with
-    | none =>
-      simp [toNFA, hδ] at h₁
-      contradiction
-    | some _ =>
-      simp [toNFA, hδ] at h₁
-      simp at h₂ ; rw [← h₂]
-      have _ := run_to_derivation h₁
-      apply Grammar.DerivationRelation.step
-      . exact state_transition_imp_derivation _ hδ 
-      . apply Grammar.DerivationRelation.cancel_left_cons
-        assumption
+def state_transition_to_derivation_step (a: M.Z) (q₁ q₂: M.Q) (h: q₂ ∈ M.δ (q₁, a)) :
+  M.toGrammar.DerivationStep [.inl q₁] where
+  pre := ε
+  suf := ε
+  prod := by
+    constructor
+    dsimp [toGrammar]; simp
+    apply Or.inl
+    exists q₁, q₁.2, a, a.2
+    simp [Fintype.complete, transitionToRule]
+    exists q₂, q₂.2
+  sound := by rfl
+
+theorem state_transition_imp_derivation (h : q₂ ∈ M.δ (q₁, a)) :
+  (M.state_transition_to_derivation_step _ _ _ h).result = [.inr a, .inl q₂] := by
+  rfl
+
+def Run.toDerivation (run: M.Run start word) (hlast: run.last ∈ M.F):
+  { d: M.toGrammar.Derivation (.inr <$> word) // (d.lhs = [.inl start]) } := by
+  cases run
+  case final =>
+    unfold NFA.Run.last at hlast
+    simp; rw [<- Word.eps_eq_nil]
+    rw [<- M.final_state_to_derivation_step_rhs]; swap
+    exact ⟨ start, hlast ⟩
+    constructor; swap
+    . apply Grammar.Derivation.step
+      apply Grammar.Derivation.same
+      rfl
+    . simp [Grammar.Derivation.lhs, final_state_to_derivation_step_rhs]
+
+  case step a _ qn run' =>
+    unfold NFA.Run.last at hlast
+    have ⟨ d', hd' ⟩ := DFA.Run.toDerivation run' hlast
+    simp [toNFA] at a
+    constructor; swap
+    apply (d'.augment_left_cons _).prepend
+    rw [d'.augment_left_cons_lhs]
+    simp_rw [hd']
+    apply state_transition_imp_derivation (q₁ := start)
+    have ⟨_, p⟩ := qn
+    simp [toNFA] at p
+    rw [Option.mem_iff]
+    exact p
+    apply Grammar.Derivation.prepend_lhs
 
 theorem lang_subs_grammar_lang :
   M.GeneratedLanguage ⊆ M.toGrammar.GeneratedLanguage := by
-  intro w ⟨ _, h ⟩
-  exact run_to_derivation M h
+  intro _ ⟨ run, h ⟩
+  have ⟨d, _⟩ := run.toDerivation _ h
+  exists d
+
+theorem eps_production_imp_final (h: RegularProduction.eps q ∈ M.toGrammar.productions) :
+  q ∈ M.F := by
+  sorry
+
+/-
+  cases h
+
+  case same =>
+    match word with
+    | .nil => simp at hw
+
+  case step middle l r =>
+    have ⟨ step, hstep ⟩ := hw ▸ l
+    match hprod:step.prod with
+    -- Rules of the form "A -> a" are never used
+    | ⟨ .alpha _ _, p ⟩ => simp [toGrammar, transitionToRule] at p
+
+    -- if "q -> ε" is in the grammar, q must be final.
+    | ⟨ .eps v , _ ⟩ =>
+      -- prove that v = q
+      have ⟨ tmp, pre, suf ⟩ := step.lhs_singleton
+      simp_rw [hprod] at tmp
+      have v_eq_q : [Sum.inl v] = Production.lhs step.prod.val := by
+        rw [hprod]; rfl
+      rw [hprod, tmp] at v_eq_q
+      simp at v_eq_q
+
+      -- prove that word = ε
+      have word_eq_eps : (Sum.inr <$> word) = ε := by
+        apply Grammar.DerivationRelation.lhs_eps_imp_rhs_eps
+        simp [DerivationStep.result, pre, suf, hprod] at hstep
+        have hstep := Eq.subst (motive := fun x => x = ε) hstep (by simp; rfl)
+        simp at hstep
+
+        rw [<- hstep]
+        exact r
+
+      rw [Word.map_eq_eps.mp word_eq_eps]
+      exists [q]
+      apply NFA.accept_from.final
+      . simp
+      . simp [toNFA]
+        apply eps_production_imp_final
+        rw [<- v_eq_q]
+        assumption
+
+    -- if "q -> a q'" is in the grammar, then δ(q, a) = q'
+    | ⟨ .cons v (a, v'), _ ⟩ =>
+      -- prove that v = q
+      have ⟨ tmp, pre, suf ⟩ := step.lhs_singleton
+      simp_rw [hprod] at tmp
+      have v_eq_q : [Sum.inl v] = Production.lhs step.prod.val := by
+        rw [hprod]; rfl
+      rw [hprod, tmp] at v_eq_q
+      simp at v_eq_q
+
+      rw [<- v_eq_q]
+      sorry
+
+-/
+
+theorem grammar_lang_subs_lang :
+  M.toGrammar.GeneratedLanguage ⊆ M.GeneratedLanguage := by
+  intro _ h
+  sorry
 
 end DFA

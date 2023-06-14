@@ -6,6 +6,10 @@ import FormalSystems.Preliminaries.Alphabet
 
 def Word (α : Type u) := List α
 
+def Word.cons: α → Word α → Word α := List.cons
+
+theorem Word.cons_eq: Word.cons x xs = x :: xs := by rfl
+
 instance Word.monoid: CancelMonoid (Word α) where
   mul := List.append
   mul_assoc := List.append_assoc
@@ -14,10 +18,6 @@ instance Word.monoid: CancelMonoid (Word α) where
   mul_one := List.append_nil
   mul_left_cancel u v w := List.append_left_cancel
   mul_right_cancel u v w := List.append_right_cancel
-
-theorem Word.mul_eq_cons { w v : Word α } :
-  w * v = x :: xs ↔ w = [] ∧ v = x :: xs ∨ ∃ (w': Word _), w = x :: w' ∧ xs = w' * v :=
-  List.append_eq_cons
 
 def Word.mul_right_cancel {w₁ w₂ t : Word α} (h : w₁ * t = w₂ * t) : w₁ = w₂ :=
   List.append_right_cancel h
@@ -75,7 +75,7 @@ instance [Alphabet α] : Denumerable (Word α) where
   encodek := by simp
   decode_inv := by simp
 
-def Word.epsilon : Word α := 1
+@[match_pattern] def Word.epsilon : Word α := 1
 notation (priority := high) "ε" => Word.epsilon
 
 theorem Word.eps_eq_nil : (ε : Word α) = ([] : Word _) := by rfl
@@ -85,6 +85,17 @@ theorem Word.eps_eq_nil : (ε : Word α) = ([] : Word _) := by rfl
 @[simp] theorem Word.mul_eps : w * ε = w := by simp; rfl
 
 @[simp] theorem Word.eps_mul : ε * w = w := by simp; rfl
+
+theorem Word.mul_eq_cons { w v : Word α } :
+  w * v = x :: xs ↔ w = ε ∧ v = x :: xs ∨ ∃ (w': Word _), w = x :: w' ∧ xs = w' * v :=
+  List.append_eq_cons
+
+theorem Word.mul_eq_eps { w v : Word α } : w * v = ε ↔ w = ε ∧ v = ε :=
+  List.append_eq_nil
+
+theorem Word.cons_mul { w xs : Word α } :
+  (Word.cons x xs) * w = x :: (xs * w) :=
+  List.cons_append _ _ _
 
 def Word.len: (w:Word α) → Nat
   | [] => 0
@@ -108,3 +119,5 @@ instance : GetElem (Word α) ℕ α (λw i ↦ i < w.length) where
 @[simp] theorem Word.map_append (f : α → β) : 
   ∀ (u v : Word _), f <$> (u * v) = (f <$> u) * (f <$> v) := 
   List.map_append f
+
+theorem Word.map_eq_eps : f <$> w = ε ↔ w = ε := List.map_eq_nil

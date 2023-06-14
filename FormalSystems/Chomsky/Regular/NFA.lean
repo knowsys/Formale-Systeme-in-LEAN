@@ -11,17 +11,16 @@ structure NFA (α qs: Type) where
 
 namespace NFA
 
-inductive accept_from (M: NFA α qs) : Finset M.Q → Word M.Z → List M.Q → Prop
-  | final (h₁: x ∈ current) (h₂: x ∈ M.F) : M.accept_from current [] [x]
-  | step (h₁: x ∈ current) : M.accept_from (M.δ (x, w)) ws xs -> M.accept_from current (w::ws) (x::xs)
+inductive Run (M: NFA α qs) : M.Q → Word M.Z → Type
+  | final (q: M.Q) : M.Run q ε
+  | step (q₁: M.Q) (q₂: M.δ (q₁, a)) (r: M.Run q₂ w) : M.Run q₁ (a :: w)
 
-theorem accept_from_contains (h: accept_from M current word (x :: xs)) : x ∈ current := by
-  cases h
-  case step r _ => exact r
-  case final r => exact r
+def Run.last {M: NFA α qs} {w: Word M.Z} {q: M.Q} : (r: M.Run q w) → M.Q
+  | final q => q
+  | step _ _ r => r.last
 
 def GeneratedLanguage (M: NFA α qs) : Language M.Z :=
-  fun w => ∃run: List M.Q, M.accept_from M.Q₀ w run
+  fun w => ∃(q₀ : M.Q₀) (run: M.Run q₀ w), run.last ∈ M.F
 
 end NFA
 
@@ -51,17 +50,13 @@ def RegularGrammar.toNFA (G: RegularGrammar α nt) : NFA α (G.V ⊕ ({ "qₐ" }
     | .inl q => Finset.eraseNone $ 
         G.productions.image ((Fintype.wrap <$> .) ∘ RegularProduction.nextState a q)
 
-variable (G: RegularGrammar α nt)
-def M := RegularGrammar.toNFA G
+variable {G: RegularGrammar α nt}
 
-theorem nfa_run_to_derivation_1 (runh: (M G).accept_from (M G).Q₀ w run) :
-  [.inl x] (G)⇒* (.inr <$> w) := by
+def NFA.Run.toDerivation (run: G.toNFA.Run x w) (h: run.last ∈ G.toNFA.F):
+  G.Derivation (.inr <$> w) := by
   sorry
 
-theorem nfa_run_to_derivation_2 (runh: (M G).accept_from ((M G).δ (q, a)) w run) :
-  [.inl x] (G)⇒* (.inr <$> w) := by
+theorem nfa_lang_subs_grammar : G.toNFA.GeneratedLanguage ⊆ G.GeneratedLanguage := by
+  intro word ⟨ q₀, run, final ⟩
+  exists run.toDerivation final
   sorry
-
-theorem nfa_lang_subs_grammar : (M G).GeneratedLanguage ⊆ G.GeneratedLanguage := by
-  intro word ⟨ run, runh ⟩
-  exact nfa_run_to_derivation_1 _ runh
