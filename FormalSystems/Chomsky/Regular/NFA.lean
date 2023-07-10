@@ -12,11 +12,11 @@ structure NFA (α qs: Type) where
 namespace NFA
 
 inductive Run (M: NFA α qs) : M.Q → Word M.Z → Type
-  | final (q: M.Q) : M.Run q ε
+  | final (q: M.Q) (h: w = ε) : M.Run q w
   | step (q₁: M.Q) (q₂: M.δ (q₁, a)) (r: M.Run q₂ w) : M.Run q₁ (a :: w)
 
 def Run.last {M: NFA α qs} {w: Word M.Z} {q: M.Q} : (r: M.Run q w) → M.Q
-  | final q => q
+  | final q _ => q
   | step _ _ r => r.last
 
 def GeneratedLanguage (M: NFA α qs) : Language M.Z :=
@@ -51,12 +51,3 @@ def RegularGrammar.toNFA (G: RegularGrammar α nt) : NFA α (G.V ⊕ ({ "qₐ" }
         G.productions.image ((Fintype.wrap <$> .) ∘ RegularProduction.nextState a q)
 
 variable {G: RegularGrammar α nt}
-
-def NFA.Run.toDerivation (run: G.toNFA.Run x w) (h: run.last ∈ G.toNFA.F):
-  G.Derivation (.inr <$> w) := by
-  sorry
-
-theorem nfa_lang_subs_grammar : G.toNFA.GeneratedLanguage ⊆ G.GeneratedLanguage := by
-  intro word ⟨ q₀, run, final ⟩
-  exists run.toDerivation final
-  sorry

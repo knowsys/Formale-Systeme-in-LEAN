@@ -55,6 +55,7 @@ instance : Coe (ContextFreeGrammar α nt) (@Grammar α nt GenericProduction _) w
   }
 
 open Grammar
+open Production.ContextFree
 
 variable [Production.ContextFree α nt P] { G: Grammar P }
 
@@ -73,24 +74,19 @@ DerivationStep G (w.tail) where
     cases Word.mul_eq_cons.mp (Eq.symm sound)
     case inl h =>
       have ⟨_, h'⟩ := Word.mul_eq_eps.mp h.1
-      have c := Production.lhs_contains_var step.prod.val
-      apply Exists.elim c
-      intro _ c
-      simp [h', Word.eps_eq_nil] at c
+      apply (Production.lhs_contains_var step.prod.val).elim
+      intro _ c; simp [h'] at c
       contradiction
     case inr h' =>
       have ⟨_, l, r⟩ := h'
       cases Word.mul_eq_cons.mp l
       case inl h' =>
-        have c := Production.ContextFree.lhs_condition step.prod.val
-        have cc := c ▸ h'.2
-        rw [List.cons_eq_cons] at cc
-        simp at cc
+        have c := (lhs_condition step.prod.val) ▸ h'.2
+        rw [List.cons_eq_cons] at c
+        simp at c
       case inr h'' =>
         have ⟨_, ll, lr⟩ := h''
         simp [ll]; rw [<- lr, <- r]; simp [h]
-
-def Word.mk { a: Type } (l: List a) : Word a := l
 
 theorem Grammar.DerivationStep.cancel_left_cons_result (step: DerivationStep G w) (h:∃v, w = (.inr a :: v)):
   step.result = .inr a :: (step.cancel_left_cons h).result := by
@@ -108,58 +104,6 @@ theorem Grammar.DerivationStep.cancel_left_cons_result (step: DerivationStep G w
   rfl
   rfl
 
-theorem Grammar.Derivation.rhs_nt_imp_lhs_nt (d: Derivation G w) (h: ∀a ∈ w, a.isLeft):
-  ∀v ∈ d.lhs, v.isLeft := by
-  induction d with
-  | same =>
-    intro v h'
-    unfold lhs at h'
-    exact h _ h'
-  | step steps step dsound hind =>
-    have ⟨prod, pre, suf, sound⟩ := step
-    intro v hv
-    simp [lhs] at hv
-
-    apply hind
-    case step.a => assumption
-
-    case step.h =>
-      rw [dsound] at h
-      unfold DerivationStep.result at h
-      dsimp at h
-      intro a
-      rw [sound]
-      dsimp [HMul.hMul, Mul.mul]
-      intro ha
-      repeat rw [List.mem_append] at ha
-      cases ha
-      case inl ha =>
-        cases ha
-        sorry
-        sorry
-      
-      case inr =>
-        sorry
-
-theorem Grammar.Derivation.rhs_destructured_of_lhs_cons (w: Word _) (d: G.Derivation w) (h: d.lhs = .inr a :: v):
-  ∃w', w = .inr a :: w' := by
-  match d with
-  | same _ => exists v
-  | step xs x sound =>
-    unfold lhs at h
-    have ih := xs.rhs_destructured_of_lhs_cons _ h
-    exists (x.cancel_left_cons ih).result
-    rw [sound]
-    apply x.cancel_left_cons_result
-
-def Grammar.Derivation.cancel_left_cons (w: Word _) (d: G.Derivation w) (h: d.lhs = .inr a :: v):
-  G.Derivation w.tail := by
-  match d with
-  | same _ => simp; exact same _
-  | step xs x sound =>
-    unfold lhs at h
-    have xs' := xs.cancel_left_cons _ h
-    have h2 := xs.rhs_destructured_of_lhs_cons _ h
-    rw [sound]
-    rw [x.cancel_left_cons_result h2]; simp
-    exact .step xs' (x.cancel_left_cons h2) rfl
+theorem Grammar.Derivation.rhs_nt_imp_lhs_nt (d: Derivation G v w) (h: ∀a ∈ w, a.isLeft):
+  ∀n ∈ v, n.isLeft := by
+  sorry

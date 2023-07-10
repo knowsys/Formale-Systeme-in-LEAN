@@ -63,6 +63,12 @@ def RegularProduction.toProduction : RegularProduction Z V ↪ GenericProduction
 instance : Production α nt RegularProduction :=
   Production.fromEmbedding $ fun _ _ => RegularProduction.toProduction
 
+@[simp] theorem RegularProduction.rhs_eq_rhs { p: RegularProduction Z V } :
+  Production.rhs p = p.rhs := by rfl
+
+@[simp] theorem RegularProduction.lhs_eq_lhs { p: RegularProduction Z V } :
+  Production.lhs p = [Sum.inl p.lhs] := by rfl
+
 instance : Production.ContextFree α nt RegularProduction where
   lhs_var := RegularProduction.lhs
   lhs_condition p := by rfl
@@ -79,4 +85,50 @@ instance : Coe (RegularGrammar α nt) (@Grammar α nt GenericProduction _) where
     productions := g.productions.map RegularProduction.toProduction
   }
 
-variable { G: RegularGrammar α nt } { p: G.productions } { v v': G.V } { w: G.Z }
+namespace RegularGrammar
+
+open Grammar
+variable { G: RegularGrammar α nt }
+
+inductive NonTerminatedDerivation (G: RegularGrammar α nt): G.V → Word G.Z → Type
+  | start (h: w = ε) : G.NonTerminatedDerivation v w
+  | cons (h: .cons v (a, v') ∈ G.productions) (d': G.NonTerminatedDerivation v' w) (_: w' = a :: w): G.NonTerminatedDerivation v w'
+
+def NonTerminatedDerivation.end (d: NonTerminatedDerivation G v w) : G.V :=
+  match d with
+  | start _ => v
+  | cons _ d _ => d.end
+
+def DerivationStep.deconstruct { w: Word _ } { w': Word G.Z } (step: G.DerivationStep w) (h: step.result = (Sum.inr <$> w') * Word.mk [Sum.inl v]):
+  { r: G.V × (Word G.Z × G.Z) // .cons r.1 (r.2.2, v) ∈ G.productions ∧ w' = r.2.1 * Word.mk [r.2.2] ∧ w = Sum.inr <$> r.2.1 * Word.mk [Sum.inl r.1] } := by
+  sorry
+
+def NonTerminatedDerivation.fromDerivation (d: G.Derivation lhs rhs) (h_rhs: rhs = Sum.inr <$> w * Word.mk [.inl v']) (s: { v: G.V // lhs = [.inl v]})
+  : G.NonTerminatedDerivation v' w := by
+  cases d
+  
+  case same =>
+    apply start
+    have ⟨_, p⟩ := s
+    rw [h_rhs, Word.mul_eq_cons] at p
+    cases p
+    case inr _ h =>
+      apply False.elim
+      apply h.elim; intro _ ⟨_, h'⟩
+      let h' := h'.symm
+      rw [<- Word.eps_eq_nil, Word.mul_eq_eps] at h'
+      simp [Word.mk, Word.eps_eq_nil] at h'
+    case inl h =>
+      have ⟨h, _⟩ := h
+      rw [Word.map_eq_eps] at h
+      assumption
+
+  case step step sound _ =>
+    have ⟨v, h1⟩ := s
+    sorry
+
+inductive RegularDerivation (G: RegularGrammar α nt): Word G.Z → Type
+  | eps (left: G.NonTerminatedDerivation v w) (h: .eps left.end ∈ G.productions) : G.RegularDerivation w
+  | alpha (left: G.NonTerminatedDerivation v w) (h: .alpha left.end a ∈ G.productions) (_: w' = w * Word.mk [a]): G.RegularDerivation w'
+
+end RegularGrammar

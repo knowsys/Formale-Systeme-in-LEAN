@@ -6,6 +6,8 @@ import FormalSystems.Preliminaries.Alphabet
 
 def Word (α : Type u) := List α
 
+def Word.mk { a: Type } (l: List a) : Word a := l
+
 def Word.cons: α → Word α → Word α := List.cons
 
 theorem Word.cons_eq: Word.cons x xs = x :: xs := by rfl
@@ -97,6 +99,10 @@ theorem Word.cons_mul { w xs : Word α } :
   (Word.cons x xs) * w = x :: (xs * w) :=
   List.cons_append _ _ _
 
+theorem Word.mul_cons { w xs : Word α } :
+  w * Word.mk (x :: xs) = Word.mk w * Word.mk [x] * xs :=
+  List.append_cons _ _ _
+
 def Word.len: (w:Word α) → Nat
   | [] => 0
   | (_::xs) => 1 + Word.len (xs)
@@ -121,3 +127,44 @@ instance : GetElem (Word α) ℕ α (λw i ↦ i < w.length) where
   List.map_append f
 
 theorem Word.map_eq_eps : f <$> w = ε ↔ w = ε := List.map_eq_nil
+
+def Word.init (w: Word α) : Word α :=
+  match w with
+  | ε => ε
+  | _ :: ε => ε
+  | x :: y :: xs => x :: init (y :: xs)
+
+theorem Word.map_eq_mul_sing { w: Word α } { f: α → β } { inj: Function.Injective f }:
+  Word.mk (List.map f w) = w' * Word.mk [f v] → w = w.init * Word.mk [v] := by
+  intro h
+  cases w
+
+  . simp [mk, HMul.hMul, Mul.mul] at h
+    rw [List.nil_eq_append] at h
+    have ⟨_, _⟩ := h
+    contradiction
+
+  case cons x xs =>
+    simp [mk, HMul.hMul, Mul.mul] at h
+    rw [List.cons_eq_append] at h
+    cases h
+    case inl h =>
+      have ⟨hl, hr⟩ := List.cons_eq_cons.mp h.2
+      have xs_eq_nil := List.eq_nil_of_map_eq_nil hr.symm
+      simp [xs_eq_nil, init, mk]
+      rw [List.cons_eq_cons]
+      simp
+      apply inj
+      apply Eq.symm
+      assumption
+
+    case inr h =>
+      have ⟨ww, ⟨_, hr⟩⟩ := h
+      have _ := Word.map_eq_mul_sing (inj := inj) hr
+      cases xs
+      case nil => contradiction
+      case cons head tail =>
+        simp [init]
+        simp_rw [<- cons_eq, cons_mul, cons_eq]
+        rw [List.cons_eq_cons]
+        simp; assumption

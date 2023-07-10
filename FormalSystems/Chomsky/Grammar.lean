@@ -133,105 +133,53 @@ theorem DerivationStep.lhs_singleton (step: DerivationStep G [.inl v]) :
       . assumption
       . constructor; rfl; exact tmp.right
 
-inductive Derivation (G: Grammar Prod) : Word (G.V ⊕ G.Z) → Type
-| same (u: Word _) : G.Derivation u
+inductive Derivation (G: Grammar Prod) : Word (G.V ⊕ G.Z) → Word (G.V ⊕ G.Z) → Type
+| same (u: Word _) : G.Derivation u u
 | step
   { u: Word _ }
-  (steps: G.Derivation w)
   (step: G.DerivationStep w)
-  (sound: u = step.result):
-  Derivation G u
-
-def Derivation.lhs : Derivation G w → Word (G.V ⊕ G.Z)
-| same u => u
-| step l _ _ => l.lhs
+  (steps: G.Derivation u' u)
+  (sound: step.result = u'):
+  Derivation G w u
 
 def DerivationRelation (G: Grammar Prod) (v w: Word (G.V ⊕ G.Z)) : Prop :=
-  ∃d: G.Derivation w, d.lhs = v 
+  Nonempty $ G.Derivation v w
 
 notation:40 u:40 " (" G:40 ")⇒* " v:41 => DerivationRelation G u v
 
 namespace Derivation
 
-def compose (b: G.Derivation w) (a: G.Derivation b.lhs) : G.Derivation w :=
-  match b with
-  | same _ => a
-  | step xs x h => step (xs.compose a) x h
+def compose { u v w: Word _ } (a: G.Derivation u v) (b: G.Derivation v w) : G.Derivation u w :=
+  match a with
+  | same _ => b
+  | step x xs h => step x (xs.compose b) h
 
-theorem compose_lhs { b: G.Derivation w } { a: G.Derivation b.lhs } : lhs (b.compose a) = lhs a := by
-  induction b with
-  | same _ => unfold compose; rfl
-  | step _ _ _ ih => simp [compose, lhs]; rw [ih]
-
-def augment_left_mul {v w: Word _} (d: G.Derivation v) :
-  G.Derivation (w * v) := by
-  match d with
-  | same _ => exact same _
-  | step xs x h =>
-    rw [h, <- DerivationStep.concat_left_result]
-    exact step (xs.augment_left_mul) (x.concat_left w) rfl
-
-def augment_left_cons {u: Word _} (w: _) (d: G.Derivation u) :
-  G.Derivation (w :: u) := by
-  match d with
-  | same _ => exact same _
-  | step xs x sound =>
-    have ih := xs.augment_left_cons w
-    apply step ih (x.concat_left [w])
-    rw [sound]
-    simp [DerivationStep.concat_left_result]
-    rfl
-
-theorem augment_left_cons_lhs (w: _) (d: G.Derivation u) :
-  (d.augment_left_cons w).lhs = w :: d.lhs := by
-  induction d with
-  | same _ => rfl
-  | step _ _ =>
-    unfold augment_left_cons; simp [lhs]
-    assumption
-
-theorem lhs_eps_imp_rhs_eps (d: G.Derivation w) : d.lhs = ε → w = ε := by
-  match d with
-  | same _ => intro h; unfold lhs at h; assumption
-  | step xs x _ =>
-    intro h; unfold lhs at h
-    have h' := Eq.symm x.sound
-    simp_rw [xs.lhs_eps_imp_rhs_eps h] at h'
-    simp [Word.mul_eq_eps] at h'
-    have ⟨_, y⟩ := Production.lhs_contains_var x.prod.val
-    rw [h'.1.2] at y
+theorem lhs_eps_imp_rhs_eps (d: G.Derivation ε w) : w = ε := by
+  cases d
+  . rfl
+  case step step _ _ =>
+    have h_step := step.sound.symm
+    simp [Word.mul_eq_eps] at h_step
+    have ⟨ ⟨ _, lhs_eps ⟩ , _⟩ := h_step
+    apply (Production.lhs_contains_var step.prod.val).elim
+    intro _ h
+    simp [lhs_eps] at h
     contradiction
-
-def prepend (d: G.Derivation w) (s: G.DerivationStep v) (h: s.result = d.lhs):
-  G.Derivation w := by
-  match d with
-  | same _ => 
-    exact .step (.same v) s h.symm
-  | step xs x _ =>
-    apply Grammar.Derivation.step
-    unfold lhs at h
-    exact xs.prepend s h
-    assumption
-
-theorem prepend_lhs { d: G.Derivation w } { s: G.DerivationStep v } { h: _ } :
-  (d.prepend s h).lhs = v := by
-  induction d with
-  | same _ => unfold prepend; rfl
-  | step _ _ => sorry
 
 end Derivation
 
 namespace DerivationRelation
 
 theorem trans { u v w: Word _ } (h₁: u (G)⇒* v) (h₂: v (G)⇒* w) : u (G)⇒* w := by
-  have ⟨d₂, h₂⟩ := h₂
-  have ⟨d₁, h₁⟩ := (Eq.symm h₂) ▸ h₁
-  exists d₂.compose d₁
-  rw [<- h₁]
-  apply Derivation.compose_lhs
+  apply h₂.elim
+  apply h₁.elim
+  intro d₁ d₂
+  apply Nonempty.intro
+  exact d₁.compose d₂
 
 theorem refl { u: Word _ } : u (G)⇒* u := by
-  exists .same _
+  apply Nonempty.intro
+  exact .same _
 
 instance preorder (G: Grammar Prod) : Preorder (Word (G.V ⊕ G.Z)) where
   le u v := u (G)⇒* v
