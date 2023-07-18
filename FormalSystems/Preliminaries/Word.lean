@@ -6,6 +6,8 @@ import FormalSystems.Preliminaries.Alphabet
 
 def Word (α : Type u) := List α
 
+def Word.mk (w: List α) : Word α := w
+
 instance Word.monoid: CancelMonoid (Word α) where
   mul := List.append
   mul_assoc := List.append_assoc

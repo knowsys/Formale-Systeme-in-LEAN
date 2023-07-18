@@ -75,7 +75,7 @@ instance : Coe (RegularGrammar α nt) (@Grammar α nt GenericProduction _) where
     productions := g.productions.map RegularProduction.toProduction
   }
 
-variable { G: RegularGrammar α nt } { p: G.productions } { v v': G.V } { w: G.Z }
+variable { G: RegularGrammar α nt } { p: G.productions } { v v': G.V }
 
 open Grammar
 
@@ -86,3 +86,33 @@ theorem RegularProduction.eps_step_result:
 theorem RegularProduction.cons_step_result:
   p.val = .cons v (w, b) → (DerivationStep.fromRule p).result = [.inr w, .inl b] := by
   intro h; simp [DerivationStep.fromRule, DerivationStep.result, h]; rfl
+
+namespace RegularGrammar
+
+structure RegularDerivationStep (G: RegularGrammar α nt) (w: Word (G.V ⊕ G.Z)) where
+  prod: G.productions
+  pre: Word G.Z
+  sound: w = (.inr <$> pre) * Word.mk [.inl prod.val.lhs]
+
+def RegularDerivationStep.result (s: G.RegularDerivationStep w) : Word (G.V ⊕ G.Z) :=
+  match s.prod.val with
+  | .eps _ => .inr <$> s.pre
+  | .alpha _ a => (.inr <$> s.pre) * Word.mk [.inr a]
+  | .cons _ (a, A) => (.inr <$> s.pre) * Word.mk [.inr a, .inl A]
+
+inductive RegularDerivation (G: RegularGrammar α nt) : Word (G.V ⊕ G.Z) → Type
+| start : G.RegularDerivation [.inl G.start]
+| step 
+  (d: G.RegularDerivation w)
+  (s: G.RegularDerivationStep w)
+  (h: u = s.result):
+  G.RegularDerivation u
+
+def RegularDerivation.fromDerivation (d: G.Derivation [.inl G.start] w):
+  G.RegularDerivation w := by
+  cases d
+  exact RegularDerivation.start
+  case step s h d =>
+    sorry
+
+end RegularGrammar
