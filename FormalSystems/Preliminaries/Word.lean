@@ -75,7 +75,7 @@ instance [Alphabet α] : Denumerable (Word α) where
   encodek := by simp
   decode_inv := by simp
 
-def Word.epsilon : Word α := 1
+@[match_pattern] def Word.epsilon : Word α := 1
 notation (priority := high) "ε" => Word.epsilon
 
 theorem Word.eps_eq_nil : (ε : Word α) = ([] : Word _) := by rfl

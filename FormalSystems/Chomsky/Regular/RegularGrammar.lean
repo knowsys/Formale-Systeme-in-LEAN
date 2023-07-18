@@ -77,6 +77,8 @@ instance : Coe (RegularGrammar α nt) (@Grammar α nt GenericProduction _) where
 
 variable { G: RegularGrammar α nt } { p: G.productions } { v v': G.V } { w: G.Z }
 
+open Grammar
+
 theorem RegularProduction.eps_step_result:
   p.val = RegularProduction.eps v → (DerivationStep.fromRule p).result = ε := by
   intro h; simp [DerivationStep.fromRule, DerivationStep.result, h]; rfl
@@ -84,7 +86,3 @@ theorem RegularProduction.eps_step_result:
 theorem RegularProduction.cons_step_result:
   p.val = .cons v (w, b) → (DerivationStep.fromRule p).result = [.inr w, .inl b] := by
   intro h; simp [DerivationStep.fromRule, DerivationStep.result, h]; rfl
-
-theorem RegularProduction.eps_lhs { V: Finset nt } { v: V }
-  : Production.lhs (RegularProduction.eps v: RegularProduction Z V) = [.inl v] := by
-  rfl
