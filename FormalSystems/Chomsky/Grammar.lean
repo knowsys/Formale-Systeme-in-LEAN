@@ -67,7 +67,7 @@ structure DerivationStep (G: Grammar Prod) (u: Word (G.V ⊕ G.Z)) where
 
 variable { G: Grammar Prod } { u: Word (G.V ⊕ G.Z) }
 
-def DerivationStep.concat_left (step: DerivationStep G u) (w: Word (G.V ⊕ G.Z)):
+def DerivationStep.augment_left (step: DerivationStep G u) (w: Word (G.V ⊕ G.Z)):
   DerivationStep G (w * u) :=
   { 
     prod := step.prod, 
@@ -83,10 +83,10 @@ def DerivationStep.concat_left (step: DerivationStep G u) (w: Word (G.V ⊕ G.Z)
 def DerivationStep.result (step: DerivationStep G u) : Word (G.V ⊕ G.Z) :=
   step.pre * Production.rhs step.prod.val * step.suf
 
-theorem DerivationStep.concat_left_result (step: DerivationStep G u) (w: Word (G.V ⊕ G.Z)):
-  (step.concat_left w).result = w * step.result := by
+theorem DerivationStep.augment_left_result (step: DerivationStep G u) (w: Word (G.V ⊕ G.Z)):
+  (step.augment_left w).result = w * step.result := by
   unfold DerivationStep.result
-  unfold concat_left
+  unfold augment_left
   simp [mul_assoc]
 
 def DerivationStep.fromRule (p: G.productions) : DerivationStep G (Production.lhs (p.val)) where
@@ -120,8 +120,8 @@ theorem augment_left {u v w: Word _} (d: G.Derivation u v) :
     apply step
     . assumption
     swap
-    . exact s.concat_left w
-    . rw [<- sound]; exact s.concat_left_result _
+    . exact s.augment_left w
+    . rw [<- sound]; exact s.augment_left_result _
 
 def augment_left_cons {u v: Word _} (d: G.Derivation u v) :
   G.Derivation (w :: u) (w :: v) := by
@@ -131,8 +131,8 @@ def augment_left_cons {u v: Word _} (d: G.Derivation u v) :
     apply step
     . exact d'.augment_left_cons
     swap
-    . exact s.concat_left [w]
-    . rw [<- sound]; exact s.concat_left_result _
+    . exact s.augment_left [w]
+    . rw [<- sound]; exact s.augment_left_result _
 
 theorem trans {u v w: Word _} (d1: G.Derivation u v) (d2: G.Derivation v w) : G.Derivation u w := by
   induction d1 with
