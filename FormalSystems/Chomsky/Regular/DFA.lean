@@ -47,7 +47,7 @@ def toGrammar (M: DFA α qs) : RegularGrammar α qs where
   productions := (Finset.eraseNone $ Fintype.elems.image M.transitionToRule) ∪
     M.F.map ⟨ .eps, by intro _ _; simp ⟩
 
-def final_state_to_derivation_step (state: M.F) : M.toGrammar.DerivationStep [.inl state.val] where
+def final_state_to_derivation_step (state: M.Q) (_: state ∈ M.F): M.toGrammar.DerivationStep [.inl state] where
   pre := ε
   suf := ε
   prod := by
@@ -55,17 +55,10 @@ def final_state_to_derivation_step (state: M.F) : M.toGrammar.DerivationStep [.i
     dsimp [toGrammar]
     simp
     apply Or.inr
-    exists state.val, state.val.property
-    constructor
-    exact state.property
-    rfl
+    exists state, state.property
 
   sound := by
     rfl
-
-theorem final_state_to_derivation_step_rhs (state: M.F) :
-  (M.final_state_to_derivation_step state).result = ε := by
-  rfl
 
 def state_transition_to_derivation_step (a: M.Z) (q₁ q₂: M.Q) (h: q₂ ∈ M.δ (q₁, a)) :
   M.toGrammar.DerivationStep [.inl q₁] where
@@ -86,11 +79,10 @@ def Run.toDerivation (run: M.Run start word) (hlast: run.last ∈ M.F):
   case final hend =>
     rw [hend]
     unfold NFA.Run.last at hlast
-    simp; rw [<- Word.eps_eq_nil]
-    rw [<- M.final_state_to_derivation_step_rhs]; swap
-    exact ⟨ start, hlast ⟩
     apply Grammar.Derivation.step
-    apply Grammar.Derivation.same
+    apply Grammar.Derivation.same; swap
+    apply final_state_to_derivation_step
+    assumption
     rfl
 
   case step a _ qn run' =>
