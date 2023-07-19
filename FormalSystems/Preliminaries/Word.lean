@@ -88,6 +88,9 @@ theorem Word.eps_eq_nil : (ε : Word α) = ([] : Word _) := by rfl
 
 @[simp] theorem Word.eps_mul : ε * w = w := by simp; rfl
 
+theorem Word.mul_eq_eps { w v : Word α } : w * v = ε ↔ w = ε ∧ v = ε :=
+  List.append_eq_nil
+
 def Word.len: (w:Word α) → Nat
   | [] => 0
   | (_::xs) => 1 + Word.len (xs)

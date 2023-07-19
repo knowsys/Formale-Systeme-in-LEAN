@@ -32,3 +32,25 @@ instance : Coe (ContextFreeGrammar α nt) (@Grammar α nt GenericProduction _) w
     start := g.start,
     productions := g.productions.map ContextFreeProduction.toProduction
   }
+
+class Production.ContextFree (α: Type) (nt: Type) (P: Finset α → Finset nt → Type) [Production α nt P] where
+  lhs: P Z V → V
+  lhs_eq_lhs: ∀(p: P Z V), Production.lhs p = [Sum.inl $ lhs p]
+
+instance : Production.ContextFree α nt ContextFreeProduction where
+  lhs p := p.lhs
+  lhs_eq_lhs _ := by rfl
+
+variable [Production α nt P] { G: Grammar P } [Production.ContextFree α nt P]
+
+def Grammar.Derivation.cancelLeft
+  { w: Word G.Z } { xs: Word (G.V ⊕ G.Z) } { a: G.Z }
+  (d: G.Derivation lhs rhs) (h_lhs: lhs = (.inr a :: xs)) (h_rhs: rhs = (.inr <$> w)):
+  { d: G.Derivation xs (.inr <$> w.tail) // w = a :: w.tail } := by
+  sorry
+
+theorem Grammar.Derivation.cancelLeft_len
+  { w: Word G.Z } { xs: Word (G.V ⊕ G.Z) } { a: G.Z }
+  (d: G.Derivation lhs rhs) {h_lhs: lhs = (.inr a :: xs)} {h_rhs: rhs = (.inr <$> w)}:
+  (d.cancelLeft h_lhs h_rhs).val.len = d.len := by
+  sorry

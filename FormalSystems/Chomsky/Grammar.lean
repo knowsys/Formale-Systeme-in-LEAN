@@ -99,6 +99,40 @@ theorem DerivationStep.from_rule_result { p: G.productions } :
   (DerivationStep.fromRule p).result = (Production.rhs (p.val)) := by
   simp [result, DerivationStep.fromRule, Word.epsilon]
 
+
+theorem DerivationStep.lhs_singleton (step: DerivationStep G [.inl v]) :
+  (Production.lhs step.prod.val) = [.inl v] ∧ step.pre = ε ∧ step.suf = ε := by
+  match hpre:step.pre with
+  | .cons _ _ =>
+    have tmp := Eq.symm $ hpre ▸ step.sound
+    simp [mul_assoc, HMul.hMul, Mul.mul, List.cons_append] at tmp
+    rw [List.cons_eq_cons] at tmp
+    simp_rw [List.append_eq_nil] at tmp
+    have tmp := tmp.2.2.1
+    have ⟨_, h⟩ := Production.lhs_contains_var step.prod.val
+    rw [tmp] at h
+    contradiction
+
+  | .nil =>
+    have tmp := Eq.symm $ hpre ▸ step.sound
+    simp [<- Word.eps_eq_nil, Word.mul_eq_cons] at tmp
+    cases tmp
+
+    case inl h =>
+      have ⟨_, c⟩ := Production.lhs_contains_var step.prod.val
+      have ⟨h, _⟩ := h
+      rw [h] at c
+      contradiction
+
+    case inr h =>
+      have ⟨_, ⟨h₁, h₂⟩ ⟩ := h
+      have tmp := Word.mul_eq_eps.mp $ Eq.symm h₂
+      have tmp' := tmp.1 ▸ h₁
+      simp at tmp'
+      constructor
+      . assumption
+      . constructor; rfl; exact tmp.right
+
 inductive Derivation (G: Grammar Prod) : Word (G.V ⊕ G.Z) → Word (G.V ⊕ G.Z) → Type
 | same {u: Word (G.V ⊕ G.Z)} : G.Derivation u u
 | step
@@ -109,6 +143,10 @@ inductive Derivation (G: Grammar Prod) : Word (G.V ⊕ G.Z) → Word (G.V ⊕ G.
   Derivation G u v
 
 notation:40 u:40 " (" G:40 ")⇒* " v:41 => (Nonempty $ Derivation G u v)
+
+def Derivation.len { u w: Word (G.V ⊕ G.Z) }: G.Derivation u w → Nat
+| same => 0
+| step _ d _ => Nat.succ d.len
 
 namespace Derivation
 
