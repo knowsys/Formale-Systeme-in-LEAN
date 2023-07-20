@@ -157,13 +157,13 @@ def RegularDerivation.fromDerivation (d: G.Derivation [.inl X] w') (h: Sum.inr <
     | .cons _ (a, X') =>
       simp [hp, RegularProduction.rhs_eq_deconstr_rhs, pre, suf] at hd
       simp [Word.mk, HMul.hMul, Mul.mul] at hd
-      let ⟨_, hw⟩ := d'.cancelLeft hd.symm h.symm
+      let hw := ContextFreeGrammar.derivation_preserves_prefix d' hd.symm h.symm
       rw [hw]; apply RegularDerivation.step
       have hp': s.prod.val = .cons X (a, X') := by
         rw [Production.prod_ext]; constructor
         assumption; simp [hp]; rfl
       rw [<- hp']; exact s.prod.prop
-      exact RegularDerivation.fromDerivation (d'.cancelLeft hd.symm h.symm).val rfl
+      exact RegularDerivation.fromDerivation (d'.cancelLeft hd.symm h.symm) rfl
 
 termination_by fromDerivation d _ => d.len
 decreasing_by fromDerivation =>

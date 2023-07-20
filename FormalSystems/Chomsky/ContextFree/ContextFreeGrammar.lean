@@ -43,14 +43,55 @@ instance : Production.ContextFree α nt ContextFreeProduction where
 
 variable [Production α nt P] { G: Grammar P } [Production.ContextFree α nt P]
 
+theorem ContextFreeGrammar.derivation_step_prefix
+  { xs: Word (G.V ⊕ G.Z) } { a: G.Z }
+  (step: G.DerivationStep lhs) (h_lhs: lhs = (.inr a :: xs)):
+  step.pre = .inr a :: step.pre.tail := by
+  let sound := step.sound
+  simp [Production.ContextFree.lhs_eq_lhs, h_lhs] at sound
+  match hpre:step.pre with
+  | [] =>
+    simp_rw [hpre, HMul.hMul, Mul.mul] at sound
+    simp at sound; rw [List.cons_eq_cons] at sound
+    let ⟨_, _⟩ := sound
+    contradiction
+
+  | x :: pres => 
+    simp_rw [hpre, HMul.hMul, Mul.mul] at sound
+    simp at sound; rw [List.cons_eq_cons] at sound
+    simp [sound.left]
+
+theorem ContextFreeGrammar.derivation_preserves_prefix
+  { w: Word G.Z } { xs: Word (G.V ⊕ G.Z) } { a: G.Z }
+  (d: G.Derivation lhs rhs) (h_lhs: lhs = (.inr a :: xs)) (h_rhs: rhs = (.inr <$> w)):
+  w = a :: w.tail := by
+  match d with
+  | .same =>
+    rw [h_lhs] at h_rhs
+    cases w
+    simp [List.map_nil] at h_rhs
+    simp [List.map_cons] at h_rhs
+    rw [List.cons_eq_cons] at h_rhs
+    have _ := (Sum.inr_injective h_rhs.left).symm
+    simp; rw [List.cons_eq_cons]
+    simp; assumption
+
+  | .step s d r =>
+    unfold Grammar.DerivationStep.result at r
+    rw [ContextFreeGrammar.derivation_step_prefix s h_lhs] at r
+    simp_rw [HMul.hMul, Mul.mul] at r
+    simp at r
+    let h_lhs' := r.symm
+    exact ContextFreeGrammar.derivation_preserves_prefix d h_lhs' h_rhs
+
 def Grammar.Derivation.cancelLeft
   { w: Word G.Z } { xs: Word (G.V ⊕ G.Z) } { a: G.Z }
   (d: G.Derivation lhs rhs) (h_lhs: lhs = (.inr a :: xs)) (h_rhs: rhs = (.inr <$> w)):
-  { d: G.Derivation xs (.inr <$> w.tail) // w = a :: w.tail } := by
+  G.Derivation xs (.inr <$> w.tail) := by
   sorry
 
 theorem Grammar.Derivation.cancelLeft_len
   { w: Word G.Z } { xs: Word (G.V ⊕ G.Z) } { a: G.Z }
   (d: G.Derivation lhs rhs) {h_lhs: lhs = (.inr a :: xs)} {h_rhs: rhs = (.inr <$> w)}:
-  (d.cancelLeft h_lhs h_rhs).val.len = d.len := by
+  (d.cancelLeft h_lhs h_rhs).len = d.len := by
   sorry
