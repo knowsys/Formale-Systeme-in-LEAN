@@ -84,14 +84,74 @@ theorem ContextFreeGrammar.derivation_preserves_prefix
     let h_lhs' := r.symm
     exact ContextFreeGrammar.derivation_preserves_prefix d h_lhs' h_rhs
 
+def Grammar.DerivationStep.cancelLeft
+  { xs: Word (G.V ⊕ G.Z) } { a: G.Z }
+  (d: G.DerivationStep lhs) (h_lhs: lhs = (.inr a :: xs)):
+  { d': G.DerivationStep xs // d'.result = d.result.tail } where
+  val := { d with
+    pre := d.pre.tail
+    sound := by
+      simp;
+      have hxs : xs = lhs.tail
+      simp [h_lhs]
+      simp [hxs, HMul.hMul, Mul.mul]
+      rw [<- List.tail_append_of_ne_nil]
+      congr
+      have sound := d.sound
+      simp [HMul.hMul, Mul.mul] at sound
+      assumption
+      rw [ContextFreeGrammar.derivation_step_prefix d h_lhs]
+      simp
+  }
+  property := by
+    simp [result, HMul.hMul, Mul.mul]
+    rw [<- List.tail_append_of_ne_nil]
+    rw [ContextFreeGrammar.derivation_step_prefix d h_lhs]
+    simp
+
+open Grammar
+
 def Grammar.Derivation.cancelLeft
   { w: Word G.Z } { xs: Word (G.V ⊕ G.Z) } { a: G.Z }
   (d: G.Derivation lhs rhs) (h_lhs: lhs = (.inr a :: xs)) (h_rhs: rhs = (.inr <$> w)):
   G.Derivation xs (.inr <$> w.tail) := by
+  match d with
+  | .same =>
+    have eq : xs = .inr <$> w.tail; swap; rw [eq]
+    apply Derivation.same
+    rw [h_lhs] at h_rhs
+    cases w
+    contradiction
+    simp at h_rhs
+    rw [List.cons_eq_cons] at h_rhs
+    simp [h_rhs.2]
+  | .step s d r =>
+    let ⟨s', r'⟩ := s.cancelLeft h_lhs
+    rw [r] at r'
+    apply Derivation.step (u' := s'.result)
+    swap; rfl
+    generalize h_lhs': s'.result = xs'
+    apply d.cancelLeft
+    rw [<- h_lhs', r', <-r]
+    simp [DerivationStep.result, HMul.hMul, Mul.mul]
+    rw [ContextFreeGrammar.derivation_step_prefix s _]
+    simp; rfl; pick_goal 3
+    exact h_lhs
+    assumption
+
+theorem Grammar.Derivation.cancelLeft_len_same
+  { w: Word G.Z } { h_rhs: _ }:
+  (cancelLeft (w := w) .same h_lhs h_rhs).len = 0 := by
+  simp [cancelLeft]
   sorry
 
 theorem Grammar.Derivation.cancelLeft_len
   { w: Word G.Z } { xs: Word (G.V ⊕ G.Z) } { a: G.Z }
   (d: G.Derivation lhs rhs) {h_lhs: lhs = (.inr a :: xs)} {h_rhs: rhs = (.inr <$> w)}:
   (d.cancelLeft h_lhs h_rhs).len = d.len := by
-  sorry
+  induction d with
+  | same => simp [len]; apply cancelLeft_len_same
+  | step _ _ _ ih => 
+    simp [len]
+    unfold DerivationStep.result
+    sorry
