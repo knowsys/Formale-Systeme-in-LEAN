@@ -103,4 +103,28 @@ theorem lang_subs_grammar_lang :
   constructor
   exact run.toDerivation _ h
 
+theorem toGrammar_prod_imp_transition
+  (h: RegularProduction.cons v (a, v') ∈ M.toGrammar.productions):
+  M.δ (v, a) = some v' := by
+  simp [toGrammar, transitionToRule] at h
+  have ⟨_, _, _, _, _, _, _, _, c1, c2, c3⟩ := h
+  rw [<- c1, <- c2, <- c3]
+  assumption
+
+def Run.fromDerivation: (d: M.toGrammar.RegularDerivation start word) →
+  M.Run start word
+  | .eps v h => by
+    apply NFA.Run.final
+    rfl
+  | .alpha v a h => by
+    -- cannot happen - no corresponding production
+    simp [toGrammar, transitionToRule] at h
+  | .step v v' a h d' => by
+    apply NFA.Run.step; swap
+    constructor; swap; exact v'
+    simp [toNFA]
+    apply toGrammar_prod_imp_transition
+    assumption
+    exact fromDerivation d'
+
 end DFA
