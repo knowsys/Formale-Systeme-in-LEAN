@@ -97,7 +97,7 @@ def Run.toDerivation (run: M.Run start word) (hlast: run.last ∈ M.F):
     exact p
     rfl
 
-theorem lang_subs_grammar_lang :
+theorem lang_subs_toGrammar_lang :
   M.GeneratedLanguage ⊆ M.toGrammar.GeneratedLanguage := by
   intro _ ⟨ run, h ⟩
   constructor
@@ -126,5 +126,38 @@ def Run.fromDerivation: (d: M.toGrammar.RegularDerivation start word) →
     apply toGrammar_prod_imp_transition
     assumption
     exact fromDerivation d'
+
+theorem Run.fromDerivation_result {d: M.toGrammar.RegularDerivation s w}:
+  (Run.fromDerivation M d).last ∈ M.F := by
+  cases d
+  case eps _ h =>
+    simp [toGrammar, transitionToRule] at h
+    simp [fromDerivation, NFA.Run.last]
+    assumption
+
+  case alpha _ _ h =>
+    simp [toGrammar, transitionToRule] at h
+
+  case step _ _ _ _ _ =>
+    simp [fromDerivation, NFA.Run.last]
+    apply fromDerivation_result
+
+theorem toGrammar_lang_subs_lang :
+  M.toGrammar.GeneratedLanguage ⊆ M.GeneratedLanguage := by
+  intro _ h
+  apply Nonempty.elim h
+  intro d
+  constructor
+  apply Run.fromDerivation_result
+  apply RegularGrammar.RegularDerivation.fromDerivation
+  assumption
+  rfl
+
+theorem toGrammar_lang_eq_lang :
+  M.toGrammar.GeneratedLanguage = M.GeneratedLanguage := by
+  apply Set.ext
+  intros; constructor
+  apply toGrammar_lang_subs_lang
+  apply lang_subs_toGrammar_lang
 
 end DFA
