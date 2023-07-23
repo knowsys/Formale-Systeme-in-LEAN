@@ -151,19 +151,40 @@ def RegularDerivation.fromDerivation (d: G.Derivation [.inl X] w') (h: Sum.inr <
         have _ := contra.1.2
         contradiction
 
-    | .alpha _ a =>
+    | .alpha X' a =>
       simp [hp, RegularProduction.rhs_eq_deconstr_rhs, Word.mk] at hd
       simp [<-hd, pre, suf] at d'
       cases d'
-      . simp at h;
+      case same _ left _ =>
+        simp at h;
         -- Todo: Proof `w = [a]` (using injectivity of Sum.inr),
-        -- return [RegularDerivation.alpha]
+        have : w = [a]
         sorry
+        rw [this]
+        apply RegularDerivation.alpha
+        have : X = X'
+        rw [hp,
+          RegularProduction.lhs_eq_production_lhs,
+          List.cons_eq_cons]
+          at left
+        simp [RegularProduction.lhs] at left
+        exact left.symm
+        rw [this, <- hp]
+        exact s.prod.property
+
       case step s' _ _ =>
-        have contra := s'.sound.symm
-        simp [Word.mul_eq_cons] at contra
         apply False.elim
-        sorry
+        have contra := s'.sound.symm
+        rw [RegularProduction.lhs_eq_production_lhs] at contra
+        simp [HMul.hMul, Mul.mul] at contra
+        rw [List.append_eq_cons] at contra
+        cases contra
+        case inl h =>
+          have ⟨_, h⟩ := h
+          simp at h
+        case inr h =>
+          have ⟨_, h⟩ := h
+          simp at h
 
     | .cons _ (a, X') =>
       simp [hp, RegularProduction.rhs_eq_deconstr_rhs, pre, suf] at hd
