@@ -80,6 +80,9 @@ theorem RegularProduction.rhs_eq_deconstr_rhs (p: RegularProduction Z V):
     Word.mk (Sum.inl <$> p.getRhs.2.toList) := by
   cases p <;> rfl
 
+theorem RegularProduction.lhs_eq_production_lhs { p: RegularProduction Z V }:
+  Production.lhs p = [.inl p.lhs] := by rfl
+
 def RegularGrammar (α nt: Type) := @Grammar α nt RegularProduction _
 
 instance : Coe (RegularGrammar α nt) (ContextFreeGrammar α nt) where
@@ -107,7 +110,7 @@ theorem RegularProduction.cons_step_result:
 namespace RegularGrammar
 
 inductive RegularDerivation (G: RegularGrammar α nt) : G.V → Word G.Z → Type
-| eps (v: G.V) (h: .eps v ∈ G.productions): G.RegularDerivation st ε
+| eps (v: G.V) (h: .eps v ∈ G.productions): G.RegularDerivation v ε
 | alpha (v: G.V) (a: G.Z) (h: .alpha v a ∈ G.productions): G.RegularDerivation v [a]
 | step (v v': G.V) (a: G.Z) (h: .cons v (a, v') ∈ G.productions):
   G.RegularDerivation v' xs → G.RegularDerivation v (a :: xs)
@@ -125,14 +128,22 @@ def RegularDerivation.fromDerivation (d: G.Derivation [.inl X] w') (h: Sum.inr <
     have ⟨_, pre, suf⟩ := s.lhs_singleton
     unfold DerivationStep.result at hd
     match hp:s.prod.val with
-    | .eps _ =>
+    | .eps X' =>
       simp [hp, RegularProduction.rhs_eq_deconstr_rhs, Word.mk, <- Word.eps_eq_nil] at hd
       simp [<-hd, pre, suf] at d'
       cases d'
-      . simp at h; rw [Word.eps_eq_nil, List.map_eq_nil] at h
+      case same _ left _ =>
+        simp at h; rw [Word.eps_eq_nil, List.map_eq_nil] at h
         rw [h]
         apply RegularDerivation.eps
-        rw [<- hp]
+        have : X = X'
+        rw [hp,
+          RegularProduction.lhs_eq_production_lhs,
+          List.cons_eq_cons]
+          at left
+        simp [RegularProduction.lhs] at left
+        exact left.symm
+        rw [this, <- hp]
         exact s.prod.prop
       case step s' _ _ =>
         have contra := s'.sound.symm
