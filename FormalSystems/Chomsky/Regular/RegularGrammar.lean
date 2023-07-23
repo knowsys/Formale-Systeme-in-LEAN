@@ -157,9 +157,17 @@ def RegularDerivation.fromDerivation (d: G.Derivation [.inl X] w') (h: Sum.inr <
       cases d'
       case same _ left _ =>
         simp at h;
-        -- Todo: Proof `w = [a]` (using injectivity of Sum.inr),
         have : w = [a]
-        sorry
+        . simp [HMul.hMul, Mul.mul] at h
+          cases w
+          contradiction
+          simp [List.map_cons] at h
+          rw [List.cons_eq_cons] at h
+          have ⟨h1, h2⟩ := h
+          simp [Sum.inr_injective] at h1
+          simp [List.map_eq_nil] at h2
+          rw [h1, h2]
+
         rw [this]
         apply RegularDerivation.alpha
         have : X = X'
