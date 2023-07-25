@@ -150,13 +150,6 @@ instance : DerivationCls G (G.Derivation a b) where
   start := a
   result := b
 
-theorem Derivation.start_eq
-  [i₁: DerivationCls G t₁] [i₂: DerivationCls G t₂]:
-  t₁ = t₂ → i₁.start = i₂.start := by
-  intro h
-  congr
-  sorry
-
 notation:40 u:40 " (" G:40 ")⇒* " v:41 => (Nonempty $ Derivation G u v)
 
 def Derivation.len { u w: Word (G.V ⊕ G.Z) }: G.Derivation u w → Nat

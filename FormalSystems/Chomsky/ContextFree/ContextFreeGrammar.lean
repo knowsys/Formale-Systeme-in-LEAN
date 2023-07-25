@@ -137,18 +137,6 @@ def Grammar.Derivation.cancelLeft
     exact h_lhs
     assumption
 
-theorem derivation_type_ext:
-  G.Derivation a b = G.Derivation x y → a = x := by
-  intro h
-  have : x = DerivationCls.start (Derivation G x y) := by rfl
-  rw [this]
-  have : a = DerivationCls.start (Derivation G a b) := by rfl
-  conv =>
-    lhs
-    rw [this]
-  apply Derivation.start_eq
-  assumption
-
 theorem Grammar.Derivation.cancelLeft_len_same
   { w: Word G.Z } { h_rhs: _ }:
   (cancelLeft (w := w) (.same h) h_lhs h_rhs).len = 0 := by
