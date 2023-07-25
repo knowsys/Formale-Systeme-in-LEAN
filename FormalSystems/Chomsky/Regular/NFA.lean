@@ -13,11 +13,17 @@ namespace NFA
 
 inductive Run (M: NFA α qs) : M.Q → Word M.Z → Type
   | final (q: M.Q) (h: w = ε) : M.Run q w
-  | step (q₁: M.Q) (q₂: M.δ (q₁, a)) (r: M.Run q₂ w) : M.Run q₁ (a :: w)
+  | step (q₁: M.Q) (q₂: M.δ (q₁, a)) (r: M.Run q₂ w) (h: w' = a :: w) : M.Run q₁ w'
 
-def Run.last {M: NFA α qs} {w: Word M.Z} {q: M.Q} : (r: M.Run q w) → M.Q
+variable {M: NFA α qs}
+
+def Run.last: (r: M.Run q w) → M.Q
   | final q _ => q
-  | step _ _ r => r.last
+  | step _ _ r _ => r.last
+
+def Run.len: (r: M.Run q w) → Nat
+  | final _ _ => 0
+  | step _ _ r _ => Nat.succ r.len
 
 def GeneratedLanguage (M: NFA α qs) : Language M.Z :=
   fun w => ∃(q₀ : M.Q₀) (run: M.Run q₀ w), run.last ∈ M.F

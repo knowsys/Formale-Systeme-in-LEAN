@@ -75,20 +75,21 @@ def state_transition_to_derivation_step (a: M.Z) (q₁ q₂: M.Q) (h: q₂ ∈ M
 
 def Run.toDerivation (run: M.Run start word) (hlast: run.last ∈ M.F):
   M.toGrammar.Derivation [.inl start] (.inr <$> word) := by
-  cases run
-  case final hend =>
-    rw [hend]
+  match run with
+  | NFA.Run.final q hend =>
     unfold NFA.Run.last at hlast
     apply Grammar.Derivation.step
-    apply Grammar.Derivation.same; swap
+    apply Grammar.Derivation.same
+    simp [hend]; rfl; swap
     apply final_state_to_derivation_step
     assumption
     rfl
 
-  case step a _ qn run' =>
+  | NFA.Run.step a qn run' h_w =>
     unfold NFA.Run.last at hlast
     have d' := DFA.Run.toDerivation run' hlast
     apply Grammar.Derivation.step
+    rw [h_w]
     apply (d'.augment_left_cons); swap
     apply state_transition_to_derivation_step
     have p := qn.prop
@@ -113,14 +114,15 @@ theorem toGrammar_prod_imp_transition
 
 def Run.fromDerivation: (d: M.toGrammar.RegularDerivation start word) →
   M.Run start word
-  | .eps v h => by
+  | .eps _ _ _ => by
     apply NFA.Run.final
-    rfl
-  | .alpha v a h => by
+    assumption
+  | .alpha _ h _ => by
     -- cannot happen - no corresponding production
     simp [toGrammar, transitionToRule] at h
-  | .step v v' a h d' => by
-    apply NFA.Run.step; swap
+  | .step v v' h_v h_w d' => by
+    apply NFA.Run.step; swap;
+    assumption; swap
     constructor; swap; exact v'
     simp [toNFA]
     apply toGrammar_prod_imp_transition
@@ -130,15 +132,15 @@ def Run.fromDerivation: (d: M.toGrammar.RegularDerivation start word) →
 theorem Run.fromDerivation_result {d: M.toGrammar.RegularDerivation s w}:
   (Run.fromDerivation M d).last ∈ M.F := by
   cases d
-  case eps _ h =>
-    simp [toGrammar, transitionToRule] at h
+  case eps h_v h_w =>
+    simp [toGrammar, transitionToRule] at h_v
     simp [fromDerivation, NFA.Run.last]
     assumption
 
-  case alpha _ _ h =>
-    simp [toGrammar, transitionToRule] at h
+  case alpha h_v _ =>
+    simp [toGrammar, transitionToRule] at h_v
 
-  case step _ _ _ _ _ =>
+  case step h_w =>
     simp [fromDerivation, NFA.Run.last]
     apply fromDerivation_result
 

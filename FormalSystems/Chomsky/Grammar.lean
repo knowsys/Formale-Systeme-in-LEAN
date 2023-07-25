@@ -134,7 +134,7 @@ theorem DerivationStep.lhs_singleton (step: DerivationStep G [.inl v]) :
       . constructor; rfl; exact tmp.right
 
 inductive Derivation (G: Grammar Prod) : Word (G.V ⊕ G.Z) → Word (G.V ⊕ G.Z) → Type
-| same {u: Word (G.V ⊕ G.Z)} : G.Derivation u u
+| same {u v: Word (G.V ⊕ G.Z)} (h: u = v) : G.Derivation u v
 | step
   {u u' v: Word (G.V ⊕ G.Z)}
   (step: G.DerivationStep u)
@@ -142,10 +142,25 @@ inductive Derivation (G: Grammar Prod) : Word (G.V ⊕ G.Z) → Word (G.V ⊕ G.
   (sound: step.result = u') :
   Derivation G u v
 
+class DerivationCls (G: Grammar Prod) (t: Type) where
+  start: Word (G.V ⊕ G.Z)
+  result: Word (G.V ⊕ G.Z)
+
+instance : DerivationCls G (G.Derivation a b) where
+  start := a
+  result := b
+
+theorem Derivation.start_eq
+  [i₁: DerivationCls G t₁] [i₂: DerivationCls G t₂]:
+  t₁ = t₂ → i₁.start = i₂.start := by
+  intro h
+  congr
+  sorry
+
 notation:40 u:40 " (" G:40 ")⇒* " v:41 => (Nonempty $ Derivation G u v)
 
 def Derivation.len { u w: Word (G.V ⊕ G.Z) }: G.Derivation u w → Nat
-| same => 0
+| same _ => 0
 | step _ d _ => Nat.succ d.len
 
 namespace Derivation
@@ -153,7 +168,7 @@ namespace Derivation
 theorem augment_left {u v w: Word _} (d: G.Derivation u v) :
   G.Derivation (w * u) (w * v) := by
   induction d with
-  | same => exact same
+  | same h => apply same; simp [h]
   | step s _ sound => 
     apply step
     . assumption
@@ -164,7 +179,7 @@ theorem augment_left {u v w: Word _} (d: G.Derivation u v) :
 def augment_left_cons {u v: Word _} (d: G.Derivation u v) :
   G.Derivation (w :: u) (w :: v) := by
   match d with
-  | same => exact same
+  | same h => apply same; simp [h]
   | step s d' sound =>
     apply step
     . exact d'.augment_left_cons
@@ -174,14 +189,14 @@ def augment_left_cons {u v: Word _} (d: G.Derivation u v) :
 
 theorem trans {u v w: Word _} (d1: G.Derivation u v) (d2: G.Derivation v w) : G.Derivation u w := by
   induction d1 with
-  | same => exact d2
+  | same h => exact h ▸ d2
   | step l _ sound ih => exact step l (ih d2) sound
 
 end Derivation
 
 instance DerivationRelation.preorder (G: Grammar Prod) : Preorder (Word (G.V ⊕ G.Z)) where
   le u v := u (G)⇒* v
-  le_refl w := Nonempty.intro Derivation.same
+  le_refl w := Nonempty.intro $ Derivation.same rfl
   le_trans _ _ _ := by
     intro ⟨d₁⟩ ⟨d₂⟩
     apply Nonempty.intro

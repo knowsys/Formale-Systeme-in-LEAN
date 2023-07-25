@@ -66,8 +66,8 @@ theorem ContextFreeGrammar.derivation_preserves_prefix
   (d: G.Derivation lhs rhs) (h_lhs: lhs = (.inr a :: xs)) (h_rhs: rhs = (.inr <$> w)):
   w = a :: w.tail := by
   match d with
-  | .same =>
-    rw [h_lhs] at h_rhs
+  | .same h =>
+    rw [<- h, h_lhs] at h_rhs
     cases w
     simp [List.map_nil] at h_rhs
     simp [List.map_cons] at h_rhs
@@ -116,10 +116,9 @@ def Grammar.Derivation.cancelLeft
   (d: G.Derivation lhs rhs) (h_lhs: lhs = (.inr a :: xs)) (h_rhs: rhs = (.inr <$> w)):
   G.Derivation xs (.inr <$> w.tail) := by
   match d with
-  | .same =>
-    have eq : xs = .inr <$> w.tail; swap; rw [eq]
+  | .same h =>
     apply Derivation.same
-    rw [h_lhs] at h_rhs
+    rw [<- h, h_lhs] at h_rhs
     cases w
     contradiction
     simp at h_rhs
@@ -130,28 +129,38 @@ def Grammar.Derivation.cancelLeft
     rw [r] at r'
     apply Derivation.step (u' := s'.result)
     swap; rfl
-    generalize h_lhs': s'.result = xs'
     apply d.cancelLeft
-    rw [<- h_lhs', r', <-r]
+    rw [r', <-r]
     simp [DerivationStep.result, HMul.hMul, Mul.mul]
     rw [ContextFreeGrammar.derivation_step_prefix s _]
     simp; rfl; pick_goal 3
     exact h_lhs
     assumption
 
+theorem derivation_type_ext:
+  G.Derivation a b = G.Derivation x y → a = x := by
+  intro h
+  have : x = DerivationCls.start (Derivation G x y) := by rfl
+  rw [this]
+  have : a = DerivationCls.start (Derivation G a b) := by rfl
+  conv =>
+    lhs
+    rw [this]
+  apply Derivation.start_eq
+  assumption
+
 theorem Grammar.Derivation.cancelLeft_len_same
   { w: Word G.Z } { h_rhs: _ }:
-  (cancelLeft (w := w) .same h_lhs h_rhs).len = 0 := by
+  (cancelLeft (w := w) (.same h) h_lhs h_rhs).len = 0 := by
   simp [cancelLeft]
-  sorry
+  unfold len
+  rfl
 
 theorem Grammar.Derivation.cancelLeft_len
-  { w: Word G.Z } { xs: Word (G.V ⊕ G.Z) } { a: G.Z }
-  (d: G.Derivation lhs rhs) {h_lhs: lhs = (.inr a :: xs)} {h_rhs: rhs = (.inr <$> w)}:
+  (d: G.Derivation lhs rhs):
   (d.cancelLeft h_lhs h_rhs).len = d.len := by
-  induction d with
-  | same => simp [len]; apply cancelLeft_len_same
-  | step _ _ _ ih => 
+  match d with
+  | .same _ => simp [len]
+  | .step _ _ _ =>
     simp [len]
-    unfold DerivationStep.result
-    sorry
+    apply cancelLeft_len
