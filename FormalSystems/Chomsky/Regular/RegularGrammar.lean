@@ -95,7 +95,7 @@ instance : Coe (RegularGrammar α nt) (@Grammar α nt GenericProduction _) where
     productions := g.productions.map RegularProduction.toProduction
   }
 
-variable { G: RegularGrammar α nt } { p: G.productions } { v v': G.V }
+variable { G: RegularGrammar α nt } { p: G.productions }
 
 open Grammar
 
@@ -106,6 +106,14 @@ theorem RegularProduction.eps_step_result:
 theorem RegularProduction.cons_step_result:
   p.val = .cons v (w, b) → (DerivationStep.fromRule p).result = [.inr w, .inl b] := by
   intro h; simp [DerivationStep.fromRule, DerivationStep.result, h]; rfl
+
+theorem RegularProduction.eq_eps_from_isEps
+  { Z: Finset α } { V: Finset nt }
+  { p: RegularProduction Z V }:
+  p.isEps → p = RegularProduction.eps p.lhs := by
+  intro h
+  match p with
+  | .eps _ => rfl
 
 namespace RegularGrammar
 
@@ -239,5 +247,42 @@ decreasing_by
     simp_rw [Derivation.cancelLeft_len _]
     apply (Prod.Lex.lt_iff _ _).mpr
     simp
+
+def RegularDerivation.toDerivation (d: G.RegularDerivation v w):
+  G.Derivation [.inl v] (Sum.inr <$> w) := by
+  cases d
+  case eps h_l h_r =>
+    apply Derivation.step
+    apply Derivation.same
+    simp [h_r]; rfl; swap
+    constructor
+    case pre => exact ε
+    case suf => exact ε
+    case prod => constructor; assumption
+    simp; rfl
+    rfl
+
+  case alpha h_l h_r =>
+    apply Derivation.step
+    apply Derivation.same
+    simp [h_r]; rfl; swap
+    constructor
+    case pre => exact ε
+    case suf => exact ε
+    case prod => constructor; assumption
+    simp; rfl
+    rfl
+  
+  case step d' h_l h_r =>
+    apply Derivation.step
+    simp [h_r]
+    apply Derivation.augment_left_cons
+    apply d'.toDerivation
+    swap; constructor
+    case pre => exact ε
+    case suf => exact ε
+    case prod => constructor; assumption
+    simp; rfl
+    rfl
 
 end RegularGrammar
