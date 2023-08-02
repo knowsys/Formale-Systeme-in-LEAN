@@ -238,15 +238,7 @@ theorem ExampleGrammar.productions_eq_ex_productions (p: GenericProduction _ _):
 def ExampleGrammar.lang: Language ({ 'b', 'z' } : Finset _) := 
   { [⟨ 'b', by simp ⟩] } ∘ₗ { [⟨ 'b', by simp ⟩], [⟨ 'z', by simp ⟩] }∗
 
-theorem ExampleGrammar.gen_lang_subs : ExampleGrammar.GeneratedLanguage ⊆ ExampleGrammar.lang := by
-  sorry
-
-theorem ExampleGrammar.gen_lang_supers : ExampleGrammar.lang ⊆ ExampleGrammar.GeneratedLanguage := by
-  sorry
-
-theorem ExampleGrammar.gen_lang : ExampleGrammar.GeneratedLanguage = ExampleGrammar.lang := by
-  apply Set.eq_of_subset_of_subset
-  . exact gen_lang_subs
-  . exact gen_lang_supers
+-- TODO: a proof for ExampleGrammar.GeneratedLanguage = ExampleGrammar.lang
+-- see lecture 2, slides 18 - 21
 
 end Grammar
