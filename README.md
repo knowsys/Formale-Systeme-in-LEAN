@@ -5,5 +5,9 @@ The project started and still emerges mostly through student projects. You are w
 
 ## Notes on Setup:
 
-Using `elan`:  
-`elan default leanprover/lean4:stable`
+Using `elan` / `lake`:  
+```
+lake build
+```
+This will download mathlib4 and build the project. Currently it might still break, because
+mathlib4 has no releases yet. (Todo: update this when mathlib4 has a release)

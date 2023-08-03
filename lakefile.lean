@@ -5,8 +5,8 @@ package foo {
   -- add package configuration options here
 }
 
+require mathlib 
+  from git "https://github.com/leanprover-community/mathlib4"
 
-@[defaultTarget]
-lean_exe foo {
-  root := `Main
-}
+@[default_target]
+lean_lib FormalSystems
