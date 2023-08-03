@@ -26,7 +26,7 @@ def Run.len: (r: M.Run q w) → Nat
   | step _ _ r _ => Nat.succ r.len
 
 def GeneratedLanguage (M: NFA α qs) : Language M.Z :=
-  fun w => ∃(q₀ : M.Q₀) (run: M.Run q₀ w), run.last ∈ M.F
+  fun w => ∃q₀ ∈ M.Q₀, ∃run: M.Run q₀ w, run.last ∈ M.F
  
 end NFA
 
@@ -166,18 +166,46 @@ def Run.fromDerivation (d: G.RegularDerivation q w):
     simp [RegularProduction.nextState]
     exists q', q'.prop
 
+theorem Run.fromDerivation_last_in_final:
+  (fromDerivation G d).last ∈ G.toNFA.F := by
+  match d with
+  | .eps (v:=v) _ _ =>
+    simp [last, toNFA]
+    exists .eps v
+  | .alpha _ _ _ =>
+    simp [last, fromDerivation, Fintype.wrap, toNFA]
+  | .step _ _ _ _ _ =>
+    simp [last]
+    apply fromDerivation_last_in_final
+
 end NFA
 
 theorem RegularGrammar.toNFA_lang_subs_lang:
   G.toNFA.GeneratedLanguage ⊆ G.GeneratedLanguage := by
-  intro w ⟨q₀, ⟨r, hr⟩⟩
+  intro w ⟨q₀, h_q₀, r, hr⟩
   constructor
   apply RegularDerivation.toDerivation
   apply NFA.Run.toDerivation
-  . have h_q₀ := q₀.prop
-    dsimp [toNFA] at h_q₀
+  . dsimp [toNFA] at h_q₀
     simp at h_q₀
     have := congrArg Subtype.val h_q₀
     simp at this
     assumption
   . assumption
+
+theorem RegularGrammar.lang_subs_toNFA_lang:
+  G.GeneratedLanguage ⊆ G.toNFA.GeneratedLanguage := by
+  intro w ⟨d⟩
+  constructor; constructor
+  simp [toNFA]; rfl
+  constructor
+  apply NFA.Run.fromDerivation_last_in_final
+  apply RegularDerivation.fromDerivation
+  assumption
+  rfl
+
+theorem RegularGrammar.lang_eq_toNFA_lang:
+  G.GeneratedLanguage = G.toNFA.GeneratedLanguage := by
+  apply Set.ext; intro; constructor
+  apply RegularGrammar.lang_subs_toNFA_lang
+  apply RegularGrammar.toNFA_lang_subs_lang
