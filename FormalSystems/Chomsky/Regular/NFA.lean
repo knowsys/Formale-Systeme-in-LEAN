@@ -13,7 +13,7 @@ namespace NFA
 
 inductive Run (M: NFA α qs) : M.Q → Word M.Z → Type
   | final (q: M.Q) (h: w = ε) : M.Run q w
-  | step (q₁: M.Q) (q₂: M.δ (q₁, a)) (r: M.Run q₂ w) (h: w' = a :: w) : M.Run q₁ w'
+  | step (q₁: M.Q) (_: q₂ ∈ M.δ (q₁, a)) (r: M.Run q₂ w) (h: w' = a :: w) : M.Run q₁ w'
 
 variable {M: NFA α qs}
 
@@ -84,36 +84,35 @@ def Run.toDerivation
         assumption
         assumption
 
-  | step _ q₂ r h =>
-    match h_q₂:q₂.val.val with
+  | step (q₂:=q₂) _ h_q₂ r h =>
+    match h_q₂':q₂.val with
     -- derivation step of the form A -> aB
     | .inl q₂' =>
       apply RegularDerivation.step; pick_goal 3
       -- recursively define derivation
       . apply toDerivation; pick_goal 4
-        exact r; exact h_q₂
+        exact r; assumption
         unfold last at hlast; assumption
 
       case h_w => assumption
 
       -- prove that there is a corresponding production rule
-      . have p_q₂ := q₂.prop
-        dsimp [toNFA] at p_q₂
-        simp_rw [h_q] at p_q₂
-        simp [RegularProduction.nextState, h_q₂] at p_q₂
-        have ⟨prod, left, h_prod⟩ := p_q₂
+      . dsimp [toNFA] at h_q₂
+        simp_rw [h_q] at h_q₂
+        simp [RegularProduction.nextState, h_q₂'] at h_q₂
+        have ⟨prod, left, h_prod⟩ := h_q₂
         cases h_prod
         case inr h =>
           have ⟨_, _, _, c⟩ := h
           have := congrArg Subtype.val c
-          simp [Fintype.wrap, h_q₂] at this
+          simp [Fintype.wrap, h_q₂'] at this
         case inl h =>
           have ⟨_, _, inner, _⟩ := h
           cases prod <;> simp [ite_eq_iff] at inner
           case cons right _ _ =>
             have ⟨⟨l, r₁⟩, r₂⟩ := inner
             have right := congrArg Subtype.val right
-            simp [Fintype.wrap, h_q₂] at right
+            simp [Fintype.wrap, h_q₂'] at right
             rw [<-l, <-r₁, <-right, <-r₂, Prod.eta _]
             assumption
 
@@ -122,30 +121,50 @@ def Run.toDerivation
       apply RegularDerivation.alpha; swap
       -- this is the last step
       . cases r
-        case step q₃ _ _ =>
-          have contra := q₃.prop
-          simp [toNFA, h_q₂] at contra
+        case step h _ =>
+          simp [toNFA, h_q₂'] at h
 
         rw [h, List.cons_eq_cons]
         constructor; rfl
         assumption
 
       -- the step is backed by a production rule
-      . have p_q₂ := q₂.prop
-        dsimp [toNFA] at p_q₂
-        simp_rw [h_q] at p_q₂
-        simp [RegularProduction.nextState, h_q₂] at p_q₂
-        have ⟨prod, _, h_prod⟩ := p_q₂
+      . dsimp [toNFA] at h_q₂
+        simp_rw [h_q] at h_q₂
+        simp [RegularProduction.nextState] at h_q₂
+        have ⟨prod, _, h_prod⟩ := h_q₂
         cases h_prod
         case inl h =>
           have ⟨_, _, _, c⟩ := h
           have := congrArg Subtype.val c
-          simp [Fintype.wrap, h_q₂] at this
+          simp [Fintype.wrap, h_q₂'] at this
         case inr h =>
           have ⟨_, _, inner, _⟩ := h
           cases prod <;> simp [ite_eq_iff] at inner
           rw [<- inner.1.1, <- inner.1.2]
           assumption
+
+def Run.fromDerivation (d: G.RegularDerivation q w):
+  G.toNFA.Run ⟨.inl q, Fintype.complete _⟩ w :=
+  match d with
+  | .eps _ _ _ => final _ (by assumption)
+  | .alpha (a := a) _ _ _ => by
+    apply step; swap; apply final
+    rfl; swap; assumption
+    simp [toNFA]
+    exists RegularProduction.alpha q a
+    constructor; assumption
+    simp [RegularProduction.nextState]
+    rfl
+  | .step (a:=a) _ q' _ _ d' => by
+    apply step; swap
+    apply fromDerivation d'
+    swap; assumption
+    simp [toNFA]
+    exists RegularProduction.cons q (a, q')
+    constructor; assumption
+    simp [RegularProduction.nextState]
+    exists q', q'.prop
 
 end NFA
 
