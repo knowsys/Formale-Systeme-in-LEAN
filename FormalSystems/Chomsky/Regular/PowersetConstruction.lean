@@ -14,16 +14,6 @@ def DFA.fromNFA (M: NFA α qs): DFA α (Finset M.Q) where
 
 variable [DecidableEq α] [DecidableEq qs] { M: NFA α qs }
 
-theorem fold_union_subs [DecidableEq β] { f: α → Finset β } { qa qb: Finset α } (h: qa ⊆ qb):
-  Finset.fold (β:=Finset β) (· ∪ ·) ∅ f qa ⊆ Finset.fold (· ∪ ·) ∅ f qb := by
-  apply Finset.subset_iff.mpr
-  intro _ h
-  apply Finset.mem_fold_union_iff.mpr
-  have ⟨x, _, _⟩ := Finset.mem_fold_union_iff.mp h
-  exists x; constructor
-  apply Finset.mem_of_subset
-  repeat { assumption }
-
 def DFA.fromNFA.RunFromRestricted { qs: _ }
   (r: (DFA.fromNFA M).Run q w)
   (h: q.val ⊆ qs.val):
@@ -39,7 +29,7 @@ def DFA.fromNFA.RunFromRestricted { qs: _ }
     assumption
     dsimp [toNFA, fromNFA] at x; simp at x
     simp_rw [x]
-    apply fold_union_subs
+    apply Finset.fold_union_subs
     repeat { assumption }
 
 theorem DFA.fromNFA.RunFromRestricted_final

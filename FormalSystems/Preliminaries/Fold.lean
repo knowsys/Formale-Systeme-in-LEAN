@@ -57,3 +57,13 @@ theorem Finset.mem_fold_union_iff { f: α → Finset β }:
     simp; constructor
     exists x
     assumption
+
+theorem Finset.fold_union_subs [DecidableEq β] { f: α → Finset β } { qa qb: Finset α } (h: qa ⊆ qb):
+  Finset.fold (β:=Finset β) (· ∪ ·) ∅ f qa ⊆ Finset.fold (· ∪ ·) ∅ f qb := by
+  apply Finset.subset_iff.mpr
+  intro _ h
+  apply Finset.mem_fold_union_iff.mpr
+  have ⟨x, _, _⟩ := Finset.mem_fold_union_iff.mp h
+  exists x; constructor
+  apply Finset.mem_of_subset
+  repeat { assumption }
