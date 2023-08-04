@@ -35,19 +35,16 @@ theorem List.mem_fold_union_iff { l: List (Finset β) }:
 theorem Finset.mem_fold_union_iff { f: α → Finset β }:
   e ∈ Finset.fold Union.union ∅ f s ↔ ∃ x ∈ s, e ∈ f x := by
   constructor
-  . cases s
-    case mk s' _ =>
-      revert s'
-      apply Quot.ind
-      intro l _ h
-      simp [Finset.fold] at h
-      have ⟨_, h, _⟩ := List.mem_fold_union_iff.mp h
-      simp at h
-      have ⟨x, _, h⟩ := h
-      exists x; simp
-      constructor
-      assumption
-      rw [h]; assumption
+  . have ⟨s, _⟩ := s
+    revert s
+    apply Quot.ind
+    intro l _ h
+    dsimp [Finset.fold] at h
+    have ⟨_, h, _⟩ := List.mem_fold_union_iff.mp h
+    simp at h
+    have ⟨x, _, h⟩ := h
+    exists x; simp [h]
+    constructor; repeat { assumption }
 
   . intro ⟨x, h₁, h₂⟩
     have ⟨s, _⟩ := s
