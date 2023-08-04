@@ -1,4 +1,5 @@
 import FormalSystems.Chomsky.Regular.DFA
+import FormalSystems.Preliminaries.Fold
 
 variable [DecidableEq α] [DecidableEq qs] 
 
@@ -13,52 +14,12 @@ def DFA.fromNFA (M: NFA α qs): DFA α (Finset M.Q) where
 
 variable [DecidableEq α] [DecidableEq qs] { M: NFA α qs }
 
-theorem mem_fold_union_iff [DecidableEq β] { f: α → Finset β }:
-  (∃ x ∈ s, e ∈ f x) ↔ e ∈ Finset.fold Union.union ∅ f s := by
-  constructor
-  . intro ⟨x, h₁, h₂⟩
-    have ⟨s, _⟩ := s
-    revert s
-    apply Quot.ind
-    intro l _ h
-    simp [Finset.fold, Multiset.fold]
-    induction l with
-    | nil => contradiction
-    | cons _ _ ih =>
-      cases h
-      . simp; apply Or.inl
-        assumption
-      . simp; apply Or.inr
-        apply ih
-        assumption
-        apply And.right ∘ Multiset.nodup_cons.mp
-        assumption
-  
-  . cases s
-    case mk s' _ =>
-      revert s'
-      apply Quot.ind
-      intro l _ h
-      simp [Finset.fold] at h
-      induction l with
-      | nil => contradiction
-      | cons x _ ih => 
-        simp at h
-        cases h
-        exists x; simp; assumption
-        have := ih (by apply And.right ∘ Multiset.nodup_cons.mp; assumption)
-        have ⟨x, _, _⟩ := this (by assumption)
-        exists x
-        constructor
-        simp; apply Or.inr; assumption
-        assumption
-
 theorem fold_union_subs [DecidableEq β] { f: α → Finset β } { qa qb: Finset α } (h: qa ⊆ qb):
   Finset.fold (β:=Finset β) (· ∪ ·) ∅ f qa ⊆ Finset.fold (· ∪ ·) ∅ f qb := by
   apply Finset.subset_iff.mpr
   intro _ h
-  apply mem_fold_union_iff.mp
-  have ⟨x, _, _⟩ := mem_fold_union_iff.mpr h
+  apply Finset.mem_fold_union_iff.mpr
+  have ⟨x, _, _⟩ := Finset.mem_fold_union_iff.mp h
   exists x; constructor
   apply Finset.mem_of_subset
   repeat { assumption }
