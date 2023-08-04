@@ -92,10 +92,9 @@ def Run.toDerivation (run: M.Run start word) (hlast: run.last ∈ M.F):
     rw [h_w]
     apply (d'.augment_left_cons); swap
     apply state_transition_to_derivation_step
-    have p := qn.prop
-    simp [toNFA] at p
+    simp [toNFA] at qn
     rw [Option.mem_iff]
-    exact p
+    exact qn
     rfl
 
 theorem lang_subs_toGrammar_lang :
@@ -121,9 +120,9 @@ def Run.fromDerivation: (d: M.toGrammar.RegularDerivation start word) →
     -- cannot happen - no corresponding production
     simp [toGrammar, transitionToRule] at h
   | .step v v' h_v h_w d' => by
-    apply NFA.Run.step; swap;
-    assumption; swap
-    constructor; swap; exact v'
+    apply NFA.Run.step; pick_goal 3
+    assumption; pick_goal 3
+    exact v'
     simp [toNFA]
     apply toGrammar_prod_imp_transition
     assumption
