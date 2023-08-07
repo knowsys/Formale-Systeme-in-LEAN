@@ -157,9 +157,14 @@ theorem LoopProgram.diagonal_is_not_loop_computable:
   ∀ p: LoopProgram, p.toFunction ≠ diagonal := by
   intro p h
   apply Nat.ne_of_lt
-  have := (congrFun h p.len).symm
-  unfold diagonal at this
-  have := this.le
-  rw [<- Nat.lt_iff_add_one_le, Finset.fold_max_lt] at this
-  exact this.right p (LoopProgram.ofLen_complete p.len p rfl)
-  rfl
+
+  . show p.toFunction p.len < diagonal p.len
+    unfold diagonal
+    rw [Nat.lt_add_one_iff, Finset.le_fold_max]
+    apply Or.inr
+    exists p; constructor
+    apply ofLen_complete; rfl
+    rfl
+
+  . apply congrFun
+    assumption
