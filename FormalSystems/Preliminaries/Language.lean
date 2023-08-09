@@ -20,7 +20,7 @@ instance : HasSubset (Language α) where
   Subset := Set.Subset
 
 instance : CompleteBooleanAlgebra (Language α) := 
-  Set.instCompleteBooleanAlgebraSet
+  Pi.completeBooleanAlgebra
 
 instance : Inter (Language α) where
   inter := Set.inter
