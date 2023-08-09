@@ -62,93 +62,106 @@ def LoopProgram.extendLenOne: LoopProgram → Finset LoopProgram
 | add x y n =>
   { add (Variable.mk $ x.index + 1) y n,
     add x (Variable.mk $ y.index + 1) n,
-    add x y (n + 1)
+    add x y (n + 1),
+    loop (.mk 0) (add x y n)
   }
 | sub x y n =>
   { sub (Variable.mk $ x.index + 1) y n,
     sub x (Variable.mk $ y.index + 1) n,
-    sub x y (n + 1)
+    sub x y (n + 1),
+    loop (.mk 0) (sub x y n)
   }
 | concat p₁ p₂ =>
   Finset.image (λp => concat p p₂) p₁.extendLenOne ∪
-  Finset.image (λp => concat p₁ p) p₂.extendLenOne
+  Finset.image (λp => concat p₁ p) p₂.extendLenOne ∪
+  { loop (.mk 0) (concat p₁ p₂) }
 | loop x p =>
-  { loop (Variable.mk $ x.index + 1) p } ∪
+  { loop (Variable.mk $ x.index + 1) p, loop (.mk 0) (loop x p) } ∪
   Finset.image (λp => loop x p) p.extendLenOne
+
+def LoopProgram.baseProgram: Nat → Finset LoopProgram
+| 0 => {}
+| 1 => LoopProgram.lenOne
+| 2 => Finset.image (loop (Variable.mk 0)) lenOne
+| 3 => Finset.image (λ(a, b) => concat a b) (Finset.product lenOne lenOne)
+| _ => {}
 
 def LoopProgram.ofLen: Nat → Finset LoopProgram
 | 0 => {}
-| 1 => LoopProgram.lenOne
-| 2 =>
-  Finset.fold (λa b => a ∪ b) {} extendLenOne lenOne ∪
-  Finset.image (λp => loop (Variable.mk 0) p) lenOne
-| 3 =>
-  Finset.fold (λa b => a ∪ b) {} extendLenOne (ofLen 2) ∪
-  Finset.image (λ(p₁, p₂) => concat p₁ p₂) (Finset.product lenOne lenOne)
 | n + 1 =>
-  Finset.fold (λa b => a ∪ b) {} extendLenOne (ofLen n)
+  Finset.fold (λa b => a ∪ b) {} extendLenOne (ofLen n) ∪
+  baseProgram (n + 1)
 
 open LoopProgram
 
-theorem LoopProgram.ofLen_two_complete:
-  ∀ p: LoopProgram, p.len = 2 → p ∈ LoopProgram.ofLen 2 := by
-  intro p h
-  rw [ofLen]
-  match p with
-  | add (.mk x) (.mk y) m =>
-    simp
-    apply Finset.mem_fold_union_iff.mpr
-    exists add (.mk 0) (.mk 0) 0
-    simp [extendLenOne]
-    dsimp [len] at h
-    cases x <;> cases y <;> simp [Nat.succ_add] at h <;> simp [h]
-  | sub (.mk x) (.mk y) m =>
-    simp
-    apply Finset.mem_fold_union_iff.mpr
-    exists sub (.mk 0) (.mk 0) 0
-    simp [extendLenOne]
-    dsimp [len] at h
-    cases x <;> cases y <;> simp [Nat.succ_add] at h <;> simp [h]
-  | loop (.mk x) p =>
-    apply Finset.mem_union_right
-    simp
-    dsimp [len] at h
-    cases x <;> simp [Nat.add_succ] at h <;> simp [lenOne_complete, h]
-    apply Nat.ne_of_gt
-    apply p.len_gt_zero
-    exact h.left
-  | concat p₁ p₂ =>
-    apply False.elim
-    simp [len] at h
-    apply Nat.not_le.mpr; swap
-    apply Nat.le_of_eq h
-    apply Nat.succ_lt_succ
-    apply Nat.lt_of_le_of_lt
-    show 1 ≤ p₁.len
-    apply len_gt_zero
-    simp
-    apply len_gt_zero
-
-
-theorem LoopProgram.ofLen_complete (n: Nat):
-  ∀ p: LoopProgram, p.len = n → p ∈ LoopProgram.ofLen n := by
-  intro p h
+theorem LoopProgram.ofLen_contains_extendLenOne_image
+  (h₁: p ∈ ofLen n) (h₂: p' ∈ p.extendLenOne):
+  p' ∈ ofLen (n + 1) := by
   match n with
-  | 0 =>
-    apply False.elim
-    apply Nat.ne_of_gt
-    apply len_gt_zero p
-    assumption
-  | 1 =>
+  | 0 => simp [ofLen] at h₁
+  | n + 1 =>
     dsimp [ofLen]
-    apply lenOne_complete
-    assumption
-  | 2 =>
-    apply ofLen_two_complete
-    assumption
-  -- Todo: prove, that all possible programs are caught by the above defn.
-  -- this could be done with a special case for len 3, from len 4 everything follows from induction
-  | n + 3 => sorry
+    apply Finset.mem_union_left
+    apply Finset.mem_fold_union_iff.mpr
+    exists p
+
+theorem LoopProgram.ofLen_stmt_complete
+  (stmt: Variable → Variable → ℕ → LoopProgram)
+  (h_stmt: stmt = add ∨ stmt = sub):
+  stmt (.mk x) (.mk y) n ∈ LoopProgram.ofLen (x + y + n + 1) := by
+  simp [ofLen]
+  cases' x with x'
+  cases' y with y'
+  cases' n with n'
+  . refine' .inr $ lenOne_complete _ _
+    cases' h_stmt with h h <;> rw [h] <;> rfl
+  . apply Or.inl ∘ Finset.mem_fold_union_iff.mpr
+    refine' ⟨stmt (.mk 0) (.mk 0) n', ⟨ofLen_stmt_complete _ h_stmt, _⟩⟩
+    cases' h_stmt with h h <;> rw [h] <;> simp [extendLenOne]
+  . apply Or.inl ∘ Finset.mem_fold_union_iff.mpr
+    refine' ⟨stmt (.mk 0) (.mk y') n, ⟨_, _⟩⟩
+    rw [Nat.add_succ, Nat.succ_add, Nat.succ_eq_add_one]
+    apply ofLen_stmt_complete _ h_stmt
+    cases' h_stmt with h h <;> rw [h] <;> simp [extendLenOne]
+  . apply Or.inl ∘ Finset.mem_fold_union_iff.mpr
+    refine' ⟨stmt (.mk x') (.mk y) n, ⟨_, _⟩⟩
+    rw [Nat.succ_add, Nat.succ_add, Nat.succ_eq_add_one]
+    apply ofLen_stmt_complete _ h_stmt
+    cases' h_stmt with h h <;> rw [h] <;> simp [extendLenOne]
+termination_by _ => x + y + n
+
+theorem LoopProgram.ofLen_complete:
+  ∀ p: LoopProgram, p ∈ LoopProgram.ofLen p.len := by
+  intro p
+  match p with
+  | add (.mk x) (.mk y) n =>
+    apply ofLen_stmt_complete
+    apply Or.inl; rfl
+  | sub (.mk x) (.mk y) m =>
+    apply ofLen_stmt_complete
+    apply Or.inr; rfl
+  | loop (.mk x) p =>
+    dsimp [len]
+    cases' x with x'
+    match h: p.len with
+    | 0 => exact False.elim $ Nat.ne_of_gt p.len_gt_zero h
+    | 1 =>
+      dsimp [ofLen, baseProgram]
+      apply Finset.mem_union_right
+      apply Finset.mem_image_of_mem
+      exact lenOne_complete _ h
+    | n + 1 =>
+      apply ofLen_contains_extendLenOne_image
+      rw [<- Nat.succ_eq_add_one, <- h]
+      apply ofLen_complete
+      cases p <;> simp [extendLenOne]
+    apply ofLen_contains_extendLenOne_image
+    case p => exact loop (.mk x') p
+    have : p.len + x'.succ = (loop (.mk x') p).len := by rfl
+    rw [this]
+    apply ofLen_complete
+    simp [extendLenOne]
+  | concat a b => sorry
 
 def LoopProgram.diagonal (n: Nat): Nat := 
   Finset.fold max 0 (λ p => p.toFunction n) (LoopProgram.ofLen n) + 1
@@ -163,7 +176,7 @@ theorem LoopProgram.diagonal_is_not_loop_computable:
     rw [Nat.lt_add_one_iff, Finset.le_fold_max]
     apply Or.inr
     exists p; constructor
-    apply ofLen_complete; rfl
+    apply ofLen_complete
     rfl
 
   . apply congrFun
