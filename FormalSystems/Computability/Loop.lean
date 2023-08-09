@@ -71,10 +71,7 @@ def LoopProgram.extendLenOne: LoopProgram → Finset LoopProgram
     sub x y (n + 1),
     loop (.mk 0) (sub x y n)
   }
-| concat p₁ p₂ =>
-  Finset.image (λp => concat p p₂) p₁.extendLenOne ∪
-  Finset.image (λp => concat p₁ p) p₂.extendLenOne ∪
-  { loop (.mk 0) (concat p₁ p₂) }
+| concat p₁ p₂ => { loop (.mk 0) (concat p₁ p₂) }
 | loop x p =>
   { loop (Variable.mk $ x.index + 1) p, loop (.mk 0) (loop x p) } ∪
   Finset.image (λp => loop x p) p.extendLenOne
@@ -83,27 +80,42 @@ def LoopProgram.baseProgram: Nat → Finset LoopProgram
 | 0 => {}
 | 1 => LoopProgram.lenOne
 | 2 => Finset.image (loop (Variable.mk 0)) lenOne
-| 3 => Finset.image (λ(a, b) => concat a b) (Finset.product lenOne lenOne)
 | _ => {}
 
 def LoopProgram.ofLen: Nat → Finset LoopProgram
 | 0 => {}
 | n + 1 =>
   Finset.fold (λa b => a ∪ b) {} extendLenOne (ofLen n) ∪
+  Finset.fold (·∪·) {}
+    (λ⟨l, h⟩ => (Finset.product (ofLen l) (ofLen $ n - l)).image
+      (λ(a, b) => concat a b))
+    (Finset.range n).attach ∪
   baseProgram (n + 1)
+termination_by _ n => n
+decreasing_by
+  simp [InvImage]
+  try { show n < Nat.succ n; simp }
+  try {
+    show l < Nat.succ n
+    rw [Finset.mem_range] at h
+    apply Nat.lt_succ_of_lt; assumption
+  }
+  try {
+    show n-l < Nat.succ n
+    apply Nat.lt_of_le_of_lt
+    show n-l ≤ n
+    repeat { simp }
+  }
 
 open LoopProgram
 
 theorem LoopProgram.ofLen_contains_extendLenOne_image
   (h₁: p ∈ ofLen n) (h₂: p' ∈ p.extendLenOne):
   p' ∈ ofLen (n + 1) := by
-  match n with
-  | 0 => simp [ofLen] at h₁
-  | n + 1 =>
-    dsimp [ofLen]
-    apply Finset.mem_union_left
-    apply Finset.mem_fold_union_iff.mpr
-    exists p
+  apply Finset.mem_union_left
+  apply Finset.mem_union_left
+  apply Finset.mem_fold_union_iff.mpr
+  exists p
 
 theorem LoopProgram.ofLen_stmt_complete
   (stmt: Variable → Variable → ℕ → LoopProgram)
@@ -113,7 +125,7 @@ theorem LoopProgram.ofLen_stmt_complete
   cases' x with x'
   cases' y with y'
   cases' n with n'
-  . refine' .inr $ lenOne_complete _ _
+  . refine' .inr ∘ .inr $ lenOne_complete _ _
     cases' h_stmt with h h <;> rw [h] <;> rfl
   . apply Or.inl ∘ Finset.mem_fold_union_iff.mpr
     refine' ⟨stmt (.mk 0) (.mk 0) n', ⟨ofLen_stmt_complete _ h_stmt, _⟩⟩
@@ -161,7 +173,12 @@ theorem LoopProgram.ofLen_complete:
     rw [this]
     apply ofLen_complete
     simp [extendLenOne]
-  | concat a b => sorry
+  | concat a b =>
+    simp [len, ofLen]
+    refine' .inr $ .inl (Finset.mem_fold_union_iff.mpr ⟨⟨a.len, _⟩, _⟩)
+    rw [Finset.mem_range]; simp [len_gt_zero]
+    simp; apply Finset.mem_product.mpr
+    exact ⟨ofLen_complete _, ofLen_complete _⟩
 
 def LoopProgram.diagonal (n: Nat): Nat := 
   Finset.fold max 0 (λ p => p.toFunction n) (LoopProgram.ofLen n) + 1
