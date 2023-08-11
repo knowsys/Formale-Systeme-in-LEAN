@@ -108,25 +108,13 @@ def LoopProgram.ofLen: Nat → Finset LoopProgram
 | n + 1 =>
   Finset.fold (λa b => a ∪ b) {} extendLenOne (ofLen n) ∪
   Finset.fold (·∪·) {}
-    (λ⟨l, _h⟩ => (Finset.product (ofLen l) (ofLen $ n - l)).image
+    (λ⟨l, h⟩ =>
+      have : l < Nat.succ n := by rw [Finset.mem_range] at h; apply Nat.lt_succ_of_lt; assumption
+      (Finset.product (ofLen l) (ofLen $ n - l)).image
       (λ(a, b) => concat a b))
     (Finset.range n).attach ∪
   baseProgram (n + 1)
-termination_by _ n => n
-decreasing_by
-  simp [InvImage]
-  try { show n < Nat.succ n; simp }
-  try {
-    show l < Nat.succ n
-    rw [Finset.mem_range] at _h
-    apply Nat.lt_succ_of_lt; assumption
-  }
-  try {
-    show n-l < Nat.succ n
-    apply Nat.lt_of_le_of_lt
-    show n-l ≤ n
-    repeat { simp }
-  }
+-- NOTE that termination_by is not needed but we do need the have statement to show termination
 
 open LoopProgram
 
