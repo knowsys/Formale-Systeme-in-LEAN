@@ -22,17 +22,38 @@ inductive LoopProgram
 | loop (x: Variable) (p: LoopProgram)
 deriving DecidableEq
 
-def LoopProgram.toFunction (p: LoopProgram):
-  Nat → Nat :=
-  -- Todo: define how to evaluate `p`, with x₀ bound to the input
-  -- for example one could use a state monad with an `AssocList`
-  sorry
-
 def LoopProgram.len: LoopProgram → Nat
 | add x y n => x.index + y.index + n + 1
 | sub x y n => x.index + y.index + n + 1
 | concat p₁ p₂ => p₁.len + p₂.len + 1
 | loop n p => p.len + n.index + 1
+
+def LoopProgramState := Lean.AssocList Variable Nat 
+
+namespace LoopProgramState
+  def get (s: LoopProgramState) (v: Variable): Nat := (s.find? v).getD 0
+
+  def put (s: LoopProgramState) (v: Variable) (n: Nat): LoopProgramState := 
+    if s.contains v then s.replace v n else s.insert v n
+end LoopProgramState
+
+def LoopProgram.run: LoopProgram -> LoopProgramState -> LoopProgramState
+| add x y n => fun s => 
+  let new_val := s.get y + n
+  s.put x new_val
+| sub x y n => fun s =>
+  let new_val := s.get y - n
+  s.put x new_val
+| concat p q => fun s => 
+  q.run (p.run s)
+| loop x p => fun s => 
+  Nat.iterate p.run (s.get x) s
+
+def LoopProgram.toFunction (p: LoopProgram) (input: Nat): Nat := 
+  let x0 : Variable := { index := 0 }
+  let initialState : LoopProgramState := Lean.AssocList.cons x0 input Lean.AssocList.nil
+  let result : LoopProgramState := p.run initialState
+  result.get x0
 
 theorem LoopProgram.len_gt_zero:
   ∀ p: LoopProgram, p.len > 0 := by
@@ -87,25 +108,13 @@ def LoopProgram.ofLen: Nat → Finset LoopProgram
 | n + 1 =>
   Finset.fold (λa b => a ∪ b) {} extendLenOne (ofLen n) ∪
   Finset.fold (·∪·) {}
-    (λ⟨l, h⟩ => (Finset.product (ofLen l) (ofLen $ n - l)).image
+    (λ⟨l, h⟩ =>
+      have : l < Nat.succ n := by rw [Finset.mem_range] at h; apply Nat.lt_succ_of_lt; assumption
+      (Finset.product (ofLen l) (ofLen $ n - l)).image
       (λ(a, b) => concat a b))
     (Finset.range n).attach ∪
   baseProgram (n + 1)
-termination_by _ n => n
-decreasing_by
-  simp [InvImage]
-  try { show n < Nat.succ n; simp }
-  try {
-    show l < Nat.succ n
-    rw [Finset.mem_range] at h
-    apply Nat.lt_succ_of_lt; assumption
-  }
-  try {
-    show n-l < Nat.succ n
-    apply Nat.lt_of_le_of_lt
-    show n-l ≤ n
-    repeat { simp }
-  }
+-- NOTE that termination_by is not needed but we do need the have statement to show termination
 
 open LoopProgram
 
