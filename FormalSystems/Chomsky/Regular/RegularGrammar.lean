@@ -71,7 +71,7 @@ instance : Production α nt RegularProduction :=
   Production.fromEmbedding $ fun _ _ => RegularProduction.toProduction
 
 instance : Production.ContextFree α nt RegularProduction where
-  lhs p := p.lhs
+  lhs_var p := p.lhs
   lhs_eq_lhs _ := by rfl
 
 theorem RegularProduction.rhs_eq_deconstr_rhs (p: RegularProduction Z V):
@@ -84,11 +84,6 @@ theorem RegularProduction.lhs_eq_production_lhs { p: RegularProduction Z V }:
   Production.lhs p = [.inl p.lhs] := by rfl
 
 def RegularGrammar (α nt: Type) := @Grammar α nt RegularProduction _
-
-instance : Coe (RegularGrammar α nt) (ContextFreeGrammar α nt) where
-  coe g := { g with
-    productions := g.productions.map RegularProduction.toContextFree
-  }
 
 instance : Coe (RegularGrammar α nt) (@Grammar α nt GenericProduction _) where
   coe g := { g with
