@@ -23,36 +23,30 @@ def ContextFreeProduction.toProduction : ContextFreeProduction Z V ↪ GenericPr
 instance : Production α nt ContextFreeProduction :=
   Production.fromEmbedding (fun _ _ => ContextFreeProduction.toProduction)
 
-def ContextFreeGrammar (α nt: Type) := @Grammar α nt ContextFreeProduction _
-
-instance : Coe (ContextFreeGrammar α nt) (@Grammar α nt GenericProduction _) where
-  coe g := {
-    Z := g.Z,
-    V := g.V,
-    start := g.start,
-    productions := g.productions.map ContextFreeProduction.toProduction
-  }
-
-class Production.ContextFree (α: Type) (nt: Type) (P: Finset α → Finset nt → Type) [Production α nt P] where
-  lhs: P Z V → V
-  lhs_eq_lhs: ∀(p: P Z V), Production.lhs p = [Sum.inl $ lhs p]
+class Production.ContextFree (α: Type) (nt: Type) (P: Finset α → Finset nt → Type)
+extends Production α nt P where
+  lhs_var: P Z V → V
+  lhs_eq_lhs: ∀(p: P Z V), lhs p = [Sum.inl $ lhs_var p]
 
 instance : Production.ContextFree α nt ContextFreeProduction where
-  lhs p := p.lhs
+  lhs_var p := p.lhs
   lhs_eq_lhs _ := by rfl
 
-variable [Production α nt P] { G: Grammar P } [Production.ContextFree α nt P]
+variable [i: Production.ContextFree α nt P] { G: Grammar P }
+
+open Word
 
 theorem ContextFreeGrammar.derivation_step_prefix
   { xs: Word (G.V ⊕ G.Z) } { a: G.Z }
   (step: G.DerivationStep lhs) (h_lhs: lhs = (.inr a :: xs)):
   step.pre = .inr a :: step.pre.tail := by
-  let sound := step.sound
-  simp [Production.ContextFree.lhs_eq_lhs, h_lhs] at sound
+  have sound := step.sound
+  simp_rw [Production.ContextFree.lhs_eq_lhs step.prod.val, h_lhs] at sound
   match hpre:step.pre with
   | [] =>
     simp_rw [hpre, HMul.hMul, Mul.mul] at sound
-    simp at sound; rw [List.cons_eq_cons] at sound
+    simp at sound
+    rw [List.cons_eq_cons] at sound
     let ⟨_, _⟩ := sound
     contradiction
 
