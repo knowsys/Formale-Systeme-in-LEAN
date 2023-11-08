@@ -100,7 +100,7 @@ def decidable_pred_from_subtype (p: α → Prop) (h: DecidablePred p):
   exact h x
 
 open Classical
-def reducedAutomaton {L: Language α} (proc: DecisionProcedure L)
+def canonicalAutomaton {L: Language α} (proc: DecisionProcedure L)
   [Fintype α] [DecidableEq α]
   (nerode_classes: Fintype (Quotient (myhillNerodeEquivalence L))):
   (DFA α (Quotient (myhillNerodeEquivalence L))) where
