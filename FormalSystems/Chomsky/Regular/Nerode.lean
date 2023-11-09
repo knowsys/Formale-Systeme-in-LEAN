@@ -73,31 +73,26 @@ theorem MyhillNerodeRelation.mem_language':
 
 def DecisionProcedure (L: Language α): Type := DecidablePred (· ∈ L)
 
+-- classically, every Language has a decision procedure, so we might choose one
+noncomputable def DecisionProcedure.classical: DecisionProcedure L := fun w =>
+  Classical.choice $
+    match Classical.em (w ∈ L) with
+    | .inl h => Nonempty.intro $ Decidable.isTrue h
+    | .inr h => Nonempty.intro $ Decidable.isFalse h
+
 def FinalClass (L: Language α) (q: Quotient (myhillNerodeEquivalence L)): Prop :=
   q.lift (· ∈ L) (by apply MyhillNerodeRelation.mem_language')
 
 def final_class_decidable (proc: DecisionProcedure L):
-  DecidablePred (FinalClass L) := by
-  intro q
-  apply q.recOn (motive := fun q => Decidable (FinalClass L q))
-  swap
-  intro w
-  unfold FinalClass
-  have : (Quotient.lift (· ∈ L)
-    (fun a b => by apply MyhillNerodeRelation.mem_language')
-    (Quotient.mk (myhillNerodeEquivalence L) w)) = (w ∈ L) := rfl
-  rw [this]
-  exact proc w
-  simp
+  DecidablePred (FinalClass L) := fun q =>
+    q.recOn (f := proc) (h := by simp)
 
 def liftPredicateToSubtype (p: α → Prop) (prop: α → Prop):
   { a : α // prop a } → Prop := p ∘ Subtype.val
 
 def decidable_pred_from_subtype (p: α → Prop) (h: DecidablePred p):
-  ∀prop: α → Prop, @DecidablePred { a: α // prop a } (p ∘ Subtype.val) := by
-  intro _ ⟨x, _⟩
-  simp
-  exact h x
+  ∀prop: α → Prop, @DecidablePred { a: α // prop a } (p ∘ Subtype.val) :=
+  fun _ ⟨x, _⟩ => h x
 
 open Classical
 def canonicalAutomaton {L: Language α} (proc: DecisionProcedure L)
