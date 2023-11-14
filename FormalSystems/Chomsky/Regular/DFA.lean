@@ -35,6 +35,29 @@ theorem generated_lang_eq { M: DFA α qs } :
   unfold toNFA; unfold NFA.GeneratedLanguage
   simp; rfl
 
+theorem last_state_eq_del_star_curried
+  {M: DFA α qs} {w: Word M.Z} {q: M.toNFA.Q}
+  (r: M.toNFA.Run q w):
+  M.del_star_curried w q = .some r.last := by
+  cases r
+  case final h =>
+    simp_rw [h, del_star_curried, NFA.Run.last]
+  case step r' incl w_cast =>
+    unfold NFA.Run.last
+    rw [w_cast]
+    unfold del_star_curried
+    simp_rw [toNFA, Function.comp_apply] at incl
+    rw [Option.mem_toFinset, Option.mem_iff] at incl
+    rw [incl, Option.bind_eq_bind, Option.some_bind]
+    apply last_state_eq_del_star_curried
+
+theorem last_state_eq_del_star
+  {M: DFA α qs} {w: Word M.Z} {q: M.toNFA.Q}
+  (r: M.toNFA.Run q w):
+  M.del_star (q, w) = .some r.last := by
+  simp [del_star]
+  apply last_state_eq_del_star_curried
+
 def transitionToRule (M: DFA α qs) : (M.Q × M.Z) → Option (RegularProduction M.Z M.Q)
   | (q, a) => (.cons q ∘ (a,·)) <$> M.δ (q, a)
 
