@@ -4,7 +4,7 @@ import Mathlib.Data.Set.Lattice
 import Mathlib.Data.Set.Finite
 import Mathlib.GroupTheory.Congruence
 import FormalSystems.Preliminaries.Language
-import FormalSystems.Chomsky.Regular.DFA
+import FormalSystems.Chomsky.Regular.TotalDFA
 
 def MyhillNerodeRelation (L : Language α) (u v : Word α) : Prop :=
   ∀w, u * w ∈ L ↔ v * w ∈ L
@@ -90,25 +90,65 @@ def decidable_pred_from_subtype (p: α → Prop) (h: DecidablePred p):
   ∀prop: α → Prop, @DecidablePred { a: α // prop a } (p ∘ Subtype.val) :=
   fun _ ⟨x, _⟩ => h x
 
-open Classical
-def canonicalAutomaton {L: Language α} (proc: DecisionProcedure L)
-  [Fintype α] [DecidableEq α]
-  (nerode_classes: Fintype (Quotient (myhillNerodeEquivalence L))):
-  (DFA α (Quotient (myhillNerodeEquivalence L))) where
+variable [Fintype α] [DecidableEq α] {L: Language α}
+variable {proc: DecisionProcedure L}
+def mn_quot := Quotient (myhillNerodeEquivalence L)
+
+variable (nc: Fintype mn_quot)
+
+def canonicalAutomaton: (TotalDFA α (Quotient (myhillNerodeEquivalence L))) where
   Z := Fintype.elems
-  Q := nerode_classes.elems
-  q₀ := ⟨ Quotient.mk _ ε, nerode_classes.complete _ ⟩
+  Q := nc.elems
+  q₀ := ⟨ Quotient.mk _ ε, nc.complete _ ⟩
   F :=
-    have : DecidablePred (FinalClass L ∘ Subtype.val) :=
-      decidable_pred_from_subtype _ (final_class_decidable proc) _
-    @Finset.filter _ (FinalClass L ∘ Subtype.val) this Fintype.elems.attach
+    have : DecidablePred (FinalClass L) := final_class_decidable proc
+    Finset.map
+      ⟨fun q => ⟨q, nc.complete _⟩, fun _ _ h => by simp at h; assumption⟩
+      (@Finset.filter _ (FinalClass L) this nc.elems)
   δ := fun (q, a) => some $ q.val.lift
     (fun w =>
-      have w' := w * Word.mk [a.val]
+      let w' := w * Word.mk [a.val]
       ⟨Quotient.mk (myhillNerodeEquivalence L) w',
-      nerode_classes.complete _⟩)
+      nc.complete _⟩)
     (fun a b => by
       simp [Quotient.eq (r := myhillNerodeEquivalence L)]
       intro h
       apply MyhillNerodeRelation.right_congruence.mp
       assumption)
+  totality := fun _ _ => rfl
+
+theorem del_eq
+  {nc: Fintype (Quotient (myhillNerodeEquivalence L))}:
+  let M := canonicalAutomaton nc (proc := proc)
+  ∀w, ∀a, (M.δ' (⟨Quotient.mk _ w, nc.complete _⟩, a)).val =
+  Quotient.mk (myhillNerodeEquivalence L) (w * Word.mk [a.val]) :=
+  fun _ _ => rfl
+
+theorem del_star_curried_eq
+  {nc: Fintype (Quotient (myhillNerodeEquivalence L))}:
+  let M := canonicalAutomaton nc (proc := proc)
+  ∀w, ∀v, M.del_star' (⟨Quotient.mk _ w, nc.complete _⟩, v) =
+  Quotient.mk (myhillNerodeEquivalence L) (w * (Subtype.val <$> v)) :=
+  fun _ _ => sorry
+
+theorem final_state_eq
+  {nc: Fintype (Quotient (myhillNerodeEquivalence L))}:
+  let M := canonicalAutomaton nc (proc := proc)
+  ∀w, M.del_star' (M.q₀, w) =
+  Quotient.mk (myhillNerodeEquivalence L) (Subtype.val <$> w) := by
+  apply del_star_curried_eq
+
+theorem final_state_accepts_iff
+  {nc: Fintype (Quotient (myhillNerodeEquivalence L))}:
+  let M := canonicalAutomaton nc (proc := proc)
+  ∀w, M.del_star' (M.q₀, w) ∈ M.F ↔ (Subtype.val <$> w) ∈ L := by
+  intro M w
+  let v_quot := Quotient.mk (myhillNerodeEquivalence L) (Subtype.val <$> w)
+  have : (M.del_star' (M.q₀, w)).val = _ := final_state_eq _
+  have : M.del_star' (M.q₀, w) = ⟨v_quot, nc.complete _⟩ := Subtype.eq this
+  rw [this]
+  simp [canonicalAutomaton]
+  rw [@Finset.mem_filter _ _ (final_class_decidable _) _ _]
+  simp [Fintype.complete]
+  unfold FinalClass
+  rw [@Quotient.lift_mk _ _ (myhillNerodeEquivalence L) _ _ _]
