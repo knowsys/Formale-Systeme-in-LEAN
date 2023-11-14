@@ -129,7 +129,14 @@ theorem del_star_curried_eq
   let M := canonicalAutomaton nc (proc := proc)
   ∀w, ∀v, M.del_star' (⟨Quotient.mk _ w, nc.complete _⟩, v) =
   Quotient.mk (myhillNerodeEquivalence L) (w * (Subtype.val <$> v)) :=
-  fun _ _ => sorry
+  fun w v => by
+  induction v generalizing w
+  case nil => simp [<-Word.eps_eq_nil, Word.monoid.mul_one]; rfl
+  case cons _ _ ih =>
+    simp [HMul.hMul, Mul.mul]
+    simp [TotalDFA.del_star']
+    rw [List.append_cons]
+    apply ih
 
 theorem final_state_eq
   {nc: Fintype (Quotient (myhillNerodeEquivalence L))}:
