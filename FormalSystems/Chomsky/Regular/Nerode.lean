@@ -74,11 +74,7 @@ theorem MyhillNerodeRelation.mem_language':
 def DecisionProcedure (L: Language α): Type := DecidablePred (· ∈ L)
 
 -- classically, every Language has a decision procedure, so we might choose one
-noncomputable def DecisionProcedure.classical: DecisionProcedure L := fun w =>
-  Classical.choice $
-    match Classical.em (w ∈ L) with
-    | .inl h => Nonempty.intro $ Decidable.isTrue h
-    | .inr h => Nonempty.intro $ Decidable.isFalse h
+noncomputable def DecisionProcedure.classical: DecisionProcedure L := Classical.decPred (· ∈ L)
 
 def FinalClass (L: Language α) (q: Quotient (myhillNerodeEquivalence L)): Prop :=
   q.lift (· ∈ L) (by apply MyhillNerodeRelation.mem_language')
