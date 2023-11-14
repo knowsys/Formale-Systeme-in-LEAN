@@ -69,11 +69,11 @@ variable { G: Grammar Prod } { u: Word (G.V ⊕ G.Z) }
 
 def DerivationStep.augment_left (step: DerivationStep G u) (w: Word (G.V ⊕ G.Z)):
   DerivationStep G (w * u) :=
-  { 
-    prod := step.prod, 
-    pre := w * step.pre, 
-    suf := step.suf, 
-    sound := by 
+  {
+    prod := step.prod,
+    pre := w * step.pre,
+    suf := step.suf,
+    sound := by
       simp [mul_assoc]
       have t := step.sound
       simp [mul_assoc] at t
@@ -162,7 +162,7 @@ theorem augment_left {u v w: Word _} (d: G.Derivation u v) :
   G.Derivation (w * u) (w * v) := by
   induction d with
   | same h => apply same; simp [h]
-  | step s _ sound => 
+  | step s _ sound =>
     apply step
     . assumption
     swap
@@ -227,15 +227,15 @@ def ExampleProductions : List (GenericProduction { 'b', 'z' } { 'A', 'B', 'S', '
 
 def ExampleGrammar: @Grammar Char Char GenericProduction _ where
   Z := { 'b', 'z' }
-  V := { 'A', 'B', 'S', 'Z' } 
+  V := { 'A', 'B', 'S', 'Z' }
   start := ⟨ 'S', by simp ⟩
-  productions := ⟨ ExampleProductions, by simp ⟩ 
+  productions := ⟨ ExampleProductions, by simp ⟩
 
 theorem ExampleGrammar.productions_eq_ex_productions (p: GenericProduction _ _):
   p ∈ ExampleGrammar.productions ↔ p ∈ ExampleProductions := by
   simp [ExampleGrammar]
 
-def ExampleGrammar.lang: Language ({ 'b', 'z' } : Finset _) := 
+def ExampleGrammar.lang: Language ({ 'b', 'z' } : Finset _) :=
   { [⟨ 'b', by simp ⟩] } ∘ₗ { [⟨ 'b', by simp ⟩], [⟨ 'z', by simp ⟩] }∗
 
 -- TODO: a proof for ExampleGrammar.GeneratedLanguage = ExampleGrammar.lang
