@@ -35,6 +35,96 @@ theorem generated_lang_eq { M: DFA α qs } :
   unfold toNFA; unfold NFA.GeneratedLanguage
   simp; rfl
 
+theorem last_state_eq_del_star_curried
+  {M: DFA α qs} {w: Word M.Z} {q: M.toNFA.Q}
+  (r: M.toNFA.Run q w):
+  M.del_star_curried w q = .some r.last := by
+  cases r
+  case final h =>
+    simp_rw [h, del_star_curried, NFA.Run.last]
+  case step r' incl w_cast =>
+    unfold NFA.Run.last
+    rw [w_cast]
+    unfold del_star_curried
+    simp_rw [toNFA, Function.comp_apply] at incl
+    rw [Option.mem_toFinset, Option.mem_iff] at incl
+    rw [incl, Option.bind_eq_bind, Option.some_bind]
+    apply last_state_eq_del_star_curried
+
+theorem last_state_eq_del_star
+  {M: DFA α qs} {w: Word M.Z} {q: M.toNFA.Q}
+  (r: M.toNFA.Run q w):
+  M.del_star (q, w) = .some r.last := by
+  simp [del_star]
+  apply last_state_eq_del_star_curried
+
+def constrRun
+  {M: DFA α qs} (w: Word M.Z) (q: M.Q):
+  Option (M.toNFA.Run q w) :=
+  match w with
+  | ε => some $ .final _ rfl
+  | x :: xs =>
+      Option.pbind (M.δ (q, x)) $ fun q' hq' => do
+        let r' <- constrRun xs q'
+        .some $ NFA.Run.step (M := M.toNFA) q
+          (by { simp [toNFA]; exact hq'}) r' rfl
+
+theorem del_star_curried_isSome_iff_constrRun_isSome
+  {M: DFA α qs} {w: Word M.Z} {q: M.Q}:
+  Option.isSome (M.del_star_curried w q) ↔ Option.isSome (constrRun w q) :=
+  match w with
+  | ε => Iff.of_eq rfl
+  | x :: xs => open Option in by
+    cases' hq': M.δ ⟨q, x⟩ with q'
+    -- both are none
+    . simp [del_star_curried, hq', Option.bind_eq_bind]
+      unfold constrRun
+      rw [isNone_iff_eq_none, pbind_eq_none]
+      assumption; intros; assumption
+    -- both are some
+    . conv =>
+        right; rw [isSome_iff_exists]; congr
+        intro; unfold constrRun; rw [pbind_eq_some]
+      constructor
+      -- isSome del_star => isSome constrRun
+      . intro h
+        rw [del_star_curried, bind_eq_bind, hq', some_bind] at h
+        have ⟨r', hr'⟩ := Option.isSome_iff_exists.mp $
+          del_star_curried_isSome_iff_constrRun_isSome.mp h
+        refine' .intro (.step _ _ r' rfl) ⟨q', hq', _⟩
+        simp [toNFA]; assumption
+        simp [bind_eq_bind]; assumption
+      -- isSome del_star <= isSome constrRun
+      . intro ⟨r, q', HQ', h⟩
+        simp [del_star_curried, bind_eq_bind, hq']
+        apply del_star_curried_isSome_iff_constrRun_isSome.mpr
+        rw [isSome_iff_exists]; simp [hq'] at HQ'; rw [HQ']
+        simp [bind_eq_bind] at h; have ⟨r', _, _⟩ := h
+        exists r'
+
+theorem del_star_isSome_iff_constrRun_isSome
+  {M: DFA α qs} {w: Word M.Z} {q: M.Q}:
+  Option.isSome (M.del_star (q, w)) ↔ Option.isSome (constrRun w q) := by
+  simp [del_star]
+  apply del_star_curried_isSome_iff_constrRun_isSome
+
+theorem in_language_iff_del_star_final
+  {M: DFA α qs} {w: Word M.Z}:
+  w ∈ M.GeneratedLanguage ↔ ∃qf ∈ M.del_star (M.q₀, w), qf ∈ M.F := by
+  constructor
+  . intro ⟨r, hr⟩
+    refine' .intro r.last ⟨_, hr⟩
+    exact last_state_eq_del_star _
+  . intro ⟨qf, hdel, hf⟩
+    let r := constrRun w M.q₀
+    have : r.isSome :=
+      del_star_isSome_iff_constrRun_isSome.mp
+        (Option.isSome_iff_exists.mpr ⟨qf, hdel⟩)
+    exists r.get this
+    simp [last_state_eq_del_star (r.get this)] at hdel
+    rw [hdel]; assumption
+
+
 def transitionToRule (M: DFA α qs) : (M.Q × M.Z) → Option (RegularProduction M.Z M.Q)
   | (q, a) => (.cons q ∘ (a,·)) <$> M.δ (q, a)
 
