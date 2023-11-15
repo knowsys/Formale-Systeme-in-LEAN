@@ -34,8 +34,6 @@ theorem MyhillNerodeRelation.right_congruence:
     simp at this
     assumption
 
-notation "⟪" word "⟫" => Word.mk (String.toList word)
-
 local instance : HasEquiv (Word α) where
   Equiv := fun a b => a ≃(L) b
 
@@ -92,9 +90,7 @@ def decidable_pred_from_subtype (p: α → Prop) (h: DecidablePred p):
 
 variable {α: Type} {Z: Finset α} {L: Language Z}
 variable {proc: DecisionProcedure L}
-def mn_quot := Quotient (myhillNerodeEquivalence L)
-
-variable (nc: Fintype mn_quot)
+variable (nc: Fintype $ Quotient (myhillNerodeEquivalence L))
 
 def canonicalAutomaton: (TotalDFA α (Quotient (myhillNerodeEquivalence L))) where
   Z := Z
@@ -117,50 +113,50 @@ def canonicalAutomaton: (TotalDFA α (Quotient (myhillNerodeEquivalence L))) whe
       assumption)
   totality := fun _ _ => rfl
 
-theorem del_eq
-  {nc: Fintype (Quotient (myhillNerodeEquivalence L))}:
+variable {nc: Fintype (Quotient (myhillNerodeEquivalence L))}
+
+set_option quotPrecheck false
+local notation "⟪" word "⟫" =>
+  ⟨Quotient.mk (myhillNerodeEquivalence L) word, nc.complete _⟩
+
+theorem del_eq:
   let M := canonicalAutomaton nc (proc := proc)
-  ∀(w: Word M.Z), ∀a, (M.δ' (⟨Quotient.mk _ w, nc.complete _⟩, a)).val =
-  Quotient.mk (myhillNerodeEquivalence L) (w * Word.mk [a]) :=
+  ∀(w: Word M.Z), ∀a, M.δ' (⟪w⟫, a) = ⟪w * Word.mk [a]⟫ :=
   fun _ _ => rfl
 
-theorem del_star_curried_eq
-  {nc: Fintype (Quotient (myhillNerodeEquivalence L))}:
+theorem del_star_eq:
   let M := canonicalAutomaton nc (proc := proc)
-  ∀(w: Word M.Z), ∀v, M.del_star' (⟨Quotient.mk _ w, nc.complete _⟩, v) =
-  Quotient.mk (myhillNerodeEquivalence L) (w * v) :=
-  fun w v => by
-  induction v generalizing w
-  case nil => simp [<-Word.eps_eq_nil, Word.monoid.mul_one]; rfl
-  case cons _ _ ih =>
-    simp [HMul.hMul, Mul.mul]
-    simp [TotalDFA.del_star']
-    rw [List.append_cons]
-    apply ih
+  ∀(w: Word M.Z), ∀v, M.del_star' (⟪w⟫, v) = ⟪w * v⟫ :=
+  fun w v => Subtype.eq $ by
+    induction v generalizing w
+    case nil => simp [<-Word.eps_eq_nil, Word.monoid.mul_one]; rfl
+    case cons _ _ ih =>
+      simp [HMul.hMul, Mul.mul]
+      simp [TotalDFA.del_star']
+      rw [List.append_cons]
+      apply ih
 
-theorem final_state_eq
-  {nc: Fintype (Quotient (myhillNerodeEquivalence L))}:
+theorem final_state_eq:
   let M := canonicalAutomaton nc (proc := proc)
-  ∀w, M.del_star' (M.q₀, w) = Quotient.mk (myhillNerodeEquivalence L) w := by
-  apply del_star_curried_eq
+  ∀w, M.del_star' (⟪ε⟫, w) = ⟪w⟫ := fun w => Subtype.eq $ by
+  simp [del_star_eq]
 
-theorem final_state_accepts_iff
-  {nc: Fintype (Quotient (myhillNerodeEquivalence L))}:
+theorem initial_state_eq:
+  let M := canonicalAutomaton nc (proc := proc)
+  M.q₀ = ⟪ε⟫ := rfl
+
+theorem final_state_accepts_iff:
   let M := canonicalAutomaton nc (proc := proc)
   ∀w, M.del_star' (M.q₀, w) ∈ M.F ↔ w ∈ L := by
   intro M w
-  let v_quot := Quotient.mk (myhillNerodeEquivalence L) w
-  have : (M.del_star' (M.q₀, w)).val = _ := final_state_eq _
-  have : M.del_star' (M.q₀, w) = ⟨v_quot, nc.complete _⟩ := Subtype.eq this
-  rw [this]
+  rw [initial_state_eq, final_state_eq]
   simp [canonicalAutomaton]
   rw [@Finset.mem_filter _ _ (final_class_decidable _) _ _]
   simp [Fintype.complete]
   unfold FinalClass
   rw [@Quotient.lift_mk _ _ (myhillNerodeEquivalence L) _ _ _]
 
-theorem canonicalAutomaton_generated_language
-  {nc: Fintype (Quotient (myhillNerodeEquivalence L))}:
+theorem canonicalAutomaton_generated_language:
   (canonicalAutomaton nc (proc := proc)).GeneratedLanguage = L := by
   apply Set.ext
   intro w
