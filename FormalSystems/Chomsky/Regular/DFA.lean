@@ -71,37 +71,35 @@ def constrRun
 
 theorem del_star_curried_isSome_iff_constrRun_isSome
   {M: DFA α qs} {w: Word M.Z} {q: M.Q}:
-  Option.isSome (M.del_star_curried w q) ↔ Option.isSome (constrRun w q) := by
-  cases' w with x xs
-  . unfold del_star_curried constrRun; rfl
-  . unfold del_star_curried
+  Option.isSome (M.del_star_curried w q) ↔ Option.isSome (constrRun w q) :=
+  match w with
+  | ε => Iff.of_eq rfl
+  | x :: xs => open Option in by
     cases' hq': M.δ ⟨q, x⟩ with q'
-    . simp [Option.bind_eq_bind]
+    -- both are none
+    . simp [del_star_curried, hq', Option.bind_eq_bind]
       unfold constrRun
-      rw [Option.isNone_iff_eq_none, Option.pbind_eq_none]
-      assumption
-      intros; assumption
-    . unfold constrRun
-      conv => right; rw [Option.isSome_iff_exists]; congr; intro; rw [Option.pbind_eq_some]
+      rw [isNone_iff_eq_none, pbind_eq_none]
+      assumption; intros; assumption
+    -- both are some
+    . conv =>
+        right; rw [isSome_iff_exists]; congr
+        intro; unfold constrRun; rw [pbind_eq_some]
       constructor
+      -- isSome del_star => isSome constrRun
       . intro h
-        rw [Option.bind_eq_bind, Option.some_bind] at h
-        have := del_star_curried_isSome_iff_constrRun_isSome.mp h
-        dsimp [Option.bind_eq_bind]
-        simp [Option.isSome_iff_exists] at this
-        have ⟨r', hr'⟩ := this
-        refine' .intro _ (.intro q' (.intro hq' _))
-        refine' .step _ _ r' rfl
+        rw [del_star_curried, bind_eq_bind, hq', some_bind] at h
+        have ⟨r', hr'⟩ := Option.isSome_iff_exists.mp $
+          del_star_curried_isSome_iff_constrRun_isSome.mp h
+        refine' .intro (.step _ _ r' rfl) ⟨q', hq', _⟩
         simp [toNFA]; assumption
-        simp; assumption
+        simp [bind_eq_bind]; assumption
+      -- isSome del_star <= isSome constrRun
       . intro ⟨r, q', HQ', h⟩
-        simp [Option.bind_eq_bind]
+        simp [del_star_curried, bind_eq_bind, hq']
         apply del_star_curried_isSome_iff_constrRun_isSome.mpr
-        rw [Option.isSome_iff_exists]
-        simp [Option.bind_eq_bind] at h
-        have ⟨r', hr', _⟩ := h
-        simp [hq'] at HQ'
-        rw [HQ']
+        rw [isSome_iff_exists]; simp [hq'] at HQ'; rw [HQ']
+        simp [bind_eq_bind] at h; have ⟨r', _, _⟩ := h
         exists r'
 
 theorem del_star_isSome_iff_constrRun_isSome
