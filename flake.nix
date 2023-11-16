@@ -2,40 +2,79 @@
   description = "FormalSystems lean implementation";
 
   inputs = {
-    lean.url = "github:leanprover/lean4/v4.2.0";
-    flake-utils.url = "github:numtide/flake-utils";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.05";
+    flake-utils.url = "github:numtide/flake-utils";
+    lean = {
+      url = "github:leanprover/lean4/v4.2.0";
+      inputs = {
+        flake-utils.follows = "flake-utils";
+        nixpkgs.follows = "nixpkgs";
+      };
+    };
   };
 
-  outputs = { self, lean, flake-utils, nixpkgs }: flake-utils.lib.eachDefaultSystem (system:
-    let
-      leanPkgs = lean.packages.${system};
-      pkgs = import nixpkgs { system = system; };
-      leanDeps = map
-        (dep: {
-          path = builtins.fetchGit {
-            inherit (dep.git) url rev name;
-          };
-          inherit (dep.git) name;
-        })
-        (builtins.fromJSON (builtins.readFile ./lake-manifest.json)).packages;
-      pkg = pkgs.stdenv.mkDerivation {
-        name = "formal-systems";
-        src = ./.;
-        nativeBuildInputs = [ leanPkgs pkgs.git ];
-        buildPhase = ''
-          ln -sf ${leanPkgs.lean-all}/* .
-          mkdir -p ./lake-packages
-          ${builtins.concatStringsSep "&&" (map (dep: "cp -r " + dep.path + " ./lake-packages/" + dep.name) leanDeps)}
-          bin/lake --version
-          bin/lake build
-        '';
-      };
-    in
-    {
-      packages = {
-        default = pkg;
-        inherit (leanPkgs) lean;
-      };
-    });
+  outputs = inputs@{ self, flake-utils, nixpkgs, ... }:
+    flake-utils.lib.eachSystem [ "x86_64-linux" ] (system:
+      let
+        pkgs = import nixpkgs { system = system; };
+        leanPkgs = inputs.lean.packages.${system};
+
+        overrides = {
+          std.name = "Std";
+          aesop.name = "Aesop";
+          mathlib.name = "Mathlib";
+          proofwidgets.name = "ProofWidgets";
+        };
+
+        inherit (pkgs) lib;
+        inherit (leanPkgs) buildLeanPackage;
+        inherit (lib) mapAttrs attrValues;
+
+        dependenciesFromLakeManifest = path:
+          let
+            inherit (builtins) fromJSON readFile fetchGit pathExists;
+            inherit (lib) listToAttrs nameValuePair optionalAttrs;
+
+            manifest = fromJSON (readFile path);
+            lakePackages = listToAttrs
+              (map (pkg: nameValuePair pkg.git.name pkg.git) manifest.packages);
+
+            fetchLakePackage = name:
+              fetchGit {
+                inherit name;
+                inherit (lakePackages."${name}") url rev;
+              };
+
+            buildLakePackage = name:
+              let
+                src = fetchLakePackage name;
+
+                inner-manifest = "${src}/lake-manifest.json";
+                deps = (optionalAttrs (pathExists inner-manifest) {
+                  deps =
+                    attrValues (dependenciesFromLakeManifest inner-manifest);
+                });
+
+                package = buildLeanPackage ({ inherit name src; } // deps);
+              in package.override (overrides."${name}" or { });
+          in mapAttrs (name: _: buildLakePackage name) lakePackages;
+
+        dependencies = dependenciesFromLakeManifest ./lake-manifest.json;
+        lakePkgs = mapAttrs (_: value: value.modRoot) dependencies;
+
+        package = buildLeanPackage {
+          name = "FormalSystems";
+          src = ./.;
+          deps = attrValues dependencies;
+        };
+      in {
+        packages = lakePkgs // (rec {
+          inherit (leanPkgs) lean lean-all;
+
+          FormalSystems = package.modRoot;
+          default = FormalSystems;
+        });
+
+        devShells.default = package.devShell;
+      });
 }
