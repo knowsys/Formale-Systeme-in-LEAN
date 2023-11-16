@@ -118,6 +118,7 @@ variable {nc: Fintype (Quotient (myhillNerodeEquivalence L))}
 set_option quotPrecheck false
 local notation "⟪" word "⟫" =>
   ⟨Quotient.mk (myhillNerodeEquivalence L) word, nc.complete _⟩
+set_option quotPrecheck true
 
 theorem del_eq:
   let M := canonicalAutomaton nc (proc := proc)
