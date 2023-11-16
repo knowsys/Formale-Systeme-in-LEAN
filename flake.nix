@@ -16,11 +16,10 @@
   outputs = inputs @ {
     self,
     flake-utils,
-    nixpkgs,
     ...
   }:
-    flake-utils.lib.eachSystem ["x86_64-linux"] (system: let
-      pkgs = import nixpkgs {system = system;};
+    flake-utils.lib.eachDefaultSystem (system: let
+      pkgs = import inputs.nixpkgs {system = system;};
       leanPkgs = inputs.lean.packages.${system};
 
       overrides = {
