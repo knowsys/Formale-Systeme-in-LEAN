@@ -19,7 +19,7 @@ instance : Singleton (Word α) (Language α) where
 instance : HasSubset (Language α) where
   Subset := Set.Subset
 
-instance : CompleteBooleanAlgebra (Language α) := 
+instance : CompleteBooleanAlgebra (Language α) :=
   Pi.completeBooleanAlgebra
 
 instance : Inter (Language α) where
@@ -31,7 +31,7 @@ instance : Union (Language α) where
 def isSingleton (L : Language α) : Prop
   := ∃w, w ∈ L ∧ ∀v, v ∈ L → v = w
 
-def concat (X Y : Language α) : Language α := 
+def concat (X Y : Language α) : Language α :=
   fun w : Word α => ∃ u v : Word α, u ∈ X ∧ v ∈ Y ∧ w = u * v
 infixl:70 " ∘ₗ " => Language.concat
 
@@ -92,35 +92,35 @@ theorem eps_mul (L : Language α): Language.epsilon ∘ₗ L = L := by
 
 theorem mul_empty (L : Language α) : L ∘ₗ ∅ = ∅ := by
   apply Set.ext
-  intro w 
+  intro w
   constructor
   . intro n
-    match n with 
+    match n with
     | ⟨_,_,_,h,_⟩ =>
       apply False.elim h
-  . intro n 
+  . intro n
     apply False.elim n
 
 theorem empty_mul (L : Language α) : ∅ ∘ₗ L = ∅ := by
   apply Set.ext
-  intro w 
+  intro w
   constructor
   . intro n
-    match n with 
+    match n with
     | ⟨_,_,h,_,_⟩ =>
       apply False.elim h
-  . intro n 
+  . intro n
     apply False.elim n
 
 theorem concat_dist_union_r (L1 L2 L3 : Language α)
   : (L1 ∪ L2) ∘ₗ L3 = (L1 ∘ₗ L3) ∪ (L2 ∘ₗ L3) := by
-  apply Set.ext 
-  intro w 
-  constructor 
-  . intro 
-    | ⟨u,v,h1,h2,h3⟩ => 
-      cases h1 with 
-      | inl hl => apply Or.inl; exists u; exists v 
+  apply Set.ext
+  intro w
+  constructor
+  . intro
+    | ⟨u,v,h1,h2,h3⟩ =>
+      cases h1 with
+      | inl hl => apply Or.inl; exists u; exists v
       | inr hr => apply Or.inr; exists u; exists v
   . intro
     | Or.inl hl => cases hl with | intro u pu => cases pu with | intro v pv =>
@@ -135,12 +135,12 @@ theorem concat_dist_union_l (L1 L2 L3 : Language α)
   apply Set.ext
   intro w
   constructor
-  . intro 
+  . intro
     | ⟨u,v,h1,h2,h3⟩ =>
-      cases h2 with 
-      | inl hl => apply Or.inl; exists u; exists v 
+      cases h2 with
+      | inl hl => apply Or.inl; exists u; exists v
       | inr hr => apply Or.inr; exists u; exists v
-  . intro 
+  . intro
     | Or.inl hl => cases hl with | intro u pu => cases pu with | intro v pv =>
         match pv with
         | ⟨h1, h2, h3⟩ => exists u, v; exact ⟨h1, Or.inl h2, h3⟩
@@ -151,7 +151,7 @@ theorem concat_dist_union_l (L1 L2 L3 : Language α)
 instance : Semiring (Language α) where
   mul := Language.concat
   mul_assoc := Language.concat_assoc
-  
+
   one := Language.epsilon
   mul_one := Language.mul_eps
   one_mul := Language.eps_mul
@@ -173,7 +173,7 @@ def kstar (X : Language α) : Language α :=
   fun w: Word α => ∃ n : Nat, w ∈ X^n
 
 def plus (X: Language α) : Language α :=
-  fun w: Word α => 
+  fun w: Word α =>
     ∃ n:Nat, ¬ (n = 0) ∧ w ∈ X^n
 
 postfix:1024 "⁺" => Language.plus
@@ -199,19 +199,19 @@ theorem kleene_eq_plus_eps {L: Language α}
     | Or.inl h =>
       cases h with
       | intro n r =>
-        exists n 
-        exact r.right 
+        exists n
+        exact r.right
     | Or.inr e => exists 0
-  . simp [Language.kstar]
+  . simp [KStar.kstar]
     intro
-    | Exists.intro nn r => 
-      cases nn with 
-      | succ m => 
-        apply Or.inl 
+    | Exists.intro nn r =>
+      cases nn with
+      | succ m =>
+        apply Or.inl
         simp [Language.plus]
         exists (Nat.succ m)
-        exact ⟨Nat.succ_ne_zero m, r⟩ 
-      | zero => 
+        exact ⟨Nat.succ_ne_zero m, r⟩
+      | zero =>
         apply Or.inr
         exact r
 
