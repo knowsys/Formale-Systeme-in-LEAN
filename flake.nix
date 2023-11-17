@@ -81,7 +81,9 @@
           default = FormalSystems;
         };
 
-      devShells.default = package.devShell;
+      devShells.default = package.devShell.overrideAttrs (old: {
+        buildInputs = [leanPkgs.lean-all] ++ (old.buildInputs or []);
+      });
 
       formatter = pkgs.alejandra;
     });
