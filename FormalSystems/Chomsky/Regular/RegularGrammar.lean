@@ -44,16 +44,16 @@ instance : Coe (RegularProduction Z V) (ContextFreeProduction Z V) where
 
 def RegularProduction.toContextFree : RegularProduction Z V ↪ ContextFreeProduction Z V where
   toFun := Coe.coe
-  inj' p₁ p₂ := by 
+  inj' p₁ p₂ := by
     simp [Coe.coe]
     intro hl hr
     match p₁ with
-    | eps _ => 
+    | eps _ =>
       match p₂ with
       | eps _ => simp [lhs] at hl; rw [hl]
     | alpha _ _ =>
       match p₂ with
-      | alpha _ _ => 
+      | alpha _ _ =>
         simp [lhs] at hl; simp [rhs] at hr
         rw [List.cons_eq_cons] at hr; simp at hr
         simp [hl, hr]
@@ -162,11 +162,13 @@ def RegularDerivation.fromStep
       simp [<-h_u, pre, suf] at derivation
       cases derivation
       case same h_same =>
-        rw [<- h_same, Word.eps_eq_nil, List.map_eq_map, List.map_eq_nil] at h_w
-        rw [h_w]
-        rfl
+        dsimp [RegularProduction.getRhs] at h_same
+        simp [<-h_same, <-Word.eps_eq_nil] at h_w
+        rw [Word.eps_eq_nil, List.map_eq_nil] at h_w
+        exact h_w
       case step s' _ _ =>
         have contra := s'.sound.symm
+        simp [RegularProduction.getRhs, <-Word.eps_eq_nil, List.map] at contra
         simp [Word.mul_eq_eps] at contra
         have _ := contra.1.2
         contradiction
@@ -194,14 +196,14 @@ def RegularDerivation.fromStep
         simp [List.map_cons] at h_w
         have ⟨h1, h2⟩ := List.cons_eq_cons.mp h_w
         simp [Sum.inr_injective] at h1
-        simp [List.map_eq_nil] at h2
+        simp [List.map_eq_nil, RegularProduction.getRhs] at h2
         rw [h1, h2]
 
       case step s' _ _ =>
         apply False.elim
         have contra := s'.sound.symm
         rw [RegularProduction.lhs_eq_production_lhs] at contra
-        simp [HMul.hMul, Mul.mul] at contra
+        simp [HMul.hMul, Mul.mul, RegularProduction.getRhs] at contra
         rw [List.append_eq_cons] at contra
         cases contra
         case inl h =>
@@ -237,11 +239,10 @@ termination_by
 
 decreasing_by
   fromDerivation =>
-    simp [InvImage]
-    simp [Derivation.len]
-    simp_rw [Derivation.cancelLeft_len _]
     apply (Prod.Lex.lt_iff _ _).mpr
-    simp
+    try { simp [RegularProduction.getRhs, Derivation.len] }
+    try { simp [Derivation.cancelLeft_len _] }
+
 
 def RegularDerivation.toDerivation (d: G.RegularDerivation v w):
   G.Derivation [.inl v] (Sum.inr <$> w) := by
@@ -267,7 +268,7 @@ def RegularDerivation.toDerivation (d: G.RegularDerivation v w):
     case prod => constructor; assumption
     simp; rfl
     rfl
-  
+
   case step d' h_l h_r =>
     apply Derivation.step
     simp [h_r]
