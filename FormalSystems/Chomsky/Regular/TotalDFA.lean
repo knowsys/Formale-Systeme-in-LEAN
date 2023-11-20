@@ -1,4 +1,5 @@
 import FormalSystems.Chomsky.Regular.DFA
+import Mathlib.Data.Fintype.Option
 
 structure TotalDFA (α: Type) (qs: Type) extends DFA α qs where
   totality: ∀q, ∀a, Option.isSome $ δ (q, a)
@@ -32,12 +33,6 @@ theorem in_language_iff_del_star_final
   w ∈ M.GeneratedLanguage ↔ M.del_star' (M.q₀, w) ∈ M.F := by
   rw [DFA.in_language_iff_del_star_final, total_del_star_eq]
   simp
-
-instance [i: Fintype t]: Fintype (Option t) where
-  elems :=
-    (i.elems.map ⟨ fun x => some x, fun _ _ => by simp ⟩).cons
-      none (by simp)
-  complete := fun x => by cases x <;> simp; apply Fintype.complete
 
 end TotalDFA
 
