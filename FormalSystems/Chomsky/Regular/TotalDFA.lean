@@ -118,5 +118,5 @@ theorem totalDFA_lang_eq:
     rw [And.comm];
 
   constructor <;> intro ⟨x, l, r⟩ <;> exists x
-  . simp [r, Option.mem_iff.mp l]
-  . simp [l, r]
+  . simp [r, Option.mem_iff.mp l]; rfl
+  . simp [l, r]; exact l.symm
