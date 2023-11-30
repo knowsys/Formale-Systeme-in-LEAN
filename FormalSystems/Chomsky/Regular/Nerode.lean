@@ -91,21 +91,22 @@ def decidable_pred_from_subtype (p: α → Prop) (h: DecidablePred p):
 variable {α: Type} {Z: Finset α} {L: Language Z}
 variable {proc: DecisionProcedure L}
 variable (nc: Fintype $ Quotient (myhillNerodeEquivalence L))
+set_option quotPrecheck false
+local notation "⟪" word "⟫" =>
+  ⟨Quotient.mk (myhillNerodeEquivalence L) word, nc.complete _⟩
+set_option quotPrecheck true
 
 def canonicalAutomaton: (TotalDFA α (Quotient (myhillNerodeEquivalence L))) where
   Z := Z
   Q := nc.elems
-  q₀ := ⟨ Quotient.mk _ ε, nc.complete _ ⟩
+  q₀ := ⟪ε⟫
   F :=
     have : DecidablePred (FinalClass L) := final_class_decidable proc
     Finset.map
       ⟨fun q => ⟨q, nc.complete _⟩, fun _ _ h => by simp at h; assumption⟩
-      (@Finset.filter _ (FinalClass L) this nc.elems)
+      (@Finset.filter _ _ this nc.elems)
   δ := fun (q, a) => some $ q.val.lift
-    (fun w =>
-      let w' := w * Word.mk [a]
-      ⟨Quotient.mk (myhillNerodeEquivalence L) w',
-      nc.complete _⟩)
+    (fun w => ⟪w * Word.mk [a]⟫)
     (fun a b => by
       simp [Quotient.eq (r := myhillNerodeEquivalence L)]
       intro h
@@ -114,7 +115,6 @@ def canonicalAutomaton: (TotalDFA α (Quotient (myhillNerodeEquivalence L))) whe
   totality := fun _ _ => rfl
 
 variable {nc: Fintype (Quotient (myhillNerodeEquivalence L))}
-
 set_option quotPrecheck false
 local notation "⟪" word "⟫" =>
   ⟨Quotient.mk (myhillNerodeEquivalence L) word, nc.complete _⟩
