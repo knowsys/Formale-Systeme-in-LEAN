@@ -5,7 +5,7 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.05";
     flake-utils.url = "github:numtide/flake-utils";
     lean = {
-      url = "github:leanprover/lean4/v4.2.0";
+      url = "github:leanprover/lean4/v4.4.0";
       inputs = {
         flake-utils.follows = "flake-utils";
         nixpkgs.follows = "nixpkgs";
@@ -13,13 +13,14 @@
     };
   };
 
-  outputs = inputs @ {
-    self,
-    flake-utils,
-    ...
-  }:
-    flake-utils.lib.eachDefaultSystem (system: let
-      pkgs = import inputs.nixpkgs {system = system;};
+  outputs =
+    inputs @ { self
+    , flake-utils
+    , ...
+    }:
+    flake-utils.lib.eachDefaultSystem (system:
+    let
+      pkgs = import inputs.nixpkgs { system = system; };
       leanPkgs = inputs.lean.packages.${system};
 
       overrides = {
@@ -33,34 +34,36 @@
       inherit (leanPkgs) buildLeanPackage;
       inherit (lib) mapAttrs attrValues;
 
-      dependenciesFromLakeManifest = path: let
-        inherit (builtins) fromJSON readFile fetchGit pathExists;
-        inherit (lib) listToAttrs nameValuePair optionalAttrs;
+      dependenciesFromLakeManifest = path:
+        let
+          inherit (builtins) fromJSON readFile fetchGit pathExists;
+          inherit (lib) listToAttrs nameValuePair optionalAttrs;
 
-        manifest = fromJSON (readFile path);
-        lakePackages =
-          listToAttrs
-          (map (pkg: nameValuePair pkg.git.name pkg.git) manifest.packages);
+          manifest = fromJSON (readFile path);
+          lakePackages =
+            listToAttrs
+              (map (pkg: nameValuePair pkg.name pkg) manifest.packages);
 
-        fetchLakePackage = name:
-          fetchGit {
-            inherit name;
-            inherit (lakePackages."${name}") url rev;
-          };
+          fetchLakePackage = name:
+            fetchGit {
+              inherit name;
+              inherit (lakePackages."${name}") url rev;
+            };
 
-        buildLakePackage = name: let
-          src = fetchLakePackage name;
+          buildLakePackage = name:
+            let
+              src = fetchLakePackage name;
 
-          inner-manifest = "${src}/lake-manifest.json";
-          deps = optionalAttrs (pathExists inner-manifest) {
-            deps =
-              attrValues (dependenciesFromLakeManifest inner-manifest);
-          };
+              inner-manifest = "${src}/lake-manifest.json";
+              deps = optionalAttrs (pathExists inner-manifest) {
+                deps =
+                  attrValues (dependenciesFromLakeManifest inner-manifest);
+              };
 
-          package = buildLeanPackage ({inherit name src;} // deps);
+              package = buildLeanPackage ({ inherit name src; } // deps);
+            in
+            package.override (overrides."${name}" or { });
         in
-          package.override (overrides."${name}" or {});
-      in
         mapAttrs (name: _: buildLakePackage name) lakePackages;
 
       dependencies = dependenciesFromLakeManifest ./lake-manifest.json;
@@ -71,7 +74,8 @@
         src = ./.;
         deps = attrValues dependencies;
       };
-    in {
+    in
+    {
       packages =
         lakePkgs
         // rec {
@@ -82,7 +86,7 @@
         };
 
       devShells.default = package.devShell.overrideAttrs (old: {
-        buildInputs = [leanPkgs.lean-all] ++ (old.buildInputs or []);
+        buildInputs = [ leanPkgs.lean-all ] ++ (old.buildInputs or [ ]);
       });
 
       formatter = pkgs.alejandra;

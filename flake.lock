@@ -30,16 +30,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1698714580,
-        "narHash": "sha256-56YtHCiNMP5fJoddSokEl0ws06IwetYLer4aLCnujZA=",
+        "lastModified": 1703194875,
+        "narHash": "sha256-lU67wjl6yJP2r97lHYxrJqn+JhqMcBIbz/+qlCgY3/o=",
         "owner": "leanprover",
         "repo": "lean4",
-        "rev": "0d7051497ea09b2b4a4ef608e371b8f317487c3c",
+        "rev": "ca7d6dadb9e11831cb47959fbb0bab2dd427edfe",
         "type": "github"
       },
       "original": {
         "owner": "leanprover",
-        "ref": "v4.2.0",
+        "ref": "v4.4.0",
         "repo": "lean4",
         "type": "github"
       }
