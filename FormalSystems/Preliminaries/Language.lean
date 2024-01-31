@@ -4,22 +4,28 @@ import Mathlib.Algebra.Group.NatPowAssoc
 import FormalSystems.Preliminaries.Word
 
 import Mathlib.Data.Fintype.Lattice
+/--A language is a set of words. Parameter: The words characters, probably an Alphabet.-/
 def Language (α : Type u) := Set (Word α)
 
 namespace Language
 
+/--Allow for w ∈ L notation.-/
 instance : Membership (Word α) (Language α) where
   mem x L := L x
 
+/--Allow for the`insert`operator to add words to a language.-/
 instance : Insert (Word α) (Language α) where
   insert := Set.insert
 
+/--Allow for the definition of singleton languages with the notation {w}.-/
 instance : Singleton (Word α) (Language α) where
   singleton := Set.singleton
 
+/--Allow for subset relations for languages. Defined the same way as for sets.-/
 instance : HasSubset (Language α) where
   Subset := Set.Subset
 
+/--Languages build complemented distributive lattices in which every subset has a supremum.-/
 instance : CompleteBooleanAlgebra (Language α) :=
   Pi.instCompleteBooleanAlgebra
 
