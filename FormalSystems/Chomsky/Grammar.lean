@@ -229,7 +229,7 @@ def ExampleGrammar: @Grammar Char Char GenericProduction _ where
   Z := { 'b', 'z' }
   V := { 'A', 'B', 'S', 'Z' }
   start := ⟨ 'S', by simp ⟩
-  productions := ⟨ ExampleProductions, by simp ⟩
+  productions := ExampleProductions.toFinset
 
 theorem ExampleGrammar.productions_eq_ex_productions (p: GenericProduction _ _):
   p ∈ ExampleGrammar.productions ↔ p ∈ ExampleProductions := by

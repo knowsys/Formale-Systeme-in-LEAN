@@ -214,7 +214,7 @@ theorem kleene_eq_plus_eps {L: Language α}
       cases nn with
       | succ m =>
         apply Or.inl
-        simp [Language.plus]
+        unfold Language.plus
         exists (Nat.succ m)
         exact ⟨Nat.succ_ne_zero m, r⟩
       | zero =>

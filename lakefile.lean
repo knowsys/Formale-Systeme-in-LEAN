@@ -4,7 +4,7 @@ open Lake DSL
 package formal_systems
 
 require mathlib
-  from git "https://github.com/leanprover-community/mathlib4"@"v4.2.0"
+  from git "https://github.com/leanprover-community/mathlib4"@"v4.4.0"
 
 @[default_target]
 lean_lib FormalSystems
