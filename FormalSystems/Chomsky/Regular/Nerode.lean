@@ -78,8 +78,7 @@ def FinalClass (L: Language α) (q: Quotient (myhillNerodeEquivalence L)): Prop 
   q.lift (· ∈ L) (by apply MyhillNerodeRelation.mem_language')
 
 def final_class_decidable (proc: DecisionProcedure L):
-  DecidablePred (FinalClass L) := fun q =>
-    q.recOn (f := proc) (h := by simp)
+  DecidablePred (FinalClass L) := fun q => q.recOnSubsingleton proc
 
 def liftPredicateToSubtype (p: α → Prop) (prop: α → Prop):
   { a : α // prop a } → Prop := p ∘ Subtype.val
