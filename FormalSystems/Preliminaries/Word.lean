@@ -14,18 +14,18 @@ instance Word.monoid: CancelMonoid (Word α) where
   one := List.nil
   one_mul := List.nil_append
   mul_one := List.append_nil
-  mul_left_cancel u v w := List.append_left_cancel
-  mul_right_cancel u v w := List.append_right_cancel
+  mul_left_cancel u v w := List.append_cancel_left
+  mul_right_cancel u v w := List.append_cancel_right
 
 theorem Word.mul_eq_cons { w v : Word α } :
   w * v = x :: xs ↔ w = [] ∧ v = x :: xs ∨ ∃ (w': Word _), w = x :: w' ∧ xs = w' * v :=
   List.append_eq_cons
 
 def Word.mul_right_cancel {w₁ w₂ t : Word α} (h : w₁ * t = w₂ * t) : w₁ = w₂ :=
-  List.append_right_cancel h
+  List.append_cancel_right h
 
 def Word.mul_left_cancel {w₁ w₂ t : Word α} (h : t * w₁ = t * w₂) : w₁ = w₂ :=
-  List.append_left_cancel h
+  List.append_cancel_left h
 
 def Nat.fin_mod (n : ℕ) (h: N > 0) : Fin N := ⟨ n % N, Nat.mod_lt n h ⟩
 

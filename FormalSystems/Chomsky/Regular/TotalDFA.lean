@@ -24,8 +24,8 @@ theorem total_del_star_eq {M: TotalDFA α qs} {q: _} {w: _}:
   induction w generalizing q
   case nil => rfl
   case cons _ _ ih =>
-    simp [del_star', DFA.del_star_curried]
-    rw [total_del_eq, Option.bind_eq_bind, Option.some_bind]
+    unfold DFA.del_star_curried
+    rw [total_del_eq] 
     apply ih
 
 theorem in_language_iff_del_star_final
