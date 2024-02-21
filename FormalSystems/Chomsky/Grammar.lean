@@ -3,20 +3,46 @@ import Mathlib.Algebra.Group.Defs
 
 import FormalSystems.Preliminaries.Language
 
+--  Denote commonly used implicit typed variable names:
+--  α   - An alphabet+, the type of symbols (terminal and? non-terminal symbols).
+--  nt  - The type of non-terminal symbols (variables).
+--  Z   - A finite set of symbols.
+--  V   - A finite set of non-terminal symbols (variables).
 variable { α: Type } { nt: Type } { Z: Finset α } { V: Finset nt }
 
+/--A production rule has
+
+  - lhs               - a left hand side
+
+  - rhs               - a right hand side
+
+  - lhs_contains_var  - the proposition "left hand side contains a variable"
+
+  - prod_ext          - proposition defining when two propositions are equal
+                        (when both lhs and rhs are the same)-/
 class Production (α: Type) (nt: Type) (P: Finset α → Finset nt → Type) where
-  lhs { Z: Finset α } { V: Finset nt } (p: P Z V) : Word (V ⊕ Z)
+  lhs { Z: Finset α } { V: Finset nt } (p: P Z V) : Word (V ⊕ Z) -- disjoint union
   rhs { Z: Finset α } { V: Finset nt } (p: P Z V) : Word (V ⊕ Z)
+  /--A proof that the left side contains at least one non-terminal symbol.-/
   lhs_contains_var { Z: Finset α } { V: Finset nt } (p: P Z V) : ∃v : V, .inl v ∈ lhs p
+  /--Definition of equality for productions.-/
   prod_ext { Z: Finset α } { V: Finset nt } (p₁ p₂: P Z V) :
     p₁ = p₂ ↔ lhs p₁ = lhs p₂ ∧ rhs p₁ = rhs p₂
 
+/--A generic production rule has
+
+  - lhs               - a left hand side
+
+  - rhs               - a right hand side
+
+  - lhs_contains_var  - the proposition "left hand side contains a variable"-/
 structure GenericProduction (Z: Finset α) (V: Finset nt) where
   lhs: Word (V ⊕ Z)
   rhs: Word (V ⊕ Z)
+  /--A proof that the left side contains at least one non-terminal symbol.-/
   lhs_contains_var: ∃v : V, .inl v ∈ lhs
 
+/--Theorem: Two generic productions are equal if and only if their left- and right-hand side are the same.-/
 @[simp] theorem GenericProduction.eq_iff_lhs_and_rhs_eq (p₁ p₂ : GenericProduction Z V) :
   p₁ = p₂ ↔ p₁.lhs = p₂.lhs ∧ p₁.rhs = p₂.rhs := by
   constructor
@@ -25,12 +51,14 @@ structure GenericProduction (Z: Finset α) (V: Finset nt) where
     match p₁ with
     | ⟨ l, r, _ ⟩ => simp at h₁; simp at h₂; simp_rw [h₁, h₂]
 
+/--Production is an instance of Generic Production.-/
 instance : Production α nt GenericProduction where
   lhs := (·.lhs)
   rhs := (·.rhs)
   lhs_contains_var := (·.lhs_contains_var)
   prod_ext := GenericProduction.eq_iff_lhs_and_rhs_eq
 
+/--Construct a production from an embedding. The embedding is of ProductionType in GenericProduction.-/
 def Production.fromEmbedding (emb: ∀ Z V, ProductionType Z V ↪ GenericProduction Z V) : Production α nt ProductionType where
   lhs := lhs ∘ (emb _ _).toFun
   rhs := rhs ∘ (emb _ _).toFun
@@ -42,31 +70,58 @@ def Production.fromEmbedding (emb: ∀ Z V, ProductionType Z V ↪ GenericProduc
       apply (emb _ _).inj'; apply (GenericProduction.eq_iff_lhs_and_rhs_eq _ _).mpr
       simp; exact ⟨ hl, hr ⟩
 
+/--Allow for →ₚ notation to construct GenericProductions. Still require a proof for variable-existence on the left side.-/
 notation:40 v:40 " →ₚ " u:40 => GenericProduction.mk v u
 
+/--Equality is decidable for GenericProductions.-/
 instance [DecidableEq (Z: Finset α)] [DecidableEq (V: Finset nt)] : DecidableEq (GenericProduction Z V) :=
   fun a b => decidable_of_decidable_of_iff (Iff.symm (Production.prod_ext a b))
 
+/--A Grammar is a structure containing:
+
+  - Z - a finite set of symbols (terminal and? non-terminal)
+
+  - V - a finite set of non-terminal symbols (variables)
+
+  - start - a start symbol from the set of variables
+
+  - productions - a finite set of production rules (type Production)-/
 structure Grammar (Prod: Finset α → Finset nt → Type) [Production α nt Prod] where
+  /--A finite set of symbols (terminal and? non-terminal)-/
   Z: Finset α
+  /--A finite set of non-terminal symbols (variables)-/
   V: Finset nt
+  /--The starting symbol.-/
   start: V
+  /--The finite set of production rules-/
   productions: Finset (Prod Z V)
 
 namespace Grammar
 
 variable { Prod: Finset α → Finset nt → Type } [Production α nt Prod]
 
+/--The DerivationStep structure has four attributes:
+  `pre`,`suf`,`prod`and`sound`.
+`u`provides the string from which we perform the derivation step.
+`prod`store the set of production rules that could be used in the derivation step.
+  Show the soundness of a derivation step by proving the
+  equality`u = pre * x * suf`and showing that x appears on the left side of the
+  possible production rules`prod`.-/
 structure DerivationStep (G: Grammar Prod) (u: Word (G.V ⊕ G.Z)) where
+  /--The set of the grammars productions applicable in this derivation step.-/
   prod: G.productions
   pre: Word (G.V ⊕ G.Z)
   suf: Word (G.V ⊕ G.Z)
+  /--A proof that the production rules are applicable to the variable
+  that is encased in the left side of the derivation step, and of the inclusion
+  of this variable.-/
   sound:
     have x := Production.lhs prod.val
     u = pre * x * suf
 
 variable { G: Grammar Prod } { u: Word (G.V ⊕ G.Z) }
 
+/--Construct a derivation step to have been applied to a left-side longer string.-/
 def DerivationStep.augment_left (step: DerivationStep G u) (w: Word (G.V ⊕ G.Z)):
   DerivationStep G (w * u) :=
   {
@@ -80,26 +135,34 @@ def DerivationStep.augment_left (step: DerivationStep G u) (w: Word (G.V ⊕ G.Z
       exact t
   }
 
+/--Define one of the possible results of a derivation step as the result of applying
+  one of the production rules to the variable within the pre- and suffix.-/
 def DerivationStep.result (step: DerivationStep G u) : Word (G.V ⊕ G.Z) :=
   step.pre * Production.rhs step.prod.val * step.suf
 
+/--Theorem: Left-augmenting (adding a word to the left of) the input
+  string of a derivation step changes its result as expected.-/
 theorem DerivationStep.augment_left_result (step: DerivationStep G u) (w: Word (G.V ⊕ G.Z)):
   (step.augment_left w).result = w * step.result := by
   unfold DerivationStep.result
   unfold augment_left
   simp [mul_assoc]
 
+/--Construct the trivial DerivationStep ε * x * ε ⇒ p(x) from a production rule.-/
 def DerivationStep.fromRule (p: G.productions) : DerivationStep G (Production.lhs (p.val)) where
   prod := p
   pre := ε
   suf := ε
   sound := by simp [Word.epsilon]
 
+/--Theorem: The result of a derivation step constructed from a rule is equal to
+  the right side of that rule.-/
 theorem DerivationStep.from_rule_result { p: G.productions } :
   (DerivationStep.fromRule p).result = (Production.rhs (p.val)) := by
   simp [result, DerivationStep.fromRule, Word.epsilon]
 
-
+/--Theorem: DerivationSteps that have a single variable as an input
+  have empty pre- and suffix.-/
 theorem DerivationStep.lhs_singleton (step: DerivationStep G [.inl v]) :
   (Production.lhs step.prod.val) = [.inl v] ∧ step.pre = ε ∧ step.suf = ε := by
   match hpre:step.pre with
@@ -133,8 +196,18 @@ theorem DerivationStep.lhs_singleton (step: DerivationStep G [.inl v]) :
       . assumption
       . constructor; rfl; exact tmp.right
 
+/--Inductive definition of derivations u ⇒* v.
+
+  Either no step was made (constructor:`same`, requires a proof that u = v), or
+  we have a recursive definition with at least one step (constructor `step`).-/
 inductive Derivation (G: Grammar Prod) : Word (G.V ⊕ G.Z) → Word (G.V ⊕ G.Z) → Type
+/--0 step derivation.-/
 | same {u v: Word (G.V ⊕ G.Z)} (h: u = v) : G.Derivation u v
+/--For the recursive definition we require:
+- `step`  - The derivation step with input u,
+- `_`     - A derivation from u' to v (recursive part of the definition),
+- `sound` - The proof that`step`yields u'.
+-/
 | step
   {u u' v: Word (G.V ⊕ G.Z)}
   (step: G.DerivationStep u)
@@ -142,14 +215,18 @@ inductive Derivation (G: Grammar Prod) : Word (G.V ⊕ G.Z) → Word (G.V ⊕ G.
   (sound: step.result = u') :
   Derivation G u v
 
+/--The closure of derivations. Has attributes start and result.-/
 class DerivationCls (G: Grammar Prod) (t: Type) where
   start: Word (G.V ⊕ G.Z)
   result: Word (G.V ⊕ G.Z)
 
+/--Closures of derivations are derivations with named attributes.-/
 instance : DerivationCls G (G.Derivation a b) where
   start := a
   result := b
 
+/-- u (G)⇒* v -notation for derivations. Is the proposition that there
+  exists a derivation (∃) from u to v in G.-/
 notation:40 u:40 " (" G:40 ")⇒* " v:41 => (Nonempty $ Derivation G u v)
 
 def Derivation.len { u w: Word (G.V ⊕ G.Z) }: G.Derivation u w → Nat
