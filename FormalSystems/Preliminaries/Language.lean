@@ -6,7 +6,7 @@ import Mathlib.Data.Fintype.Lattice
 /--A language is a set of words. Parameter: The words characters, probably an Alphabet.
 
   Technically a language is a function from a word to a proposition (requirement for inclusion),
-  but`∈ `should be used to reason over languages at all times.-/
+  but`∈`should be used to reason over languages at all times.-/
 def Language (α : Type u) := Set (Word α)
 
 namespace Language

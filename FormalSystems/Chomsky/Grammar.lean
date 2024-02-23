@@ -10,7 +10,7 @@ import FormalSystems.Preliminaries.Language
 --  V   - A finite set of non-terminal symbols (variables).
 variable { α: Type } { nt: Type } { Z: Finset α } { V: Finset nt }
 
-/--A production rule has
+/--Class: A production rule has
 
   - lhs               - a left hand side
 
@@ -29,15 +29,18 @@ class Production (α: Type) (nt: Type) (P: Finset α → Finset nt → Type) whe
   prod_ext { Z: Finset α } { V: Finset nt } (p₁ p₂: P Z V) :
     p₁ = p₂ ↔ lhs p₁ = lhs p₂ ∧ rhs p₁ = rhs p₂
 
-/--A generic production rule has
+/--Structure: A generic production rule structure. Requires a set of terminal symbols and a set of non-terminal symbols (variables).
+  The structure has:
 
   - lhs               - a left hand side
 
   - rhs               - a right hand side
 
-  - lhs_contains_var  - the proposition "left hand side contains a variable"-/
+  - lhs_contains_var  - the proof that "left hand side contains a variable", i.e. is nonempty-/
 structure GenericProduction (Z: Finset α) (V: Finset nt) where
+  /--The left hand side.-/
   lhs: Word (V ⊕ Z)
+  /--The right hand side.-/
   rhs: Word (V ⊕ Z)
   /--A proof that the left side contains at least one non-terminal symbol.-/
   lhs_contains_var: ∃v : V, .inl v ∈ lhs
@@ -70,16 +73,17 @@ def Production.fromEmbedding (emb: ∀ Z V, ProductionType Z V ↪ GenericProduc
       apply (emb _ _).inj'; apply (GenericProduction.eq_iff_lhs_and_rhs_eq _ _).mpr
       simp; exact ⟨ hl, hr ⟩
 
-/--Allow for →ₚ notation to construct GenericProductions. Still require a proof for variable-existence on the left side.-/
+/--Allow for →ₚ notation to construct GenericProductions. Go from a word over V ⊕ Z to another word over V ⊕ Z.
+  Still require a proof for variable-existence on the left side right after this rule.-/
 notation:40 v:40 " →ₚ " u:40 => GenericProduction.mk v u
 
 /--Equality is decidable for GenericProductions.-/
 instance [DecidableEq (Z: Finset α)] [DecidableEq (V: Finset nt)] : DecidableEq (GenericProduction Z V) :=
   fun a b => decidable_of_decidable_of_iff (Iff.symm (Production.prod_ext a b))
 
-/--A Grammar is a structure containing:
+/--Structure: A Grammar is a structure containing:
 
-  - Z - a finite set of symbols (terminal and? non-terminal)
+  - Z - a finite set of terminal symbols
 
   - V - a finite set of non-terminal symbols (variables)
 
@@ -87,7 +91,7 @@ instance [DecidableEq (Z: Finset α)] [DecidableEq (V: Finset nt)] : DecidableEq
 
   - productions - a finite set of production rules (type Production)-/
 structure Grammar (Prod: Finset α → Finset nt → Type) [Production α nt Prod] where
-  /--A finite set of symbols (terminal and? non-terminal)-/
+  /--A finite set of terminal symbols-/
   Z: Finset α
   /--A finite set of non-terminal symbols (variables)-/
   V: Finset nt
@@ -100,17 +104,21 @@ namespace Grammar
 
 variable { Prod: Finset α → Finset nt → Type } [Production α nt Prod]
 
-/--The DerivationStep structure has four attributes:
-  `pre`,`suf`,`prod`and`sound`.
-`u`provides the string from which we perform the derivation step.
-`prod`store the set of production rules that could be used in the derivation step.
-  Show the soundness of a derivation step by proving the
-  equality`u = pre * x * suf`and showing that x appears on the left side of the
+/--Structure: The DerivationStep starting in`u`. Structure has four attributes:
+
+  - `prod` - store the set of production rules that could be used in the derivation step.
+
+  - `pre`,`suf` - `u = pre * x * suf`
+
+  - `sound` - Show the soundness of a derivation step by proving
+  the equality`u = pre * x * suf`and showing that x appears on the left side of the
   possible production rules`prod`.-/
 structure DerivationStep (G: Grammar Prod) (u: Word (G.V ⊕ G.Z)) where
   /--The set of the grammars productions applicable in this derivation step.-/
   prod: G.productions
+  /--The symbols to the left of the non-terminal symbol we produce from.-/
   pre: Word (G.V ⊕ G.Z)
+  /--The symbols to the right of the non-terminal symbol we produce from.-/
   suf: Word (G.V ⊕ G.Z)
   /--A proof that the production rules are applicable to the variable
   that is encased in the left side of the derivation step, and of the inclusion
@@ -196,14 +204,14 @@ theorem DerivationStep.lhs_singleton (step: DerivationStep G [.inl v]) :
       . assumption
       . constructor; rfl; exact tmp.right
 
-/--Inductive definition of derivations u ⇒* v.
+/--Inductive definition of derivations u (G)⇒* v in Grammars.
 
   Either no step was made (constructor:`same`, requires a proof that u = v), or
   we have a recursive definition with at least one step (constructor `step`).-/
 inductive Derivation (G: Grammar Prod) : Word (G.V ⊕ G.Z) → Word (G.V ⊕ G.Z) → Type
-/--0 step derivation.-/
+/--A 0 step derivation. On proof of u=v, return a 0-step derivation from u to v.-/
 | same {u v: Word (G.V ⊕ G.Z)} (h: u = v) : G.Derivation u v
-/--For the recursive definition we require:
+/--The recursive step definition of a derivation. Requires:
 - `step`  - The derivation step with input u,
 - `_`     - A derivation from u' to v (recursive part of the definition),
 - `sound` - The proof that`step`yields u'.
@@ -229,12 +237,19 @@ instance : DerivationCls G (G.Derivation a b) where
   exists a derivation (∃) from u to v in G.-/
 notation:40 u:40 " (" G:40 ")⇒* " v:41 => (Nonempty $ Derivation G u v)
 
+/--The length of a derivation (∈ ℕ).
+
+  Recursive definition based on the constructor
+  used to define the derivation:`same`yields a derivation of length 0,`step`
+  requires a recursive call of a derivations length.-/
 def Derivation.len { u w: Word (G.V ⊕ G.Z) }: G.Derivation u w → Nat
 | same _ => 0
 | step _ d _ => Nat.succ d.len
 
 namespace Derivation
 
+/--Theorem: It is possible to augment a prefix`w`to the left side of in- and output of a
+  valid derivation. We recieve a valid derivation.-/
 theorem augment_left {u v w: Word _} (d: G.Derivation u v) :
   G.Derivation (w * u) (w * v) := by
   induction d with
@@ -246,6 +261,8 @@ theorem augment_left {u v w: Word _} (d: G.Derivation u v) :
     . exact s.augment_left w
     . rw [<- sound]; exact s.augment_left_result _
 
+/--Return a derivation where we have added a new prefix`w`to the left sides of in-
+  and output of the input derivation.-/
 def augment_left_cons {u v: Word _} (d: G.Derivation u v) :
   G.Derivation (w :: u) (w :: v) := by
   match d with
@@ -257,6 +274,8 @@ def augment_left_cons {u v: Word _} (d: G.Derivation u v) :
     . exact s.augment_left [w]
     . rw [<- sound]; exact s.augment_left_result _
 
+/--Theorem: The derivation relation is transitive. This theorem can be used to return
+  a transitive derivation.-/
 theorem trans {u v w: Word _} (d1: G.Derivation u v) (d2: G.Derivation v w) : G.Derivation u w := by
   induction d1 with
   | same h => exact h ▸ d2
@@ -264,6 +283,9 @@ theorem trans {u v w: Word _} (d1: G.Derivation u v) (d2: G.Derivation v w) : G.
 
 end Derivation
 
+/--The derivation relation is a preorder. Return said preorder as induced by the grammer of the derivation relation.
+
+  (A preorder is a reflexive, transitive relation ≤ with a < b defined in the obvious way.)-/
 instance DerivationRelation.preorder (G: Grammar Prod) : Preorder (Word (G.V ⊕ G.Z)) where
   le u v := u (G)⇒* v
   le_refl w := Nonempty.intro $ Derivation.same rfl
@@ -272,6 +294,8 @@ instance DerivationRelation.preorder (G: Grammar Prod) : Preorder (Word (G.V ⊕
     apply Nonempty.intro
     exact d₁.trans d₂
 
+/--The language of a gammar is defined as the set of those words that can be derived
+  from the starting symbol.-/
 def GeneratedLanguage (G: Grammar Prod) : Language G.Z :=
   fun w => [.inl ↑G.start] (G)⇒* (.inr <$> w)
 
