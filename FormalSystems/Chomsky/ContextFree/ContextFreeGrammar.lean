@@ -1,10 +1,16 @@
 import FormalSystems.Chomsky.Grammar
 import Mathlib.Data.Finset.Functor
 
+/--Structure: A context free production over a set of terminal symbols Z and non-terminal symbols V
+  has a single variable as its left-hand side (`lhs`) and any string as its right-hand side (`rhs`).-/
 structure ContextFreeProduction (Z: Finset α) (V: Finset nt) where
+  /--Left-hand side: A single variable.-/
   lhs: V
+  /--Right-hand side: Any string.-/
   rhs: Word (V ⊕ Z)
 
+/--Coercion (upcast) of context free productions into generic productions.
+  Changes necessary: Inserting the single variable into a "string" (actually list).-/
 instance : Coe (ContextFreeProduction Z V) (GenericProduction Z V) where
   coe p := {
     lhs := [.inl p.lhs],
@@ -12,22 +18,35 @@ instance : Coe (ContextFreeProduction Z V) (GenericProduction Z V) where
     lhs_contains_var := ⟨ p.lhs, List.Mem.head _ ⟩
   }
 
+/--Define an embedding of context free productions into generic productions.-/
 def ContextFreeProduction.toProduction : ContextFreeProduction Z V ↪ GenericProduction Z V where
-  toFun := Coe.coe
-  inj' := by
+  toFun := Coe.coe  --  Provide function aspect
+  inj' := by        --  Prove injectivity
     intro p₁ p₂; simp [Coe.coe]; intro h1 h2
     rw [List.cons_eq_cons] at h1; simp at h1
     match p₁ with
     | ⟨l, r⟩ => simp at h1; simp at h2; simp_rw [h1, h2]
 
+/--Context free productions are instances of productions.-/
 instance : Production α nt ContextFreeProduction :=
+  -- instance can be proved either with witnesses in "where" or with an embedding
   Production.fromEmbedding (fun _ _ => ContextFreeProduction.toProduction)
+  -- works by turning embedding of context free in generic productions more general
 
+/--Class: The class of context free productions is such, that they are a subclass of productions (the class)
+  with two new attributes:
+
+  - `lhs_var` - The variable on the left-hand side of the production rule (possibly a function???)
+
+  - `lhs_eq_lhs`  - A lemma that tells us, that the left-hand side of a production (`lhs`)
+      is the left-hand side variable (`lhs_vr`) (in string form).-/
 class Production.ContextFree (α: Type) (nt: Type) (P: Finset α → Finset nt → Type)
 extends Production α nt P where
   lhs_var: P Z V → V
   lhs_eq_lhs: ∀(p: P Z V), lhs p = [Sum.inl $ lhs_var p]
 
+/--The subclass of context free productions (class) is an instance of a context free productions (the structure).
+  Show this by defining/proving lhs_var and lhs_eq_lhs _ correctly.-/
 instance : Production.ContextFree α nt ContextFreeProduction where
   lhs_var p := p.lhs
   lhs_eq_lhs _ := by rfl
@@ -36,6 +55,11 @@ variable [i: Production.ContextFree α nt P] { G: Grammar P }
 
 open Word
 
+/--Theorem: Derivation steps in context free grammars that start in the string
+  lhs, with lhs = a : : xs, where a is a terminal symbol,
+  have the symbol a as the leftmost symbol of
+  the`pre`attribute also.
+  -/
 theorem ContextFreeGrammar.derivation_step_prefix
   { xs: Word (G.V ⊕ G.Z) } { a: G.Z }
   (step: G.DerivationStep lhs) (h_lhs: lhs = (.inr a :: xs)):
@@ -55,6 +79,13 @@ theorem ContextFreeGrammar.derivation_step_prefix
     simp at sound; rw [List.cons_eq_cons] at sound
     simp [sound.left]
 
+/--Theorem: Given a derivation in a context free grammar of the form
+
+  `a::xs (G)=>* w`,
+
+  where a is a terminal symbol and w is a string of terminal symbols,
+  we know that a is the first symbol of w also, i.e.
+  `a::xs (G)=>* a::[rest of w]`.-/
 theorem ContextFreeGrammar.derivation_preserves_prefix
   { w: Word G.Z } { xs: Word (G.V ⊕ G.Z) } { a: G.Z }
   (d: G.Derivation lhs rhs) (h_lhs: lhs = (.inr a :: xs)) (h_rhs: rhs = (.inr <$> w)):
@@ -78,6 +109,7 @@ theorem ContextFreeGrammar.derivation_preserves_prefix
     let h_lhs' := r.symm
     exact ContextFreeGrammar.derivation_preserves_prefix d h_lhs' h_rhs
 
+/---/
 def Grammar.DerivationStep.cancelLeft
   { xs: Word (G.V ⊕ G.Z) } { a: G.Z }
   (d: G.DerivationStep lhs) (h_lhs: lhs = (.inr a :: xs)):

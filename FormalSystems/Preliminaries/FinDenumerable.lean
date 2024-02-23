@@ -1,7 +1,7 @@
 import Mathlib.Data.Fintype.Lattice
 import Mathlib.Data.Set.Countable
 
-/--Define finite, denumerable sets/types. Are finite and encodable:
+/--Class: Define finite, denumerable sets/types. Are finite and encodable:
 
   Encodable (i.e. constructively countable): can put elements inside
   with`encode : α → ℕ`and out with`decode : ℕ → α`.

@@ -1,6 +1,6 @@
 import FormalSystems.Preliminaries.FinDenumerable
 
-/--An alphabet is finite (`.elems`and all elements included in`.elems`),
+/--Class: An alphabet is finite (`.elems`and all elements included in`.elems`),
   denumerable (`encode`and`decode`functions), all encodings (returned by`encode`)
   are `< Alphabet.cardinality`, and inhabited (existance of a`default`element).-/
 class Alphabet (α : Type u) extends FinDenumerable α, Inhabited α
