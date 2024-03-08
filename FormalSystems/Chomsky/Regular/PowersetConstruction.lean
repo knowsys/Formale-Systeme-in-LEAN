@@ -86,7 +86,7 @@ theorem DFA.fromNFA.NFARunToRun_final_imp_final { r: M.Run q w} (h: r.last ∈ M
     assumption
 
 theorem NFA.lang_subs_DFA_fromNFA_lang:
-  M.GeneratedLanguage ⊆ (DFA.fromNFA M).GeneratedLanguage := by
+  M.AcceptedLanguage ⊆ (DFA.fromNFA M).AcceptedLanguage := by
   intro w ⟨_, h_start, run, h_run⟩
   constructor; swap
   apply DFA.fromNFA.RunFromRestricted
@@ -123,7 +123,7 @@ theorem DFA.fromNFA_run_imp_run
     repeat { assumption }
 
 theorem NFA.DFA_fromNFA_lang_subs_lang:
-  (DFA.fromNFA M).GeneratedLanguage ⊆ M.GeneratedLanguage := by
+  (DFA.fromNFA M).AcceptedLanguage ⊆ M.AcceptedLanguage := by
   intro w ⟨_, hr⟩
   have ⟨q, hq, r, _⟩ := DFA.fromNFA_run_imp_run hr
   exists q
@@ -132,7 +132,7 @@ theorem NFA.DFA_fromNFA_lang_subs_lang:
   exists r
 
 theorem NFA.fromNFA_lang_eq_lang:
-  (DFA.fromNFA M).GeneratedLanguage = M.GeneratedLanguage := by
+  (DFA.fromNFA M).AcceptedLanguage = M.AcceptedLanguage := by
   apply Set.ext; intros; constructor
   apply DFA_fromNFA_lang_subs_lang
   apply lang_subs_DFA_fromNFA_lang
