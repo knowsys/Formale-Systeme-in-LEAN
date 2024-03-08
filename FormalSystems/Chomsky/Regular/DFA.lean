@@ -26,13 +26,13 @@ def toNFA (M: DFA α qs) : NFA α qs := M
 
 def Run (M: DFA α qs) := M.toNFA.Run
 
-def GeneratedLanguage (M: DFA α qs) : Language M.Z :=
+def AcceptedLanguage (M: DFA α qs) : Language M.Z :=
   fun w => ∃run: M.Run M.q₀ w, run.last ∈ M.F
 
-theorem generated_lang_eq { M: DFA α qs } :
-  M.GeneratedLanguage = M.toNFA.GeneratedLanguage := by
-  unfold GeneratedLanguage
-  unfold toNFA; unfold NFA.GeneratedLanguage
+theorem accepted_lang_eq { M: DFA α qs } :
+  M.AcceptedLanguage = M.toNFA.AcceptedLanguage := by
+  unfold AcceptedLanguage
+  unfold toNFA; unfold NFA.AcceptedLanguage
   simp; rfl
 
 theorem last_state_eq_del_star_curried
@@ -110,7 +110,7 @@ theorem del_star_isSome_iff_constrRun_isSome
 
 theorem in_language_iff_del_star_final
   {M: DFA α qs} {w: Word M.Z}:
-  w ∈ M.GeneratedLanguage ↔ ∃qf ∈ M.del_star (M.q₀, w), qf ∈ M.F := by
+  w ∈ M.AcceptedLanguage ↔ ∃qf ∈ M.del_star (M.q₀, w), qf ∈ M.F := by
   constructor
   . intro ⟨r, hr⟩
     refine' .intro r.last ⟨_, hr⟩
@@ -188,7 +188,7 @@ def Run.toDerivation (run: M.Run start word) (hlast: run.last ∈ M.F):
     rfl
 
 theorem lang_subs_toGrammar_lang :
-  M.GeneratedLanguage ⊆ M.toGrammar.GeneratedLanguage := by
+  M.AcceptedLanguage ⊆ M.toGrammar.GeneratedLanguage := by
   intro _ ⟨ run, h ⟩
   constructor
   exact run.toDerivation _ h
@@ -234,7 +234,7 @@ theorem Run.fromDerivation_result {d: M.toGrammar.RegularDerivation s w}:
     apply fromDerivation_result
 
 theorem toGrammar_lang_subs_lang :
-  M.toGrammar.GeneratedLanguage ⊆ M.GeneratedLanguage := by
+  M.toGrammar.GeneratedLanguage ⊆ M.AcceptedLanguage := by
   intro _ h
   apply Nonempty.elim h
   intro d
@@ -245,7 +245,7 @@ theorem toGrammar_lang_subs_lang :
   rfl
 
 theorem toGrammar_lang_eq_lang :
-  M.toGrammar.GeneratedLanguage = M.GeneratedLanguage := by
+  M.toGrammar.GeneratedLanguage = M.AcceptedLanguage := by
   apply Set.ext
   intros; constructor
   apply toGrammar_lang_subs_lang

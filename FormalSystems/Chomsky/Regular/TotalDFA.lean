@@ -30,7 +30,7 @@ theorem total_del_star_eq {M: TotalDFA α qs} {q: _} {w: _}:
 
 theorem in_language_iff_del_star_final
   {M: TotalDFA α qs} {w: Word M.Z}:
-  w ∈ M.GeneratedLanguage ↔ M.del_star' (M.q₀, w) ∈ M.F := by
+  w ∈ M.AcceptedLanguage ↔ M.del_star' (M.q₀, w) ∈ M.F := by
   rw [DFA.in_language_iff_del_star_final, total_del_star_eq]
   simp
 
@@ -97,7 +97,7 @@ theorem Subtype.eq_iff {p: α -> Prop} { x y: Subtype p }:
   x = y ↔ x.val = y.val := ⟨fun h => by rw [h], Subtype.eq⟩
 
 theorem totalDFA_lang_eq:
-  M.GeneratedLanguage = M.toTotalDFA.GeneratedLanguage := by
+  M.AcceptedLanguage = M.toTotalDFA.AcceptedLanguage := by
   apply Set.ext; intro w
   rw [DFA.in_language_iff_del_star_final]
   -- w is of type Word M.Z, but the theorem expects Word M.toTotalDFA.Z
