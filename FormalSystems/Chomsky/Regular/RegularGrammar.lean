@@ -4,8 +4,11 @@ import Mathlib.Data.Finset.Basic
 import Mathlib.Data.Prod.Lex
 
 inductive RegularProduction (Z: Finset α) (V: Finset nt) where
+  /--`V → ε`-/
   | eps (lhs: V)
+  /--`V → Z`-/
   | alpha (lhs: V) (rhs: Z)
+  /--`V → Z × V`-/
   | cons (lhs: V) (rhs: Z × V)
   deriving DecidableEq
 
@@ -117,6 +120,7 @@ inductive RegularDerivation (G: RegularGrammar α nt): (v: G.V) → (w: Word G.Z
   G.RegularDerivation v w
 | alpha (v: _) (h_v: .alpha v a ∈ G.productions) (h_w: w = [a]):
   G.RegularDerivation v w
+  /--step constructor.-/
 | step (v v': _) (h: .cons v (a, v') ∈ G.productions) (h_w: w = (a :: w')):
   G.RegularDerivation v' w' → G.RegularDerivation v w
 

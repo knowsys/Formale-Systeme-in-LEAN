@@ -4,7 +4,7 @@ import Mathlib.Data.Finset.Fold
 variable [DecidableEq β]
 
 /--Theorem: Given a list of finite sets`l`, an element`e`is in the union of
-  all the finite sets within`l` if and only if`e`is within one of`l`'s elements (∃).-/
+  all the finite sets within`l`if and only if`e`is within one of`l`'s elements (∃).-/
 theorem List.mem_fold_union_iff { l: List (Finset β) }:
   e ∈ List.foldr (· ∪ ·) ∅ l ↔ ∃s ∈ l, e ∈ s := by
   constructor
