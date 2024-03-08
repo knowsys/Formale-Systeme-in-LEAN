@@ -106,15 +106,15 @@ variable { Prod: Finset α → Finset nt → Type } [Production α nt Prod]
 
 /--Structure: The DerivationStep starting in`u`. Structure has four attributes:
 
-  - `prod` - store the set of production rules that could be used in the derivation step.
+  - `prod` - store the production rule that was used in the derivation step.
 
   - `pre`,`suf` - `u = pre * x * suf`
 
   - `sound` - Show the soundness of a derivation step by proving
   the equality`u = pre * x * suf`and showing that x appears on the left side of the
-  possible production rules`prod`.-/
+  production rule`prod`.-/
 structure DerivationStep (G: Grammar Prod) (u: Word (G.V ⊕ G.Z)) where
-  /--The set of the grammars productions applicable in this derivation step.-/
+  /--The set grammars productions applied in this derivation step.-/
   prod: G.productions
   /--The symbols to the left of the non-terminal symbol we produce from.-/
   pre: Word (G.V ⊕ G.Z)
@@ -143,8 +143,8 @@ def DerivationStep.augment_left (step: DerivationStep G u) (w: Word (G.V ⊕ G.Z
       exact t
   }
 
-/--Define one of the possible results of a derivation step as the result of applying
-  one of the production rules to the variable within the pre- and suffix.-/
+/--Define result of a derivation step as the result of applying
+  the production rule to the variable within the pre- and suffix.-/
 def DerivationStep.result (step: DerivationStep G u) : Word (G.V ⊕ G.Z) :=
   step.pre * Production.rhs step.prod.val * step.suf
 

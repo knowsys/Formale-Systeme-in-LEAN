@@ -9,7 +9,8 @@ import Mathlib.Data.Set.Countable
   Fintype: is finite: has a finset`elems`attribute and a proof that all elements of
   this type are in`elems`.
 
-  Additionally require that all encodings return numbers less than a cardinality.-/
+  Additionally require that all encodings return numbers less than a cardinality.
+  Can get this proposition:`encode_lt_card`.-/
 class FinDenumerable (α : Type u) extends Fintype α, Encodable α where
   encode_lt_card: ∀(a : α), encode a < card 
   -- constructor? check back later!
