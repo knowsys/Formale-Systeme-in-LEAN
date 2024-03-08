@@ -85,9 +85,8 @@ def Grammar.DerivationStep.cancelLeft
   val := { d with
     pre := d.pre.tail
     sound := by
-      simp;
-      have hxs : xs = lhs.tail
-      simp [h_lhs]
+      simp
+      have hxs : xs = lhs.tail := by simp [h_lhs]
       simp [hxs, HMul.hMul, Mul.mul]
       rw [<- List.tail_append_of_ne_nil]
       congr

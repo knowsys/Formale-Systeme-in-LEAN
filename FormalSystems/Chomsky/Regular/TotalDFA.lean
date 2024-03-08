@@ -16,7 +16,7 @@ theorem total_del_eq (M: TotalDFA α qs):
 def del_star' (M: TotalDFA α qs): M.Q × Word (M.Z) → M.Q
   | (q, ε) => q
   | (q, x :: xs) => M.del_star' (M.δ' (q, x), xs)
-termination_by _ p => p.2.length
+termination_by p => p.2.length
 
 theorem total_del_star_eq {M: TotalDFA α qs} {q: _} {w: _}:
   M.del_star (q, w) = some (M.del_star' (q, w)) := by

@@ -149,7 +149,7 @@ theorem LoopProgram.ofLen_stmt_complete
     rw [Nat.succ_add, Nat.succ_add, Nat.succ_eq_add_one]
     apply ofLen_stmt_complete _ h_stmt
     cases' h_stmt with h h <;> rw [h] <;> simp [extendLenOne]
-termination_by _ => x + y + n
+termination_by x + y + n
 
 theorem LoopProgram.ofLen_complete:
   ∀ p: LoopProgram, p ∈ LoopProgram.ofLen p.len := by
