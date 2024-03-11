@@ -121,128 +121,124 @@ inductive RegularDerivation (G: RegularGrammar α nt): (v: G.V) → (w: Word G.Z
   G.RegularDerivation v' w' → G.RegularDerivation v w
 
 mutual
+  def RegularDerivation.fromDerivation
+    (derivation: G.Derivation [.inl X] w')
+    (h: Sum.inr <$> w = w'):
+    G.RegularDerivation X w := by
+    match derivation with
+    | .same h_same =>
+      cases w <;> simp [<- h_same] at h
+      rw [List.cons_eq_cons] at h
+      have ⟨_, _⟩ := h
+      contradiction
 
-def RegularDerivation.fromDerivation
-  (derivation: G.Derivation [.inl X] w')
-  (h: Sum.inr <$> w = w'):
-  G.RegularDerivation X w := by
-  match derivation with
-  | .same h_same =>
-    cases w <;> simp [<- h_same] at h
-    rw [List.cons_eq_cons] at h
-    have ⟨_, _⟩ := h
-    contradiction
+    | .step s d' hd =>
+      apply fromStep
+      repeat assumption
+  termination_by (derivation.len, 0)
+  decreasing_by
+    apply (Prod.Lex.lt_iff _ _).mpr
+    try { simp [RegularProduction.getRhs, Derivation.len] }
 
-  | .step s d' hd =>
-    apply fromStep
-    repeat assumption
+  def RegularDerivation.fromStep
+    (step: G.DerivationStep [.inl X])
+    (derivation: G.Derivation u w')
+    (h_u: step.result = u)
+    (h_w: Sum.inr <$> w = w'):
+    G.RegularDerivation X w := by
+    have ⟨left, pre, suf⟩ := step.lhs_singleton
+    unfold DerivationStep.result at h_u
+    match hp:step.prod.val with
+    | .eps _ =>
+      apply RegularDerivation.eps
 
-def RegularDerivation.fromStep
-  (step: G.DerivationStep [.inl X])
-  (derivation: G.Derivation u w')
-  (h_u: step.result = u)
-  (h_w: Sum.inr <$> w = w'):
-  G.RegularDerivation X w := by
-  have ⟨left, pre, suf⟩ := step.lhs_singleton
-  unfold DerivationStep.result at h_u
-  match hp:step.prod.val with
-  | .eps _ =>
-    apply RegularDerivation.eps
+      . rw [hp,
+          RegularProduction.lhs_eq_production_lhs,
+          List.cons_eq_cons]
+          at left
+        simp [RegularProduction.lhs] at left
+        rw [<- left, <- hp]
+        exact step.prod.prop
 
-    . rw [hp,
-        RegularProduction.lhs_eq_production_lhs,
-        List.cons_eq_cons]
-        at left
-      simp [RegularProduction.lhs] at left
-      rw [<- left, <- hp]
-      exact step.prod.prop
+      . simp [hp, RegularProduction.rhs_eq_deconstr_rhs,
+          Word.mk, <- Word.eps_eq_nil] at h_u
+        simp [<-h_u, pre, suf] at derivation
+        cases derivation
+        case same h_same =>
+          dsimp [RegularProduction.getRhs] at h_same
+          simp [<-h_same, <-Word.eps_eq_nil] at h_w
+          rw [Word.eps_eq_nil, List.map_eq_nil] at h_w
+          exact h_w
+        case step s' _ _ =>
+          have contra := s'.sound.symm
+          simp [RegularProduction.getRhs, <-Word.eps_eq_nil, List.map] at contra
+          simp [Word.mul_eq_eps] at contra
+          have _ := contra.1.2
+          contradiction
 
-    . simp [hp, RegularProduction.rhs_eq_deconstr_rhs,
-        Word.mk, <- Word.eps_eq_nil] at h_u
-      simp [<-h_u, pre, suf] at derivation
-      cases derivation
-      case same h_same =>
-        dsimp [RegularProduction.getRhs] at h_same
-        simp [<-h_same, <-Word.eps_eq_nil] at h_w
-        rw [Word.eps_eq_nil, List.map_eq_nil] at h_w
-        exact h_w
-      case step s' _ _ =>
-        have contra := s'.sound.symm
-        simp [RegularProduction.getRhs, <-Word.eps_eq_nil, List.map] at contra
-        simp [Word.mul_eq_eps] at contra
-        have _ := contra.1.2
-        contradiction
+    | .alpha _ a =>
+      apply RegularDerivation.alpha
 
-  | .alpha _ a =>
-    apply RegularDerivation.alpha
+      . rw [hp,
+          RegularProduction.lhs_eq_production_lhs,
+          List.cons_eq_cons]
+          at left
+        simp [RegularProduction.lhs] at left
+        rw [<- left, <- hp]
+        exact step.prod.prop
 
-    . rw [hp,
-        RegularProduction.lhs_eq_production_lhs,
-        List.cons_eq_cons]
-        at left
-      simp [RegularProduction.lhs] at left
-      rw [<- left, <- hp]
-      exact step.prod.prop
+      . simp [hp, RegularProduction.rhs_eq_deconstr_rhs, Word.mk] at h_u
+        simp [<-h_u, pre, suf] at derivation
+        cases derivation
 
-    . simp [hp, RegularProduction.rhs_eq_deconstr_rhs, Word.mk] at h_u
-      simp [<-h_u, pre, suf] at derivation
-      cases derivation
+        case same h_same =>
+          simp [HMul.hMul, Mul.mul] at h_same
+          rw [<- h_same] at h_w
+          cases w
+          contradiction
+          simp [List.map_cons] at h_w
+          have ⟨h1, h2⟩ := List.cons_eq_cons.mp h_w
+          simp [Sum.inr_injective] at h1
+          simp [List.map_eq_nil, RegularProduction.getRhs] at h2
+          rw [h1, h2]
 
-      case same h_same =>
-        simp [HMul.hMul, Mul.mul] at h_same
-        rw [<- h_same] at h_w
-        cases w
-        contradiction
-        simp [List.map_cons] at h_w
-        have ⟨h1, h2⟩ := List.cons_eq_cons.mp h_w
-        simp [Sum.inr_injective] at h1
-        simp [List.map_eq_nil, RegularProduction.getRhs] at h2
-        rw [h1, h2]
+        case step s' _ _ =>
+          apply False.elim
+          have contra := s'.sound.symm
+          rw [RegularProduction.lhs_eq_production_lhs] at contra
+          simp [HMul.hMul, Mul.mul, RegularProduction.getRhs] at contra
+          rw [List.append_eq_cons] at contra
+          cases contra
+          case inl h =>
+            have ⟨_, h⟩ := h
+            simp at h
+          case inr h =>
+            have ⟨_, h⟩ := h
+            simp at h
 
-      case step s' _ _ =>
-        apply False.elim
-        have contra := s'.sound.symm
-        rw [RegularProduction.lhs_eq_production_lhs] at contra
-        simp [HMul.hMul, Mul.mul, RegularProduction.getRhs] at contra
-        rw [List.append_eq_cons] at contra
-        cases contra
-        case inl h =>
-          have ⟨_, h⟩ := h
-          simp at h
-        case inr h =>
-          have ⟨_, h⟩ := h
-          simp at h
+    | .cons _ (a, X') =>
+      simp [hp, RegularProduction.rhs_eq_deconstr_rhs, pre, suf] at h_u
+      simp [Word.mk, HMul.hMul, Mul.mul] at h_u
 
-  | .cons _ (a, X') =>
-    simp [hp, RegularProduction.rhs_eq_deconstr_rhs, pre, suf] at h_u
-    simp [Word.mk, HMul.hMul, Mul.mul] at h_u
+      apply RegularDerivation.step
+      . have : step.prod.val = .cons X (a, X') := by
+          rw [Production.prod_ext]; constructor
+          assumption; simp [hp]; rfl
+        rw [<- this]; exact step.prod.prop
 
-    apply RegularDerivation.step
-    . have : step.prod.val = .cons X (a, X') := by
-        rw [Production.prod_ext]; constructor
-        assumption; simp [hp]; rfl
-      rw [<- this]; exact step.prod.prop
+      . apply ContextFreeGrammar.derivation_preserves_prefix derivation
+        exact h_u.symm
+        exact h_w.symm
 
-    . apply ContextFreeGrammar.derivation_preserves_prefix derivation
-      exact h_u.symm
-      exact h_w.symm
-
-    . apply RegularDerivation.fromDerivation
-      exact derivation.cancelLeft h_u.symm h_w.symm
-      rfl
-
-end
-
-termination_by
-  fromDerivation d _ => (d.len, 0)
-  fromStep _ d _ _ => (d.len, 1)
-
-decreasing_by
-  fromDerivation =>
+      . apply RegularDerivation.fromDerivation
+        exact derivation.cancelLeft h_u.symm h_w.symm
+        rfl
+  termination_by (derivation.len, 1)
+  decreasing_by
     apply (Prod.Lex.lt_iff _ _).mpr
     try { simp [RegularProduction.getRhs, Derivation.len] }
     try { simp [Derivation.cancelLeft_len _] }
-
+end
 
 def RegularDerivation.toDerivation (d: G.RegularDerivation v w):
   G.Derivation [.inl v] (Sum.inr <$> w) := by

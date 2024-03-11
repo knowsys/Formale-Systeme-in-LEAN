@@ -32,8 +32,8 @@ def Nat.fin_mod (n : ℕ) (h: N > 0) : Fin N := ⟨ n % N, Nat.mod_lt n h ⟩
 def Word.decode [inst: Alphabet α]: (n : ℕ) → Word α
   | Nat.zero => []
   | Nat.succ n => inst.decode_fin (Nat.fin_mod n Alphabet.card_pos) :: Word.decode (n / inst.card)
-termination_by Word.decode n => n
-decreasing_by Word.decode =>
+termination_by n => n
+decreasing_by
   simp [InvImage]
   apply Nat.lt_of_le_of_lt
   exact Nat.div_le_self n inst.card
@@ -64,8 +64,8 @@ def Word.encode [inst: Alphabet α]: (w : Word α) → ℕ
     simp [ih, FinDenumerable.decode_fin_eq_option_get]
     rw [<- inst.encode_fin_eq_encode _, inst.decodenk]
     simp [Nat.fin_mod, Nat.mul_comm, Nat.div_add_mod n inst.card]
-termination_by Word.decodenk n => n
-decreasing_by Word.decodenk =>
+termination_by n => n
+decreasing_by
   simp [InvImage]
   apply Nat.lt_of_le_of_lt
   exact Nat.div_le_self n inst.card
