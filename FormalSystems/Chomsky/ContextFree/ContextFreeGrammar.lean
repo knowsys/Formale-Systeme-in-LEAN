@@ -1,6 +1,6 @@
 import FormalSystems.Chomsky.Grammar
 import Mathlib.Data.Finset.Functor
-import Mathlib.Tactic
+import Mathlib.Tactic.Tauto
 
 --=============================================================
 -- Section: Context Free Productions
@@ -140,7 +140,9 @@ instance : Coe (@ContextFreeDerivationStep α nt G u) (@Grammar.DerivationStep �
 
     construct a derivation
 
-    `v → l_of_v' * w' * r_of_v'`-/
+    `v → l_of_v' * w' * r_of_v'`
+
+    Note: u, v and w are not the same as in type-0 derivations. This is confusing!-/
 inductive ContextFreeDerivation (G : ContextFreeGrammar α nt) : (v: G.V) → (w: Word (G.V ⊕ G.Z)) → Type
   /--0 step derivations v (G)=>* v-/
   | same_var {v : G.V} (w' : G.V) (h : v = w') : ContextFreeDerivation G v [.inl w']
@@ -153,32 +155,51 @@ inductive ContextFreeDerivation (G : ContextFreeGrammar α nt) : (v: G.V) → (w
     (h_u_mid : u_mid = l_of_v' * Word.mk [Sum.inl v'] * r_of_v'):
     ContextFreeDerivation G v' w' → ContextFreeDerivation G v (l_of_v' * w' * r_of_v')
 
+
+/--Coerce context-free derivations to generic derivations.-/
+def ContextFreeDerivation.toDerivation
+  (cfd : @ContextFreeDerivation α nt G v w) :
+  (@Grammar.Derivation α nt GenericProduction _ (↑G) (Word.mk [Sum.inl v]) w) :=
+  -- Constructing a generic-grammar derivation from a cfderivation
+  -- requires a case distinction on the constructor of cfderivation
+  -- these were same_var, same_word and step
+  by match cfd with
+
+  | same_var w' h =>
+    have h_h : (Word.mk [@Sum.inl {x // x ∈ G.V} {x // x ∈ G.Z} v] = Word.mk [Sum.inl w']) := by simp [h]
+    exact Grammar.Derivation.same h_h
+
+  | same_word h =>
+    exact Grammar.Derivation.same h
+
+  -- Given a derivation v' → w', and a production rule
+  -- v → u_mid = l_of_v' * v' * r_of_v',
+  -- construct a derivation v → l_of_v' * w' * r_of_v'
+  | @step α nt G v v' w w' u_mid l_of_v' r_of_v' h_production h_u_mid deriv_v'_to_w' =>
+    let G' : Grammar GenericProduction := { Z := G.Z, V := G.V, start := G.start, productions := Finset.map ContextFreeProduction.toProduction G.productions }
+    let prod_but_cf := {lhs := v, rhs := u_mid : ContextFreeProduction G'.Z G'.V}
+    let productionRule : G'.productions := ⟨ prod_but_cf ,
+      by
+        simp -- simp might already use classical reasoning in mathlib
+          -- tauto uses classical reasoning
+        tauto -- credit to Henrik for coming up with this proof
+          -- exact Exists.intro prod h_production
+        ⟩
+    apply Grammar.Derivation.step -- construct the step using generic step constructor
+    -- yields a derivation from u to v
+    case step => -- prodrule from `v` to `u_mid (= l_of_v' * v' * r_of_v')`
+      exact Grammar.DerivationStep.fromRule productionRule
+    case x => -- A derivation from u' to v (recursive part of the definition),
+      exact (@Grammar.Derivation.augment_right α nt _ _ G' r_of_v' (l_of_v' * Word.mk [(Sum.inl v')]) (l_of_v' * w') (@Grammar.Derivation.augment_left α nt _ _ G' _ _ l_of_v' (ContextFreeDerivation.toDerivation deriv_v'_to_w')))
+    case sound =>
+      rw [Grammar.DerivationStep.from_rule_result]
+      simp
+      rw [h_u_mid]
+      rfl
+
 --Coercion CFDerivation into generic Derivations
 instance : Coe (@ContextFreeDerivation α nt G v w) (@Grammar.Derivation α nt GenericProduction _ (↑G) (Word.mk [Sum.inl v]) w) where
-  coe cfDerivation := match cfDerivation with
-  | ContextFreeDerivation.same_var w' h =>
-    have h_h : (Word.mk [Sum.inl v] = Word.mk [Sum.inl w']) := by simp [h]
-    by exact Grammar.Derivation.same h_h
-  | ContextFreeDerivation.same_word h =>
-      Grammar.Derivation.same h
-  | @ContextFreeDerivation.step α nt G v v' w w' u_mid l_of_v' r_of_v'
-      h_production
-      h_u_mid
-      deriv_v'_to_w'
-    =>
-      let G' : Grammar GenericProduction := { Z := G.Z, V := G.V, start := G.start, productions := Finset.map ContextFreeProduction.toProduction G.productions }
-      let prod_but_cf := {lhs := v, rhs := u_mid : ContextFreeProduction G'.Z G'.V}
-      let productionRule : G'.productions := ⟨ prod_but_cf ,
-        by
-          simp
-          -- tauto uses classical reasoning
-          tauto --  credit to Henrik for coming up with this proof
-          --exact Exists.intro prod h_production
-        ⟩
-      Grammar.Derivation.step -- construct a generic derivation step
-      (Grammar.DerivationStep.fromRule productionRule) -- prodrule from `v` to `u_mid (= l_of_v' * v' * r_of_v')`
-      ((deriv_v'_to_w' : ContextFreeDerivation G _ _) : Grammar.Derivation _ _) -- derivation
-      (sorry : (Grammar.DerivationStep.fromRule productionRule).result = v')
+  coe cfDerivation := cfDerivation.toDerivation
 
 end ContextFreeGrammar
 

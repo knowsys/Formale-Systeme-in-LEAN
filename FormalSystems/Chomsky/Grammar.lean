@@ -74,7 +74,9 @@ def Production.fromEmbedding (emb: ∀ Z V, ProductionType Z V ↪ GenericProduc
       simp; exact ⟨ hl, hr ⟩
 
 /--Allow for →ₚ notation to construct GenericProductions. Go from a word over V ⊕ Z to another word over V ⊕ Z.
-  Still require a proof for variable-existence on the left side right after this rule.-/
+  Still require a proof for variable-existence on the left side right after this rule.
+
+  Note: This notation is also used in `Mathlib.Data.DFinsupp.Basic`. You currently cannot use both modules at the same time.-/
 notation:40 v:40 " →ₚ " u:40 => GenericProduction.mk v u
 
 /--Equality is decidable for GenericProductions.-/
@@ -143,6 +145,21 @@ def DerivationStep.augment_left (step: DerivationStep G u) (w: Word (G.V ⊕ G.Z
       exact t
   }
 
+/--Construct a derivation step to have been applied to a right-side longer string.-/
+def DerivationStep.augment_right (step: DerivationStep G u) (w: Word (G.V ⊕ G.Z)):
+  DerivationStep G (u * w) :=
+  {
+    prod := step.prod,
+    pre := step.pre,
+    suf := step.suf * w,
+    sound := by
+      simp [mul_assoc]
+      have t := step.sound
+      simp [← mul_assoc] at t
+      simp [← mul_assoc]
+      exact t
+  }
+
 /--Define result of a derivation step as the result of applying
   the production rule to the variable within the pre- and suffix.-/
 def DerivationStep.result (step: DerivationStep G u) : Word (G.V ⊕ G.Z) :=
@@ -154,6 +171,14 @@ theorem DerivationStep.augment_left_result (step: DerivationStep G u) (w: Word (
   (step.augment_left w).result = w * step.result := by
   unfold DerivationStep.result
   unfold augment_left
+  simp [mul_assoc]
+
+/--Theorem: Right-augmenting (adding a word to the left of) the input
+  string of a derivation step changes its result as expected.-/
+theorem DerivationStep.augment_right_result (step: DerivationStep G u) (w: Word (G.V ⊕ G.Z)):
+  (step.augment_right w).result = step.result * w:= by
+  unfold DerivationStep.result
+  unfold augment_right
   simp [mul_assoc]
 
 /--Construct the trivial DerivationStep ε * x * ε ⇒ p(x) from a production rule.-/
@@ -248,7 +273,7 @@ def Derivation.len { u w: Word (G.V ⊕ G.Z) }: G.Derivation u w → Nat
 
 namespace Derivation
 
-/--Theorem: It is possible to augment a prefix`w`to the left side of in- and output of a
+/--Theorem: It is possible to augment a prefix-word`w`to the left side of in- and output of a
   valid derivation. We recieve a valid derivation.-/
 theorem augment_left {u v w: Word _} (d: G.Derivation u v) :
   G.Derivation (w * u) (w * v) := by
@@ -261,7 +286,7 @@ theorem augment_left {u v w: Word _} (d: G.Derivation u v) :
     . exact s.augment_left w
     . rw [<- sound]; exact s.augment_left_result _
 
-/--Return a derivation where we have added a new prefix`w`to the left sides of in-
+/--Return a derivation where we have added a new prefix-symbol`w`to the left sides of in-
   and output of the input derivation.-/
 def augment_left_cons {u v: Word _} (d: G.Derivation u v) :
   G.Derivation (w :: u) (w :: v) := by
@@ -273,6 +298,32 @@ def augment_left_cons {u v: Word _} (d: G.Derivation u v) :
     swap
     . exact s.augment_left [w]
     . rw [<- sound]; exact s.augment_left_result _
+
+/--Return a derivation where we have added a new prefix-word`w`to the right sides of in-
+  and output of the input derivation.-/
+theorem augment_right {u v: Word (G.V ⊕ G.Z)} (d: G.Derivation u v) :
+  G.Derivation (u * w) (v * w) := by induction d with
+  | same h => apply same; simp [h]
+  | step s _ sound =>
+    apply step
+    .assumption
+    swap
+    . exact s.augment_right w
+    rw [<- sound]; exact s.augment_right_result _
+
+
+/--Return a derivation where we have added a new prefix-symbol`w`to the right sides of in-
+  and output of the input derivation.-/
+def augment_right_cons {u v: Word (G.V ⊕ G.Z)} (d: G.Derivation u v) :
+  G.Derivation (u.append w) (v.append w) := by
+  match d with
+  | same h => apply same; simp [h]
+  | step s d' sound =>
+    apply step
+    . exact d'.augment_right_cons
+    swap
+    . exact s.augment_right w
+    . rw [<- sound]; exact s.augment_right_result _
 
 /--Theorem: The derivation relation is transitive. This theorem can be used to return
   a transitive derivation.-/
