@@ -1,5 +1,6 @@
 import FormalSystems.Chomsky.Grammar
 import Mathlib.Data.Finset.Functor
+import Mathlib.Tactic
 
 --=============================================================
 -- Section: Context Free Productions
@@ -140,7 +141,7 @@ instance : Coe (@ContextFreeDerivationStep α nt G u) (@Grammar.DerivationStep �
     construct a derivation
 
     `v → l_of_v' * w' * r_of_v'`-/
-inductive ContextFreeDerivation (G: ContextFreeGrammar α nt): (v: G.V) → (w: Word (G.V ⊕ G.Z)) → Type
+inductive ContextFreeDerivation (G : ContextFreeGrammar α nt) : (v: G.V) → (w: Word (G.V ⊕ G.Z)) → Type
   /--0 step derivations v (G)=>* v-/
   | same_var {v : G.V} (w' : G.V) (h : v = w') : ContextFreeDerivation G v [.inl w']
   /--0 step derivations v (G)=>* w with w is a "word" that looks like v-/
@@ -165,10 +166,19 @@ instance : Coe (@ContextFreeDerivation α nt G v w) (@Grammar.Derivation α nt G
       h_u_mid
       deriv_v'_to_w'
     =>
-      let productionRule : G.productions := ⟨ {lhs:=v, rhs:=u_mid : ContextFreeProduction G.Z G.V} , h_production ⟩
-      Grammar.Derivation.step (Grammar.DerivationStep.fromRule productionRule)
-        ((deriv_v'_to_w' : ContextFreeDerivation G _ _) : Grammar.Derivation _ _)
-        (sorry)
+      let G' : Grammar GenericProduction := { Z := G.Z, V := G.V, start := G.start, productions := Finset.map ContextFreeProduction.toProduction G.productions }
+      let prod_but_cf := {lhs := v, rhs := u_mid : ContextFreeProduction G'.Z G'.V}
+      let productionRule : G'.productions := ⟨ prod_but_cf ,
+        by
+          simp
+          -- tauto uses classical reasoning
+          tauto --  credit to Henrik for coming up with this proof
+          --exact Exists.intro prod h_production
+        ⟩
+      Grammar.Derivation.step -- construct a generic derivation step
+      (Grammar.DerivationStep.fromRule productionRule) -- prodrule from `v` to `u_mid (= l_of_v' * v' * r_of_v')`
+      ((deriv_v'_to_w' : ContextFreeDerivation G _ _) : Grammar.Derivation _ _) -- derivation
+      (sorry : (Grammar.DerivationStep.fromRule productionRule).result = v')
 
 end ContextFreeGrammar
 
