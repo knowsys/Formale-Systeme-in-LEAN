@@ -56,7 +56,7 @@ def Run.len: (r: M.Run q w) → Nat
 /--The generated language of an NFA is defined as those words whose runs (starting in
   a starting state) end in a final state. Requires existance of an initial state and of such a run.
   (Reminder: a language is defined by a set inclusion criterium with input word w.)-/
-def GeneratedLanguage (M: NFA α qs) : Language M.Z :=
+def AcceptedLanguage (M: NFA α qs) : Language M.Z :=
   fun w => ∃q₀ ∈ M.Q₀, ∃run: M.Run q₀ w, run.last ∈ M.F
 
 end NFA
@@ -213,7 +213,7 @@ theorem Run.fromDerivation_last_in_final:
 end NFA
 
 theorem RegularGrammar.toNFA_lang_subs_lang:
-  G.toNFA.GeneratedLanguage ⊆ G.GeneratedLanguage := by
+  G.toNFA.AcceptedLanguage ⊆ G.GeneratedLanguage := by
   intro w ⟨q₀, h_q₀, r, hr⟩
   constructor
   apply RegularDerivation.toDerivation
@@ -226,7 +226,7 @@ theorem RegularGrammar.toNFA_lang_subs_lang:
   . assumption
 
 theorem RegularGrammar.lang_subs_toNFA_lang:
-  G.GeneratedLanguage ⊆ G.toNFA.GeneratedLanguage := by
+  G.GeneratedLanguage ⊆ G.toNFA.AcceptedLanguage := by
   intro w ⟨d⟩
   constructor; constructor
   simp [toNFA]; rfl
@@ -237,7 +237,7 @@ theorem RegularGrammar.lang_subs_toNFA_lang:
   rfl
 
 theorem RegularGrammar.lang_eq_toNFA_lang:
-  G.GeneratedLanguage = G.toNFA.GeneratedLanguage := by
+  G.GeneratedLanguage = G.toNFA.AcceptedLanguage := by
   apply Set.ext; intro; constructor
   apply RegularGrammar.lang_subs_toNFA_lang
   apply RegularGrammar.toNFA_lang_subs_lang

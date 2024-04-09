@@ -155,12 +155,16 @@ inductive ContextFreeDerivation (G : ContextFreeGrammar α nt) : (v: G.V) → (w
 
 --Coercion CFDerivation into generic Derivations
 instance : Coe (@ContextFreeDerivation α nt G v w) (@Grammar.Derivation α nt GenericProduction _ (↑G) (Word.mk [Sum.inl v]) w) where
+  -- Constructing a generic-grammar derivation from a cfderivation
+  -- requires a case distinction on the constructor of cfderivation
+  -- these were same_var, same_word and step
   coe cfDerivation := match cfDerivation with
   | ContextFreeDerivation.same_var w' h =>
     have h_h : (Word.mk [Sum.inl v] = Word.mk [Sum.inl w']) := by simp [h]
     by exact Grammar.Derivation.same h_h
   | ContextFreeDerivation.same_word h =>
       Grammar.Derivation.same h
+  -- use @ to help us give every variable a name
   | @ContextFreeDerivation.step α nt G v v' w w' u_mid l_of_v' r_of_v'
       h_production
       h_u_mid
@@ -170,12 +174,12 @@ instance : Coe (@ContextFreeDerivation α nt G v w) (@Grammar.Derivation α nt G
       let prod_but_cf := {lhs := v, rhs := u_mid : ContextFreeProduction G'.Z G'.V}
       let productionRule : G'.productions := ⟨ prod_but_cf ,
         by
-          simp
+          simp -- simp might already use classical reasoning in mathlib
           -- tauto uses classical reasoning
           tauto --  credit to Henrik for coming up with this proof
           --exact Exists.intro prod h_production
         ⟩
-      Grammar.Derivation.step -- construct a generic derivation step
+      Grammar.Derivation.step -- construct a (generic-grammar) derivation step
       (Grammar.DerivationStep.fromRule productionRule) -- prodrule from `v` to `u_mid (= l_of_v' * v' * r_of_v')`
       ((deriv_v'_to_w' : ContextFreeDerivation G _ _) : Grammar.Derivation _ _) -- derivation
       (sorry : (Grammar.DerivationStep.fromRule productionRule).result = v')
@@ -259,9 +263,8 @@ def Grammar.DerivationStep.cancelLeft
   val := { d with
     pre := d.pre.tail
     sound := by
-      simp;
-      have hxs : xs = lhs.tail
-      simp [h_lhs]
+      simp
+      have hxs : xs = lhs.tail := by simp [h_lhs]
       simp [hxs, HMul.hMul, Mul.mul]
       rw [<- List.tail_append_of_ne_nil]
       congr
