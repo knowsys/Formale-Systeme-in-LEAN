@@ -28,28 +28,28 @@ def LoopProgram.len: LoopProgram → Nat
 | concat p₁ p₂ => p₁.len + p₂.len + 1
 | loop n p => p.len + n.index + 1
 
-def LoopProgramState := Lean.AssocList Variable Nat 
+def LoopProgramState := Lean.AssocList Variable Nat
 
 namespace LoopProgramState
   def get (s: LoopProgramState) (v: Variable): Nat := (s.find? v).getD 0
 
-  def put (s: LoopProgramState) (v: Variable) (n: Nat): LoopProgramState := 
+  def put (s: LoopProgramState) (v: Variable) (n: Nat): LoopProgramState :=
     if s.contains v then s.replace v n else s.insert v n
 end LoopProgramState
 
 def LoopProgram.run: LoopProgram -> LoopProgramState -> LoopProgramState
-| add x y n => fun s => 
+| add x y n => fun s =>
   let new_val := s.get y + n
   s.put x new_val
 | sub x y n => fun s =>
   let new_val := s.get y - n
   s.put x new_val
-| concat p q => fun s => 
+| concat p q => fun s =>
   q.run (p.run s)
-| loop x p => fun s => 
+| loop x p => fun s =>
   Nat.iterate p.run (s.get x) s
 
-def LoopProgram.toFunction (p: LoopProgram) (input: Nat): Nat := 
+def LoopProgram.toFunction (p: LoopProgram) (input: Nat): Nat :=
   let x0 : Variable := { index := 0 }
   let initialState : LoopProgramState := Lean.AssocList.cons x0 input Lean.AssocList.nil
   let result : LoopProgramState := p.run initialState
@@ -149,7 +149,7 @@ theorem LoopProgram.ofLen_stmt_complete
     rw [Nat.succ_add, Nat.succ_add, Nat.succ_eq_add_one]
     apply ofLen_stmt_complete _ h_stmt
     cases' h_stmt with h h <;> rw [h] <;> simp [extendLenOne]
-termination_by _ => x + y + n
+termination_by x + y + n
 
 theorem LoopProgram.ofLen_complete:
   ∀ p: LoopProgram, p ∈ LoopProgram.ofLen p.len := by
@@ -189,7 +189,7 @@ theorem LoopProgram.ofLen_complete:
     simp; apply Finset.mem_product.mpr
     exact ⟨ofLen_complete _, ofLen_complete _⟩
 
-def LoopProgram.diagonal (n: Nat): Nat := 
+def LoopProgram.diagonal (n: Nat): Nat :=
   Finset.fold max 0 (λ p => p.toFunction n) (LoopProgram.ofLen n) + 1
 
 theorem LoopProgram.diagonal_is_not_loop_computable:

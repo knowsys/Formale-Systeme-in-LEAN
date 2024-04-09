@@ -156,8 +156,8 @@ theorem final_state_accepts_iff:
   unfold FinalClass
   rw [@Quotient.lift_mk _ _ (myhillNerodeEquivalence L) _ _ _]
 
-theorem canonicalAutomaton_generated_language:
-  (canonicalAutomaton nc (proc := proc)).GeneratedLanguage = L := by
+theorem canonicalAutomaton_accepted_language:
+  (canonicalAutomaton nc (proc := proc)).AcceptedLanguage = L := by
   apply Set.ext
   intro w
   rw [TotalDFA.in_language_iff_del_star_final, final_state_accepts_iff]
