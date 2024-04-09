@@ -281,4 +281,7 @@ def RegularDerivation.toDerivation (d: G.RegularDerivation v w):
     simp; rfl
     rfl
 
+instance : Coe (@RegularDerivation α nt G v w) (Derivation ↑G (Word.mk [Sum.inl v]) (Sum.inr <$> w)) where
+  coe regDerivation := regDerivation.toDerivation
+
 end RegularGrammar
