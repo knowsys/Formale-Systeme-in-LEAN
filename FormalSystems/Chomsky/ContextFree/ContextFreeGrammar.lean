@@ -155,50 +155,68 @@ inductive ContextFreeDerivation (G : ContextFreeGrammar α nt) : (v: G.V) → (w
     (h_u_mid : u_mid = l_of_v' * Word.mk [Sum.inl v'] * r_of_v'):
     ContextFreeDerivation G v' w' → ContextFreeDerivation G v (l_of_v' * w' * r_of_v')
 
-/--Coerce context-free derivations to generic derivations.-/
-def ContextFreeDerivation.toDerivation
-  (cfd : @ContextFreeDerivation α nt G v w) :
-  (@Grammar.Derivation α nt GenericProduction _ (↑G) (Word.mk [Sum.inl v]) w) :=
-  -- Constructing a generic-grammar derivation from a cfderivation
-  -- requires a case distinction on the constructor of cfderivation
-  -- these were same_var, same_word and step
-  by match cfd with
 
-  | same_var w' h =>
-    have h_h : (Word.mk [@Sum.inl {x // x ∈ G.V} {x // x ∈ G.Z} v] = Word.mk [Sum.inl w']) := by simp [h]
-    exact Grammar.Derivation.same h_h
+def ContextFreeDerivation.len (cfd : ContextFreeDerivation G v w) : Nat :=
+  match cfd with
+    | same_var _ _  => 0
+    | same_word _    => 0
+    | step _ _ cfd' => Nat.succ cfd'.len
 
-  | same_word h =>
-    exact Grammar.Derivation.same h
+#check Function.Injective
 
-  -- Given a derivation v' → w', and a production rule
-  -- v → u_mid = l_of_v' * v' * r_of_v',
-  -- construct a derivation v → l_of_v' * w' * r_of_v'
-  | @step α nt G v v' w w' u_mid l_of_v' r_of_v' h_production h_u_mid deriv_v'_to_w' =>
-    let G' : Grammar GenericProduction := { Z := G.Z, V := G.V, start := G.start, productions := Finset.map ContextFreeProduction.toProduction G.productions }
-    let prod_but_cf := {lhs := v, rhs := u_mid : ContextFreeProduction G'.Z G'.V}
-    let productionRule : G'.productions := ⟨ prod_but_cf ,
+--mutual -- doesn't seem to work here
+/--Define an embedding of context-free derivations in generic derivations.-/
+def ContextFreeDerivation.toDerivation :
+    (@ContextFreeDerivation α nt G v w) ↪
+    (@Grammar.Derivation α nt GenericProduction _ (↑G) (Word.mk [Sum.inl v]) w) where
+    -- Constructing a generic-grammar derivation from a cfderivation
+    -- requires a case distinction on the constructor of cfderivation
+    -- these were same_var, same_word and step
+    toFun:= fun cfd => match cfd with
+
+    | same_var w' h =>
+      have h_h : (Word.mk [@Sum.inl {x // x ∈ G.V} {x // x ∈ G.Z} v] = Word.mk [Sum.inl w']) := by simp [h]
+      by exact Grammar.Derivation.same h_h
+
+    | same_word h =>
+      by exact Grammar.Derivation.same h
+
+    -- Given a derivation v' → w', and a production rule
+    -- v → u_mid = l_of_v' * v' * r_of_v',
+    -- construct a derivation v → l_of_v' * w' * r_of_v'
+    | @step α nt G v v' w w' u_mid l_of_v' r_of_v' h_production h_u_mid deriv_v'_to_w' =>
+      let G' : Grammar GenericProduction := { Z := G.Z, V := G.V, start := G.start, productions := Finset.map ContextFreeProduction.toProduction G.productions }
+      let prod_but_cf := {lhs := v, rhs := u_mid : ContextFreeProduction G'.Z G'.V}
+      let productionRule : G'.productions := ⟨ prod_but_cf ,
+        by
+          simp -- simp might already use classical reasoning in mathlib
+            -- tauto uses classical reasoning
+          tauto -- credit to Henrik for coming up with this proof
+            -- exact Exists.intro prod h_production
+          ⟩
       by
-        simp -- simp might already use classical reasoning in mathlib
-          -- tauto uses classical reasoning
-        tauto -- credit to Henrik for coming up with this proof
-          -- exact Exists.intro prod h_production
-        ⟩
-    apply Grammar.Derivation.step -- construct the step using generic step constructor
-    -- yields a derivation from u to v
-    case step => -- prodrule from `v` to `u_mid (= l_of_v' * v' * r_of_v')`
-      exact Grammar.DerivationStep.fromRule productionRule
-    case x => -- A derivation from u' to v (recursive part of the definition),
-      exact (@Grammar.Derivation.augment_right α nt _ _ G' r_of_v' (l_of_v' * Word.mk [(Sum.inl v')]) (l_of_v' * w') (@Grammar.Derivation.augment_left α nt _ _ G' _ _ l_of_v' (ContextFreeDerivation.toDerivation deriv_v'_to_w')))
-    case sound =>
-      rw [Grammar.DerivationStep.from_rule_result]
-      simp
-      rw [h_u_mid]
-      rfl
+      apply Grammar.Derivation.step -- construct the step using generic step constructor
+      -- yields a derivation from u to v
+      case step => -- prodrule from `v` to `u_mid (= l_of_v' * v' * r_of_v')`
+        exact Grammar.DerivationStep.fromRule productionRule
+      case x => -- A derivation from u' to v (recursive part of the definition),
+        exact (@Grammar.Derivation.augment_right α nt _ _ G' r_of_v' (l_of_v' * Word.mk [(Sum.inl v')]) (l_of_v' * w') (@Grammar.Derivation.augment_left α nt _ _ G' _ _ l_of_v' (ContextFreeDerivation.toDerivation deriv_v'_to_w')))
+      case sound =>
+        rw [Grammar.DerivationStep.from_rule_result]
+        simp
+        rw [h_u_mid]
+        rfl
+    inj' := by
+      intro cfd₁ cfd₂; simp [Coe.coe]; intro h1
+      simp at h1
+    termination_by (cfd.len, 0)
+  --def ContextFreeDerivation.len (cfd : @ContextFreeDerivation α nt G v w) : Nat :=
+  --  cfd.toDerivation.len
+--end
 
 --Coercion CFDerivation into generic Derivations
 instance : Coe (@ContextFreeDerivation α nt G v w) (@Grammar.Derivation α nt GenericProduction _ (↑G) (Word.mk [Sum.inl v]) w) where
-  coe cfDerivation := cfDerivation.toDerivation
+  coe cfDerivation := ContextFreeDerivation.toDerivation cfDerivation
 
 end ContextFreeGrammar
 
