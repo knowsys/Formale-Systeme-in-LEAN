@@ -156,21 +156,30 @@ inductive ContextFreeDerivation (G : ContextFreeGrammar α nt) : (v: G.V) → (w
     ContextFreeDerivation G v' w' → ContextFreeDerivation G v (l_of_v' * w' * r_of_v')
 
 
-/--Coerce context-free derivations to generic derivations.-/
-def ContextFreeDerivation.toDerivation
-  (cfd : @ContextFreeDerivation α nt G v w) :
-  (@Grammar.Derivation α nt GenericProduction _ (↑G) (Word.mk [Sum.inl v]) w) :=
+def ContextFreeDerivation.len (cfd : ContextFreeDerivation G v w) : Nat :=
+  match cfd with
+    | same_var _ _  => 0
+    | same_word _    => 0
+    | step _ _ cfd' => Nat.succ cfd'.len
+
+#check Function.Injective
+
+--mutual -- doesn't seem to work here
+/--Define an embedding of context-free derivations in generic derivations.-/
+def ContextFreeDerivation.toDerivation :
+    (@ContextFreeDerivation α nt G v w) ↪
+    (@Grammar.Derivation α nt GenericProduction _ (↑G) (Word.mk [Sum.inl v]) w) where
   -- Constructing a generic-grammar derivation from a cfderivation
   -- requires a case distinction on the constructor of cfderivation
   -- these were same_var, same_word and step
-  by match cfd with
+    toFun:= fun cfd => match cfd with
 
   | same_var w' h =>
     have h_h : (Word.mk [@Sum.inl {x // x ∈ G.V} {x // x ∈ G.Z} v] = Word.mk [Sum.inl w']) := by simp [h]
-    exact Grammar.Derivation.same h_h
+      by exact Grammar.Derivation.same h_h
 
   | same_word h =>
-    exact Grammar.Derivation.same h
+      by exact Grammar.Derivation.same h
 
   -- Given a derivation v' → w', and a production rule
   -- v → u_mid = l_of_v' * v' * r_of_v',
@@ -185,6 +194,7 @@ def ContextFreeDerivation.toDerivation
         tauto -- credit to Henrik for coming up with this proof
           -- exact Exists.intro prod h_production
         ⟩
+      by
     apply Grammar.Derivation.step -- construct the step using generic step constructor
     -- yields a derivation from u to v
     case step => -- prodrule from `v` to `u_mid (= l_of_v' * v' * r_of_v')`
@@ -196,10 +206,17 @@ def ContextFreeDerivation.toDerivation
       simp
       rw [h_u_mid]
       rfl
+    inj' := by
+      intro cfd₁ cfd₂; simp [Coe.coe]; intro h1
+      simp at h1
+    termination_by (cfd.len, 0)
+  --def ContextFreeDerivation.len (cfd : @ContextFreeDerivation α nt G v w) : Nat :=
+  --  cfd.toDerivation.len
+--end
 
 --Coercion CFDerivation into generic Derivations
 instance : Coe (@ContextFreeDerivation α nt G v w) (@Grammar.Derivation α nt GenericProduction _ (↑G) (Word.mk [Sum.inl v]) w) where
-  coe cfDerivation := cfDerivation.toDerivation
+  coe cfDerivation := ContextFreeDerivation.toDerivation cfDerivation
 
 end ContextFreeGrammar
 
