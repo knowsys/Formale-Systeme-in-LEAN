@@ -148,3 +148,26 @@ instance : GetElem (Word α) ℕ α (λw i ↦ i < w.length) where
 @[simp] theorem Word.map_append (f : α → β) :
   ∀ (u v : Word _), f <$> (u * v) = (f <$> u) * (f <$> v) :=
   List.map_append f
+
+/--Construct a longer word from a list of words.-/
+def Word.concatListOfWords (list : List (Word X)) : Word X :=
+  Fin.foldr list.length (fun n w => list[n] * w) ε
+
+--#eval (Word.concatListOfWords [Word.mk ['a'], Word.mk ['b'], Word.mk ['e']])
+--#eval Word.mk ['a'] * Word.mk ['d'] * Word.mk ['D','d']
+
+/--Construct the word `w = B[0]A[0]B[1]A[1]...A[N]B[N+1]`.
+
+  Requires As length to be one less than Bs length and B to be non-empty.-/
+def Word.concat2ListsOfWordsAlternating (A : List (Word X)) (B : List (Word X)) (proof_length : A.length + 1 = B.length) (proof_B_nonempty : B.length > 0): (Word X) :=
+  have _ : List.length B - 1 < List.length B := by exact Nat.pred_lt_self proof_B_nonempty
+  Fin.foldr A.length (fun n w =>
+  have _ : n < B.length := by rw [← proof_length] ; exact lt_trans n.isLt (Nat.lt_succ_self A.length)
+  A[n] * B[n] * w)
+  B[B.length-1]
+
+def anAlphabet : Type := Alphabet (List.toFinset (['a','b','c','1','2','3','4']))
+def abcList : List (Word anAlphabet) := [Word.mk ['a'], Word.mk ['b'], Word.mk ['c']]
+def numberList : List (Word anAlphabet) := [Word.mk ['1'], Word.mk ['2'], Word.mk ['3'], Word.mk ['4']]
+#eval (Word.concat2ListsOfWordsAlternating  )
+#eval Word.mk ['a'] * Word.mk ['d'] * Word.mk ['D','d']
