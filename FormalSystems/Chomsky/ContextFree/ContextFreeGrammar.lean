@@ -1,6 +1,7 @@
 import FormalSystems.Chomsky.Grammar
 import Mathlib.Data.Finset.Functor
 import Mathlib.Tactic.Tauto
+--import Mathlib.Data.Fold
 
 --=============================================================
 -- Section: Context Free Productions
@@ -128,6 +129,23 @@ instance : Coe (@ContextFreeDerivationStep α nt G u) (@Grammar.DerivationStep �
     } : @Grammar.DerivationStep α nt GenericProduction _ (↑G : Grammar GenericProduction) u
   }
 
+/--Tree-based context-free derivations. Notation: `v ⇒(≺)⁺ w`. Are defined to be
+
+  - "complete", i.e. they go from a single variable to the final word of terminal symbols
+
+  - multi-step, though at least 1 step
+
+  - unordered, the order of the applied production rules cannot be ascertained or stored
+
+  - define a tree-structure.-/
+inductive TreeBasedContextFreeDerivation (G : ContextFreeGrammar α nt) : (v: G.V) → (w: Word G.Z) → Type
+  | step (vars : List G.V) (words : List (Word G.Z)) (proof_len : vars.length+1 = words.length)
+    (cfproduction : (ContextFreeProduction G.Z G.V))
+    (proof_production_lhs : cfproduction.lhs = v)
+    (proof_production_rhs : cfproduction.rhs = )
+
+#eval Fin.foldr 3 f x = f 0 (f 1 (f 2 x))
+
 /--Define context free derivations v (G)=>* w inductively. Constructors:
 
   - `same_var`  - 0 step derivations v (G)=>* v
@@ -163,15 +181,15 @@ def ContextFreeDerivation.len (cfd : ContextFreeDerivation G v w) : Nat :=
     | same_word _    => 0
     | step _ _ cfd' => Nat.succ cfd'.len
 
---mutual -- doesn't seem to work here
+--IMPORTANT: theorems are not computable!
 /--Define an embedding of context-free derivations in generic derivations.-/
-def ContextFreeDerivation.toDerivation :
-    (@ContextFreeDerivation α nt G v w) ↪
-    (@Grammar.Derivation α nt GenericProduction _ (↑G) (Word.mk [Sum.inl v]) w) where
+def ContextFreeDerivation.toDerivation
+    (cfd : @ContextFreeDerivation α nt G v w) :
+    (@Grammar.Derivation α nt GenericProduction _ (↑G) (Word.mk [Sum.inl v]) w) :=
     -- Constructing a generic-grammar derivation from a cfderivation
     -- requires a case distinction on the constructor of cfderivation
     -- these were same_var, same_word and step
-    toFun:= fun cfd => match cfd with
+    match cfd with
 
     | same_var w' h =>
       have h_h : (Word.mk [@Sum.inl {x // x ∈ G.V} {x // x ∈ G.Z} v] = Word.mk [Sum.inl w']) := by simp [h]
@@ -205,15 +223,7 @@ def ContextFreeDerivation.toDerivation :
         simp
         rw [h_u_mid]
         rfl
-    inj' := by
-      intro cfd₁ cfd₂; simp [Coe.coe]; intro h1
-      apply h1.
-      sorry
-      --apply Grammar.Derivation.eq_iff_same_steps_and_same_result
---termination_by (cfd.len, 0)
-  --def ContextFreeDerivation.len (cfd : @ContextFreeDerivation α nt G v w) : Nat :=
-  --  cfd.toDerivation.len
---end
+termination_by (cfd.len, 0)
 
 --Coercion CFDerivation into generic Derivations
 instance : Coe (@ContextFreeDerivation α nt G v w) (@Grammar.Derivation α nt GenericProduction _ (↑G) (Word.mk [Sum.inl v]) w) where
