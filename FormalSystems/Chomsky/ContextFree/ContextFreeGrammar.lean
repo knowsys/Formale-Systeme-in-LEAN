@@ -162,8 +162,6 @@ def ContextFreeDerivation.len (cfd : ContextFreeDerivation G v w) : Nat :=
     | same_word _    => 0
     | step _ _ cfd' => Nat.succ cfd'.len
 
-#check Function.Injective
-
 --mutual -- doesn't seem to work here
 /--Define an embedding of context-free derivations in generic derivations.-/
 def ContextFreeDerivation.toDerivation :
