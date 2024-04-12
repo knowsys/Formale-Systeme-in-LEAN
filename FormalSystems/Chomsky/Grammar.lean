@@ -337,7 +337,7 @@ theorem trans {u v w: Word _} (d1: G.Derivation u v) (d2: G.Derivation v w) : G.
 @[simp] theorem eq_iff_same_steps_and_same_result (deriv₁ deriv₂ : G.Derivation v w) :
   deriv₁ = deriv₂ ↔
     (deriv₁ = same (h_equals₁ : v=w)) ∧ (deriv₂ = same (h_equals₂ : v=w)) ∨
-    ∃step', ∃ prevDeriv, ∃sound₁, ∃sound₂, (deriv₁ = step step' prevDeriv (sound₁ : (DerivationStep.result step' = u'))) ∧ (deriv₂ = step step' prevDeriv (sound₂ : (DerivationStep.result step' = u'))) := by
+    ∃step', ∃ u, ∃ prevDeriv : (G.Derivation u w), ∃sound₁, ∃sound₂, (deriv₁ = step step' prevDeriv (sound₁ : (step'.result = u))) ∧ (deriv₂ = step step' prevDeriv (sound₂ : (step'.result = u))) := by
   apply Iff.intro
   case mp =>
     intro h_derivs_equal  -- assume deriv₁ = deriv₂
@@ -348,17 +348,30 @@ theorem trans {u v w: Word _} (d1: G.Derivation u v) (d2: G.Derivation v w) : G.
       rw [← h_derivs_equal, h_deriv₁]
     case step prod' u'' step' deriv_result' deriv' : _ =>          -- step derivation
       apply Or.intro_right
-      apply Exists.intro step'
-      apply Exists.intro deriv'
+      exists step'
+      exists u''
+      exists deriv'
+      exists deriv_result'; exists deriv_result'
+      apply And.intro; rfl; rw [← h_derivs_equal, h_deriv₁]
   case mpr =>
-    sorry
-
-  /- constructor
-  . intro h; rw [h]; exact ⟨ rfl, rfl ⟩
-  . intro ⟨ h₁, h₂ ⟩
-    match p₁ with
-    | ⟨ l, r, _ ⟩ => simp at h₁; simp at h₂; simp_rw [h₁, h₂] -/
-
+    intro h_same_steps_and_same_result
+    cases h_same_steps_and_same_result
+    case inl h_left =>
+      rw [h_left.left, h_left.right]
+    case inr h_right =>
+    -- TODO: rewrite this with algorithmic type expression, I knew you could
+    -- probably in chapter inductive proofs
+      apply Exists.elim h_right; intro step
+      intro h_right'
+      apply Exists.elim h_right'; intro u
+      intro h_right''
+      apply Exists.elim h_right''; intro prevDeriv
+      intro h_right'''
+      apply Exists.elim h_right'''; intro sound₁
+      intro h_right''''
+      apply Exists.elim h_right''''; intro sound₂
+      intro h_right'''''
+      rw [h_right'''''.right, h_right'''''.left]
 
 end Derivation
 
