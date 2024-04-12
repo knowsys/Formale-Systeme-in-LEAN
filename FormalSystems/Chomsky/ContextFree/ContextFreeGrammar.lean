@@ -155,7 +155,8 @@ inductive ContextFreeDerivation (G : ContextFreeGrammar α nt) : (v: G.V) → (w
     (h_u_mid : u_mid = l_of_v' * Word.mk [Sum.inl v'] * r_of_v'):
     ContextFreeDerivation G v' w' → ContextFreeDerivation G v (l_of_v' * w' * r_of_v')
 
-
+/--Define the length of a CFDerivation. Cannot use generic derivation definition due to
+  requiring this definition in the construction of the embedding.-/
 def ContextFreeDerivation.len (cfd : ContextFreeDerivation G v w) : Nat :=
   match cfd with
     | same_var _ _  => 0
@@ -206,8 +207,10 @@ def ContextFreeDerivation.toDerivation :
         rfl
     inj' := by
       intro cfd₁ cfd₂; simp [Coe.coe]; intro h1
-      simp at h1
-    termination_by (cfd.len, 0)
+      apply h1.
+      sorry
+      --apply Grammar.Derivation.eq_iff_same_steps_and_same_result
+--termination_by (cfd.len, 0)
   --def ContextFreeDerivation.len (cfd : @ContextFreeDerivation α nt G v w) : Nat :=
   --  cfd.toDerivation.len
 --end
