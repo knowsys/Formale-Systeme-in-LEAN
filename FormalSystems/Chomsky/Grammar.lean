@@ -412,7 +412,7 @@ def ExampleProductions : List (GenericProduction { 'b', 'z' } { 'A', 'B', 'S', '
     ([ .inl ⟨ 'B', by simp ⟩ ] →ₚ [ .inr ⟨ 'b', by simp ⟩  ])
     -- proof that lhs contains a variable
     ⟨ ⟨ 'B', _ ⟩ , List.Mem.head _ ⟩,
-    -- rule X -> z
+    -- rule Z -> z
     ([ .inl ⟨ 'Z', by simp ⟩ ] →ₚ [ .inr ⟨ 'z', by simp ⟩ ])
     -- proof that lhs contains a variable
     ⟨ ⟨ 'Z', _ ⟩ , List.Mem.head _ ⟩
