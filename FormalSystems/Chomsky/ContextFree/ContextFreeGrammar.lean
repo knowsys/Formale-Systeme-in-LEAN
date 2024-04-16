@@ -139,12 +139,18 @@ instance : Coe (@ContextFreeDerivationStep α nt G u) (@Grammar.DerivationStep �
 
   - define a tree-structure.-/
 inductive TreeBasedContextFreeDerivation (G : ContextFreeGrammar α nt) : (v: G.V) → (w: Word G.Z) → Type
-  | step (vars : List G.V) (words : List (Word G.Z)) (proof_len : vars.length+1 = words.length)
+  | step (vars : List G.V) (words : List (Word G.Z)) (proof_len : vars.length+1 = words.length) (proof_words_non_empty : words.length>0)
     (cfproduction : (ContextFreeProduction G.Z G.V))
     (proof_production_lhs : cfproduction.lhs = v)
-    (proof_production_rhs : cfproduction.rhs = )
-
-#eval Fin.foldr 3 f x = f 0 (f 1 (f 2 x))
+    (proof_production_rhs : cfproduction.rhs =
+      @Word.concat2ListsOfWordsAlternating
+        (G.V ⊕ G.Z)
+        (List.map (fun var : { x // x ∈ G.V } => Word.mk [Sum.inl var]) vars)
+        (List.map (fun word : Word { x // x ∈ G.Z } => Word.mk [Sum.inr var]) words)
+        (by simp)
+        (by simp)
+    )
+    (list_of_used_cfds : List (TreeBasedContextFreeDerivation G _ _)) --how to type here: need dependent type (depends on index)
 
 /--Define context free derivations v (G)=>* w inductively. Constructors:
 

@@ -32,7 +32,7 @@ theorem FinDenumerable.encode_fin_eq_encode [inst: FinDenumerable α] :
 theorem FinDenumerable.encode_fin_injective [inst: FinDenumerable α] : Function.Injective inst.encode_fin := by
   intro x y; simp [Fin.ext_iff, encode_fin]
 
-/--An embedding function from`α`to a Finset of size`inst.cardinality`.
+/--An embedding function from a finite, denumerable type`α`to a Finset of size`inst.cardinality`.
 
   Embedding: a structure that is contained within another structure,
   both instances of some structure type, e.g. groups (here finite sets).

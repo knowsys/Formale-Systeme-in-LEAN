@@ -4,7 +4,7 @@ import Mathlib.Data.Nat.ModEq
 
 import FormalSystems.Preliminaries.Alphabet
 
-/--A Word, input for automatons. Depends on an Alphabet.
+/--A Word, input for automatons. Depends on an Alphabet α.
   Based on the Type List.-/
 def Word (α : Type u) := List α
 
@@ -163,11 +163,28 @@ def Word.concat2ListsOfWordsAlternating (A : List (Word X)) (B : List (Word X)) 
   have _ : List.length B - 1 < List.length B := by exact Nat.pred_lt_self proof_B_nonempty
   Fin.foldr A.length (fun n w =>
   have _ : n < B.length := by rw [← proof_length] ; exact lt_trans n.isLt (Nat.lt_succ_self A.length)
-  A[n] * B[n] * w)
+  B[n] * A[n] * w)
   B[B.length-1]
 
-def anAlphabet : Type := Alphabet (List.toFinset (['a','b','c','1','2','3','4']))
-def abcList : List (Word anAlphabet) := [Word.mk ['a'], Word.mk ['b'], Word.mk ['c']]
-def numberList : List (Word anAlphabet) := [Word.mk ['1'], Word.mk ['2'], Word.mk ['3'], Word.mk ['4']]
-#eval (Word.concat2ListsOfWordsAlternating  )
+-- This section illustrates how we can define and use alphabets.
+
+/--Define a finite set of symbols to use in the alphabet.-/
+def alphabetSymbolList : Finset Char := List.toFinset ['a','b','c','1','2','3','4']
+--Defining the type of alphabets over this set of symbols is not necessary
+--def anAlphabetType : Type := Alphabet alphabetSymbolList
+/--Defining an Alphabet is not neccessary and is basically
+  just proving, that the alphabet is finite, denumerable and
+  non-empty. Because Alphabet is defined as a class, anything that
+  is finite, denumerable and non-empty is automatically converted
+  into an alphabet.-/
+/- def anAlphabet : Alphabet alphabetSymbolList := @Alphabet.mk
+  alphabetSymbolList
+  (FinDenumerable.mk ( by --proof that the symbol list is finite and denum.
+    --encode_lt_card : ∀ {card : ℕ} (a : α), Encodable.encode a < card)
+    sorry
+  ))  Inhabited.mk (sorry) -/
+def abcList : List (Word alphabetSymbolList) := [Word.mk [⟨ 'a' , by decide
+  ⟩] , Word.mk [⟨ 'b' , by decide ⟩], Word.mk [⟨ 'c', by decide⟩ ]]
+def numberList : List (Word alphabetSymbolList) := [Word.mk [⟨'1', by decide⟩], Word.mk [⟨'2', by decide⟩], Word.mk [⟨'3', by decide⟩], Word.mk [⟨'4', by decide⟩]]
+#eval (Word.concat2ListsOfWordsAlternating abcList numberList (by decide) (by decide))
 #eval Word.mk ['a'] * Word.mk ['d'] * Word.mk ['D','d']
