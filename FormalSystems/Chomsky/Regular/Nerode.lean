@@ -150,8 +150,7 @@ theorem final_state_accepts_iff:
   ∀w, M.del_star' (M.q₀, w) ∈ M.F ↔ w ∈ L := by
   intro M w
   rw [initial_state_eq, final_state_eq]
-  simp [canonicalAutomaton]
-  rw [@Finset.mem_filter _ _ (final_class_decidable _) _ _]
+  simp [M, canonicalAutomaton]
   simp [Fintype.complete]
   unfold FinalClass
   rw [@Quotient.lift_mk _ _ (myhillNerodeEquivalence L) _ _ _]

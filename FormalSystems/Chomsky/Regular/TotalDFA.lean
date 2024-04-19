@@ -90,7 +90,6 @@ theorem totalDFA_del_star_eq {q: _} {w: _}:
       have : q'.val = some _ := rfl
       rw [<-this] at hd
       rw [Subtype.eq hd]
-      simp
       apply ih
 
 theorem Subtype.eq_iff {p: α -> Prop} { x y: Subtype p }:
