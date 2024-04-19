@@ -11,7 +11,7 @@ theorem FinDenumerable.encode_fin_eq_encode [inst: FinDenumerable α] :
   ∀(a : α), encode_fin a = inst.encode a := by simp [encode_fin]
 
 theorem FinDenumerable.encode_fin_injective [inst: FinDenumerable α] : Function.Injective inst.encode_fin := by
-  intro x y; simp [Fin.eq_iff_veq, encode_fin]
+  intro x y; simp [Fin.ext_iff, encode_fin]
 
 def FinDenumerable.encode_embedding [inst: FinDenumerable α] : α ↪ Fin inst.card :=
   ⟨ encode_fin, encode_fin_injective ⟩
@@ -23,7 +23,7 @@ def FinDenumerable.encode_fin_bijective [inst: FinDenumerable α] : Function.Bij
 theorem FinDenumerable.decode_partial_inv [inst: FinDenumerable α] (n : Fin inst.card): 
   ∃a ∈ inst.decode n, inst.encode a = n := by
   have ⟨ a, pa, _ ⟩  := encode_fin_bijective.existsUnique n
-  exists a; simp [Fin.eq_iff_veq, encode_fin] at pa;
+  exists a; simp [Fin.ext_iff, encode_fin] at pa;
   simp [pa]; simp [<- pa]
 
 theorem FinDenumerable.decode_fin_is_some [inst: FinDenumerable α] (n : Fin inst.card): 
@@ -60,7 +60,7 @@ theorem FinDenumerable.decode_fin_inj [inst: FinDenumerable α] {n m : Fin inst.
   simp [FinDenumerable.decode_fin, <- p₁] at h₁
   have ⟨ _, p₂ ⟩ := fin_preimage_exists m  
   simp [FinDenumerable.decode_fin, <- p₂] at h₂
-  rw [h₁, h₂, Fin.eq_iff_veq, ← p₁, ← p₂]
+  rw [h₁, h₂, Fin.ext_iff, ← p₁, ← p₂]
   apply Iff.symm; apply Encodable.encode_inj
 
 theorem FinDenumerable.decode_fin_injective [inst: FinDenumerable α] :
@@ -78,7 +78,7 @@ theorem FinDenumerable.encodek_fin_left_inverse [FinDenumerable α] :
 
 theorem FinDenumerable.decodenk [inst: FinDenumerable α] :
   ∀(n : Fin inst.card), encode_fin (decode_fin n) = n := by
-  simp [encode_fin, Fin.eq_iff_veq, decode_fin]; intro n
+  simp [encode_fin, Fin.ext_iff, decode_fin]; intro n
   have ⟨ a, ph ⟩ := fin_preimage_exists n
   simp [<- ph]
 
