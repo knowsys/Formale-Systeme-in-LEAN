@@ -129,6 +129,11 @@ instance : Coe (@ContextFreeDerivationStep α nt G u) (@Grammar.DerivationStep �
     } : @Grammar.DerivationStep α nt GenericProduction _ (↑G : Grammar GenericProduction) u
   }
 
+#check GetElem
+#check List.finRange
+
+--def TreeBasedContextFreeDerivation.v (tbcfd : TreebasedContextFreeDerivation G v w) : G.V := v
+--def TreeBasedContextFreeDerivation.w (tbcfd : TreebasedContextFreeDerivation G v w) : (Word G.Z) := w
 /--Tree-based context-free derivations. Notation: `v ⇒(≺)⁺ w`. Are defined to be
 
   - "complete", i.e. they go from a single variable to the final word of terminal symbols
@@ -139,18 +144,39 @@ instance : Coe (@ContextFreeDerivationStep α nt G u) (@Grammar.DerivationStep �
 
   - define a tree-structure.-/
 inductive TreeBasedContextFreeDerivation (G : ContextFreeGrammar α nt) : (v: G.V) → (w: Word G.Z) → Type
-  | step (vars : List G.V) (words : List (Word G.Z)) (proof_len : vars.length+1 = words.length) (proof_words_non_empty : words.length>0)
+  /--`v ⇒(cfproduction) w' = w₁V₁...Vₙ₋₁wₙVₙwₙ₊₁ ⇒(used_cfds)* w =  = w₁w'₁...w'ₙ₋₁wₙw'ₙwₙ₊₁`-/
+  | step
+    {vars : List G.V}
+    {words : List (Word G.Z)}
+    {proof_len : vars.length+1 = words.length}
+    {proof_words_non_empty : words.length>0}
+    {words' : List (Word G.Z)}
+    {proof_len_words' : words'.length = vars.length}
     (cfproduction : (ContextFreeProduction G.Z G.V))
     (proof_production_lhs : cfproduction.lhs = v)
     (proof_production_rhs : cfproduction.rhs =
       @Word.concat2ListsOfWordsAlternating
         (G.V ⊕ G.Z)
         (List.map (fun var : { x // x ∈ G.V } => Word.mk [Sum.inl var]) vars)
-        (List.map (fun word : Word { x // x ∈ G.Z } => Word.mk [Sum.inr var]) words)
-        (by simp)
-        (by simp)
+        (List.map (fun word : Word { x // x ∈ G.Z } => List.map Sum.inr word) words)
+        (by simp; exact proof_len)
+        (by simp; exact proof_words_non_empty)
     )
-    (list_of_used_cfds : List (TreeBasedContextFreeDerivation G _ _)) --how to type here: need dependent type (depends on index)
+    (proof_ : ∀ x ∈ List.finRange (vars.length),
+              ∃ cfd : (TreeBasedContextFreeDerivation G vars[x] result),
+              have x_valid_index : x < words'.length :=
+                by sorry
+              result = words'[x])
+    (list_of_used_cfds : List (TreeBasedContextFreeDerivation G vars[index] words'[index]))
+    (proof_result_word_composition : w =
+      @Word.concat2ListsOfWordsAlternating
+        (G.Z)
+        (words')
+        (words)
+        (by rw [proof_len_words', proof_len])
+        (proof_words_non_empty)
+    )
+    : TreeBasedContextFreeDerivation G v w
 
 /--Define context free derivations v (G)=>* w inductively. Constructors:
 
