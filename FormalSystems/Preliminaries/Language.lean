@@ -234,11 +234,8 @@ theorem Sigma.kleene_contains_all : ∀(w : Word α), w ∈ (Σ)∗
   | [] => by exists 0
   | x::xs => by
     have ⟨n, hn⟩ := Sigma.kleene_contains_all xs
-    exists (n + 1)
-    rw [pow_succ] 
-    conv => right; right; rw [← pow_one (Σ)]
-    rw [npow_mul_comm]
-    simp
+    exists (1 + n)
+    simp [pow_add]
     exists [x]
     exists xs
 
