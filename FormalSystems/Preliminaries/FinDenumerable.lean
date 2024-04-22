@@ -1,7 +1,7 @@
 import Mathlib.Data.Fintype.Lattice
 import Mathlib.Data.Set.Countable
 
-/--Class: Define finite, denumerable sets/types. Are finite and encodable:
+/--Class: Finite and denumerable types. Are finite and encodable:
 
   Encodable (i.e. constructively countable): can put elements inside
   with`encode : α → ℕ`and out with`decode : ℕ → α`.
@@ -13,8 +13,7 @@ import Mathlib.Data.Set.Countable
   Can get this proposition:`encode_lt_card`.-/
 class FinDenumerable (α : Type u) extends Fintype α, Encodable α where
   encode_lt_card: ∀(a : α), encode a < card 
-  -- constructor? check back later!
-  -- maybe the attribute that seperates FinDenumerable from just Fintype + Encodable?
+  -- the attribute that seperates FinDenumerable from just Fintype + Encodable?
 
 /--`FinDenumerable.enocde_fin a`returns
 an element of the canonical set with the same cardinality as`FinDenumerable`.-/
