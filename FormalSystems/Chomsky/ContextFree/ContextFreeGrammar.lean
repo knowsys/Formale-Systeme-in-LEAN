@@ -2,6 +2,7 @@ import FormalSystems.Chomsky.Grammar
 import Mathlib.Data.Finset.Functor
 import Mathlib.Tactic.Tauto
 --import Mathlib.Data.Fold
+import FormalSystems.Preliminaries.NonEmptyList
 
 --=============================================================
 -- Section: Context Free Productions
@@ -129,8 +130,55 @@ instance : Coe (@ContextFreeDerivationStep α nt G u) (@Grammar.DerivationStep �
     } : @Grammar.DerivationStep α nt GenericProduction _ (↑G : Grammar GenericProduction) u
   }
 
-#check GetElem
-#check List.finRange
+--New idea: Split everything up into many sub-tasks
+
+/--Basic structure of a derivation tree without validity-constraints.-/
+inductive PreDerivationTree (G : ContextFreeGrammar α nt)
+| leaf (terminalWord : Word G.Z) : PreDerivationTree G
+| inner (var : G.V) (children : (NonEmptyList (PreDerivationTree G))) (prodRule : (ContextFreeProduction G.Z G.V)) : PreDerivationTree G
+--                                                  → (children_non_empty : 0 < List.length (↑children)) -- children is recursively bound => doesn't work
+-- Problem: Kann nicht Eigenschaften von Parametern, welche in der strukturellen Rekursion verwendet werden,
+-- verwenden. Muss aber non-empty eig. irgendwie zeigen
+
+-- TODO: needs better name
+/--The final result-word defined by the children of a tree-node.-/
+def PreDerivationTree.treeWord {G : ContextFreeGrammar α nt} (pdts : List (PreDerivationTree G)) : Word (G.V ⊕ G.Z) :=
+  pdts.foldl (fun (acc : Word (G.V ⊕ G.Z)) node => match node with
+    | .leaf terminalWord => acc * (Word.mk (terminalWord.map (fun terminal => Sum.inr terminal)))
+    | .inner var _ _ => acc * (Word.mk [Sum.inl var])
+  ) ε
+
+/--Define the depth of a context-free derivation-tree.-/
+def PreDerivationTree.depth {G : ContextFreeGrammar α nt} : (PreDerivationTree G) -> Nat
+| .leaf _ => 0
+| .inner _ children _ => (List.maximum (List.map (fun child : _ => child.depth) children)) + 1
+
+/--The condition that specifies a valid derivation tree.-/
+def treeValid {G : ContextFreeGrammar α nt} : (PreDerivationTree G) -> Prop
+| .leaf _ => True
+| .inner _ children rule => treeWord children = rule.rhs ∧ children.all (fun c => @decide (treeValid c) (Classical.propDecidable _))
+termination_by t => depth t
+
+/--Structure: A derivation tree. Use`tree : PreDerivationTree`to define its structure and provide
+  a validity proof`valid : treeValid tree`.-/
+structure DerivationTree (G : ContextFreeGrammar α nt) where
+  tree : PreDerivationTree G
+  valid : treeValid tree
+
+@[match_pattern]
+def DerivationTree.leaf {G : ContextFreeGrammar α nt} (w : Word G.Z) : DerivationTree G := {
+  tree := PreDerivationTree.leaf w
+  valid := by sorry -- should be trivial by unfolding treeValid
+}
+
+@[match_pattern]
+def DerivationTree.inner {G : ContextFreeGrammar α nt} (v : G.V) (children : List (PreDerivationTree G)) (rule : ContextFreeProduction G.Z G.V) (childrenValid : ∀ c, c ∈ children -> treeValid c) : DerivationTree G := {
+  tree := PreDerivationTree.inner v children rule
+  valid := by sorry -- use childrenValid
+}
+
+/- Cannot use this type of definition because fo syntax stuff and gaving
+   types depend on location in list
 
 --def TreeBasedContextFreeDerivation.v (tbcfd : TreebasedContextFreeDerivation G v w) : G.V := v
 --def TreeBasedContextFreeDerivation.w (tbcfd : TreebasedContextFreeDerivation G v w) : (Word G.Z) := w
@@ -177,6 +225,8 @@ inductive TreeBasedContextFreeDerivation (G : ContextFreeGrammar α nt) : (v: G.
         (proof_words_non_empty)
     )
     : TreeBasedContextFreeDerivation G v w
+
+-/
 
 /--Define context free derivations v (G)=>* w inductively. Constructors:
 
