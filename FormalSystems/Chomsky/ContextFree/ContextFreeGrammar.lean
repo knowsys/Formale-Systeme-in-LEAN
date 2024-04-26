@@ -145,13 +145,15 @@ inductive NEPreDerivationTreeList (G : ContextFreeGrammar α nt)
 | cons (PDT : PreDerivationTree G) (NEPDTL : NEPreDerivationTreeList G) : NEPreDerivationTreeList G
 end
 
+mutual
 def PreDerivationTree.sizeOf : (PreDerivationTree G) → ℕ
-| leaf terminalWord => @Word.encode (G.V ⊕ G.Z) (G.V ∪ G.Z) terminalWord + 1
-| inner var children prodRule => (prodRule.sizeOf + 1) * children.sizeOf
+| .leaf terminalWord => @Word.encode (G.V ⊕ G.Z) (G.V ∪ G.Z) terminalWord + 1
+| .inner var children prodRule => (prodRule.sizeOf + 1) * children.sizeOf
 
-def NEPreDerivationTree.sizeOf : (NEPreDerivationTree G) → ℕ
-| single _ => sorry
-| inner _ _ _ => sorry
+def NEPreDerivationTreeList.sizeOf : (NEPreDerivationTreeList G) → ℕ
+| .single _ => sorry
+| .cons _ _ => sorry
+end
 
 /--Convert to a List (PreDerivationTree G).-/
 def NEPreDerivationTreeList.asList (NEPDTL : NEPreDerivationTreeList G) : List (PreDerivationTree G) := match NEPDTL with
@@ -178,33 +180,40 @@ theorem NEPreDerivationTreeList.asList_length (NEPDTL : NEPreDerivationTreeList 
 
 --sizeOf definieren
 
+
+mutual
+/--Return a list of the nodes children.-/
+def NEPreDerivationTreeList.nodeList {G : ContextFreeGrammar α nt} (NEPDT : NEPreDerivationTreeList G) : List (PreDerivationTree G) := match (NEPDT : NEPreDerivationTreeList G) with
+| .single PDT => PDT.nodeList
+| .cons PDT NEPDT => PDT.nodeList ++ NEPDT.nodeList -- NEPreDerivationTreeList.foldl (fun prev tree => tree.nodeList ++ prev) [PDT] NEPDT
+/--Return a list of the nodes children.-/
+def PreDerivationTree.nodeList {G : ContextFreeGrammar α nt} (PDT : PreDerivationTree G) : List (PreDerivationTree G) := match (PDT : PreDerivationTree G) with
+| .leaf _ => [PDT]
+| .inner _ children _ => PDT :: children.nodeList
+end
+
+
 #check invImage
 #check WellFoundedRelation.rel
 #check invImage WellFoundedRelation.rel
 /--Collect the applied production rules, as left-first derivation.-/
 def PreDerivationTree.prodRuleList : (PreDerivationTree G) → List (ContextFreeProduction G.Z G.V)
 | leaf _ => []
-| inner _ children prodRule => NEPreDerivationTreeList.foldl
+| inner var children prodRule => 
+    NEPreDerivationTreeList.foldl
     (fun previous child =>
+        -- have : SizeOf.sizeOf child < 2 + SizeOf.sizeOf children + SizeOf.sizeOf prodRule := by 
+        --   sorry
+        have : List.length (nodeList child) < List.length (nodeList (inner var children prodRule)) := by 
+          sorry
         previous ++ child.prodRuleList)
     [prodRule]
     children
-termination_by (SizeOf, 0)
-decreasing_by
-  simp
+termination_by tree => tree.nodeList.length
+-- decreasing_by
+--   simp_wf
+--   sorry
 
-
-
-mutual
-/--Return a list of the nodes children.-/
-def NEPreDerivationTreeList.nodeList {G : ContextFreeGrammar α nt} (NEPDT : NEPreDerivationTreeList G) : (NEPreDerivationTreeList G) := match (NEPDT : NEPreDerivationTreeList G) with
-| single PDT => PDT.nodeList
-| cons PDT NEPDT => sorry
-/--Return a list of the nodes children.-/
-def PreDerivationTree.nodeList {G : ContextFreeGrammar α nt} (PDT : PreDerivationTree G) : (NEPreDerivationTreeList G) := match (PDT : PreDerivationTree G) with
-| leaf _ => NEPreDerivationTreeList.single PDT
-| inner _ children _ => NEPreDerivationTreeList.cons PDT children.nodeList
-end
 
 mutual
 /--The final result-word defined by the children of a tree-node.-/
