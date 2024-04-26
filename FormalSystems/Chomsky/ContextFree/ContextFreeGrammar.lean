@@ -2,7 +2,6 @@ import FormalSystems.Chomsky.Grammar
 import Mathlib.Data.Finset.Functor
 import Mathlib.Tactic.Tauto
 --import Mathlib.Data.Fold
-import FormalSystems.Preliminaries.NonEmptyList
 
 --=============================================================
 -- Section: Context Free Productions
@@ -131,27 +130,109 @@ instance : Coe (@ContextFreeDerivationStep α nt G u) (@Grammar.DerivationStep �
   }
 
 --New idea: Split everything up into many sub-tasks
-
+mutual
 /--Basic structure of a derivation tree without validity-constraints.-/
 inductive PreDerivationTree (G : ContextFreeGrammar α nt)
 | leaf (terminalWord : Word G.Z) : PreDerivationTree G
-| inner (var : G.V) (children : (NonEmptyList (PreDerivationTree G))) (prodRule : (ContextFreeProduction G.Z G.V)) : PreDerivationTree G
+| inner (var : G.V) (children : NEPreDerivationTreeList G) (prodRule : (ContextFreeProduction G.Z G.V)) : PreDerivationTree G
 --                                                  → (children_non_empty : 0 < List.length (↑children)) -- children is recursively bound => doesn't work
 -- Problem: Kann nicht Eigenschaften von Parametern, welche in der strukturellen Rekursion verwendet werden,
 -- verwenden. Muss aber non-empty eig. irgendwie zeigen
 
--- TODO: needs better name
+/--Ensure that we have a non-empty list of children with this structure.-/
+inductive NEPreDerivationTreeList (G : ContextFreeGrammar α nt)
+| single (PDT : PreDerivationTree G) : NEPreDerivationTreeList G
+| cons (PDT : PreDerivationTree G) (NEPDTL : NEPreDerivationTreeList G) : NEPreDerivationTreeList G
+end
+
+def PreDerivationTree.sizeOf : (PreDerivationTree G) → ℕ
+| leaf terminalWord => @Word.encode (G.V ⊕ G.Z) (G.V ∪ G.Z) terminalWord + 1
+| inner var children prodRule => (prodRule.sizeOf + 1) * children.sizeOf
+
+def NEPreDerivationTree.sizeOf : (NEPreDerivationTree G) → ℕ
+| single _ => sorry
+| inner _ _ _ => sorry
+
+/--Convert to a List (PreDerivationTree G).-/
+def NEPreDerivationTreeList.asList (NEPDTL : NEPreDerivationTreeList G) : List (PreDerivationTree G) := match NEPDTL with
+  | single PDT => [PDT]
+  | cons (PDT) (NEPDTL₂) => PDT :: NEPDTL₂.asList
+
+/--Folds a function over a non-empty pre-derivation tree list from the left:
+`foldl f z NEPDT(a, b, c) = f (f (f z a) b) c`-/
+@[specialize]
+def NEPreDerivationTreeList.foldl {G : ContextFreeGrammar α nt} {α : Type u} (f : α → (PreDerivationTree G) → α) : (init : α) → (NEPreDerivationTreeList G) → α
+  | a, single PDT => f a PDT
+  | a, cons PDT NEPDTL₂ => NEPreDerivationTreeList.foldl f (f a PDT) NEPDTL₂
+
+/--Theorem: The lists constructed with asList are never [].-/
+theorem NEPreDerivationTreeList.asList_never_nil (NEPDTL : NEPreDerivationTreeList G) : ¬ NEPDTL.asList = [] := by
+  apply Not.intro
+  intro h
+  cases NEPDTL
+  repeat rw [NEPreDerivationTreeList.asList] at h; contradiction
+
+/--Theorem: The lists constructed with asList have non-zero length.-/
+theorem NEPreDerivationTreeList.asList_length (NEPDTL : NEPreDerivationTreeList G) : NEPDTL.asList.length > 0 := by
+  apply List.length_pos_of_ne_nil NEPDTL.asList_never_nil
+
+--sizeOf definieren
+
+#check invImage
+#check WellFoundedRelation.rel
+#check invImage WellFoundedRelation.rel
+/--Collect the applied production rules, as left-first derivation.-/
+def PreDerivationTree.prodRuleList : (PreDerivationTree G) → List (ContextFreeProduction G.Z G.V)
+| leaf _ => []
+| inner _ children prodRule => NEPreDerivationTreeList.foldl
+    (fun previous child =>
+        previous ++ child.prodRuleList)
+    [prodRule]
+    children
+termination_by (SizeOf, 0)
+decreasing_by
+  simp
+
+
+
+mutual
+/--Return a list of the nodes children.-/
+def NEPreDerivationTreeList.nodeList {G : ContextFreeGrammar α nt} (NEPDT : NEPreDerivationTreeList G) : (NEPreDerivationTreeList G) := match (NEPDT : NEPreDerivationTreeList G) with
+| single PDT => PDT.nodeList
+| cons PDT NEPDT => sorry
+/--Return a list of the nodes children.-/
+def PreDerivationTree.nodeList {G : ContextFreeGrammar α nt} (PDT : PreDerivationTree G) : (NEPreDerivationTreeList G) := match (PDT : PreDerivationTree G) with
+| leaf _ => NEPreDerivationTreeList.single PDT
+| inner _ children _ => NEPreDerivationTreeList.cons PDT children.nodeList
+end
+
+mutual
 /--The final result-word defined by the children of a tree-node.-/
-def PreDerivationTree.treeWord {G : ContextFreeGrammar α nt} (pdts : List (PreDerivationTree G)) : Word (G.V ⊕ G.Z) :=
-  pdts.foldl (fun (acc : Word (G.V ⊕ G.Z)) node => match node with
-    | .leaf terminalWord => acc * (Word.mk (terminalWord.map (fun terminal => Sum.inr terminal)))
-    | .inner var _ _ => acc * (Word.mk [Sum.inl var])
-  ) ε
+def PreDerivationTree.result {G : ContextFreeGrammar α nt} (PDT : PreDerivationTree G) : Word (G.V ⊕ G.Z) :=
+  match PDT with
+    | .leaf terminalWord => Word.mk (terminalWord.map (fun terminal => Sum.inr terminal))
+    | .inner _ children prodRule =>
+      Word.mk (List.foldl List.append []
+        (children.asList.map (
+            fun child : PreDerivationTree G =>
+            (child.result : List _)
+          )
+        )
+      )
+decreasing_by
+  simp
+  tauto
 
 /--Define the depth of a context-free derivation-tree.-/
-def PreDerivationTree.depth {G : ContextFreeGrammar α nt} : (PreDerivationTree G) -> Nat
+def PreDerivationTree.depth {G : ContextFreeGrammar α nt} : (PDT : PreDerivationTree G) -> Nat
 | .leaf _ => 0
-| .inner _ children _ => (List.maximum (List.map (fun child : _ => child.depth) children)) + 1
+| .inner _ children _ => (
+  (List.map (fun child : _ => child.depth) children.asList
+  ).maximum_of_length_pos (by simp; exact children.asList_length )) + 1
+decreasing_by
+  simp
+  tauto
+end
 
 /--The condition that specifies a valid derivation tree.-/
 def treeValid {G : ContextFreeGrammar α nt} : (PreDerivationTree G) -> Prop
