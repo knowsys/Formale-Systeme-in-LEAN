@@ -261,7 +261,14 @@ def PreDerivationTree.depth {G : ContextFreeGrammar α nt} : (PDT : PreDerivatio
 decreasing_by
   simp
   tauto -/
+/--Given a NEPreDerivationTreeList, its members have less nodes than the whole list.-/
+theorem NEPreDerivationTreeList.childrenHaveLessNodes
+  {G : ContextFreeGrammar α nt} (NEPDT : NEPreDerivationTreeList G) :
+  ∀ child ∈ NEPDT.asList, NEPDT.nodeList.length > child.nodeList.length := by
+  intro child
+  intro h_membership
 
+mutual
 /--The condition that specifies a valid derivation tree.
 
 - The production rule is applicable in this step.
@@ -269,7 +276,8 @@ decreasing_by
 - The children match the production rules result.
 
 - The children are tree-valid.-/
-def PreDerivationTree.treeValid {G : ContextFreeGrammar α nt} : (PDT : PreDerivationTree G) -> Prop
+def PreDerivationTree.treeValid {G : ContextFreeGrammar α nt} (PDT : PreDerivationTree G) : Prop :=
+  match PDT with
   | .leaf _ => True
   | .inner var children rule =>
       -- 1 The production rule is applicable in this step.
@@ -277,10 +285,15 @@ def PreDerivationTree.treeValid {G : ContextFreeGrammar α nt} : (PDT : PreDeriv
       -- 2 The children match the production rules result.
       children.levelWord = rule.rhs ∧
       -- 3 The children are valid.
-      ∀ child ∈ children.asList, child.treeValid
-  termination_by (fun PDT : (PreDerivationTree G) => PDT.depth)
+      children.treeValid
 /- treeWord children = rule.rhs ∧ children.all (fun c => @decide (treeValid c) (Classical.propDecidable _))
 termination_by t => depth t -/
+/--A list of Derivation Trees is valid, if each of its children is valid.-/
+def NEPreDerivationTreeList.treeValid {G : ContextFreeGrammar α nt} (NEPDTL : NEPreDerivationTreeList G) : Prop :=
+  match NEPDTL with
+  | .single PDT => PDT.treeValid
+  | .cons PDT NEPDTL₂ => PDT.treeValid ∧ NEPDTL₂.treeValid
+end
 
 /--Structure: A derivation tree. Use`tree : PreDerivationTree`to define its structure and provide
   a validity proof`valid : treeValid tree`.-/
@@ -291,13 +304,19 @@ structure DerivationTree (G : ContextFreeGrammar α nt) where
 @[match_pattern]
 def DerivationTree.leaf {G : ContextFreeGrammar α nt} (w : Word G.Z) : DerivationTree G := {
   tree := PreDerivationTree.leaf w
-  valid := by sorry -- should be trivial by unfolding treeValid
+  valid := by rw [PreDerivationTree.treeValid]; simp
 }
 
 @[match_pattern]
-def DerivationTree.inner {G : ContextFreeGrammar α nt} (v : G.V) (children : List (PreDerivationTree G)) (rule : ContextFreeProduction G.Z G.V) (childrenValid : ∀ c, c ∈ children -> treeValid c) : DerivationTree G := {
-  tree := PreDerivationTree.inner v children rule
-  valid := by sorry -- use childrenValid
+def DerivationTree.inner {G : ContextFreeGrammar α nt}
+  (v : G.V) (children : NEPreDerivationTreeList G)
+  (rule : ContextFreeProduction G.Z G.V)
+  (h_rule_lhs : rule.lhs = v) (h_rule_rhs : rule.rhs = children.levelWord) (childrenValid : children.treeValid)
+  : DerivationTree G := {
+    tree := PreDerivationTree.inner v children rule
+    valid := by
+      rw[PreDerivationTree.treeValid, h_rule_lhs, h_rule_rhs]
+      simp; exact childrenValid
 }
 
 /- Cannot use this type of definition because fo syntax stuff and gaving
