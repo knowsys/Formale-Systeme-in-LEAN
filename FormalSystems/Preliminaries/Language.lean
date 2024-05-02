@@ -1,4 +1,5 @@
 import Mathlib.Algebra.Order.Kleene
+import Mathlib.Algebra.Group.NatPowAssoc
 
 import FormalSystems.Preliminaries.Word
 
@@ -29,7 +30,7 @@ instance : HasSubset (Language α) where
 
 /--Languages build complemented distributive lattices in which every subset has a supremum.-/
 instance : CompleteBooleanAlgebra (Language α) :=
-  Pi.completeBooleanAlgebra
+  Pi.instCompleteBooleanAlgebra
 
 /--Allow for intersection ∩ notation for languages.-/
 instance : Inter (Language α) where
@@ -178,6 +179,12 @@ theorem concat_dist_union_l (L1 L2 L3 : Language α)
         match pv with
         | ⟨h1, h2, h3⟩ => exists u, v; exact ⟨h1, Or.inr h2, h3⟩
 
+instance : Zero (Language α) where
+  zero := ∅
+
+instance : Add (Language α) where
+  add := Set.union
+
 /--Languages with concatenation as multiplication and union as addition construct a semiring.-/
 instance : Semiring (Language α) where
   mul := Language.concat
@@ -187,11 +194,9 @@ instance : Semiring (Language α) where
   mul_one := Language.mul_eps
   one_mul := Language.eps_mul
 
-  add := Set.union
   add_assoc := Set.union_assoc
   add_comm := Set.union_comm
 
-  zero := ∅
   zero_mul := Language.empty_mul
   mul_zero := Language.mul_empty
   zero_add := Set.empty_union
@@ -200,7 +205,6 @@ instance : Semiring (Language α) where
   right_distrib := Language.concat_dist_union_r
   left_distrib := Language.concat_dist_union_l
 
-/--Given a language`L`, compute`(L)*`.-/
 def kstar (X : Language α) : Language α :=
   fun w: Word α => ∃ n : Nat, w ∈ X^n
 
@@ -264,7 +268,10 @@ theorem Sigma.kleene_contains_all : ∀(w : Word α), w ∈ (Σ)∗
   | [] => by exists 0
   | x::xs => by
     have ⟨n, hn⟩ := Sigma.kleene_contains_all xs
-    exists n + 1; exists [x]; exists xs
+    exists (1 + n)
+    simp [pow_add]
+    exists [x]
+    exists xs
 
 /--Theorem: The language Σ∗ is the universe language.-/
 theorem Sigma.kleene_eq_univ : @Language.univ α = (Σ)∗ := by

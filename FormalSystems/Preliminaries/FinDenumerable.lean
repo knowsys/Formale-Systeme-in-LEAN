@@ -29,7 +29,7 @@ theorem FinDenumerable.encode_fin_eq_encode [inst: FinDenumerable α] :
 
 /-- Theorem:`encode_fin`is injective (see`Function.Injective`).-/
 theorem FinDenumerable.encode_fin_injective [inst: FinDenumerable α] : Function.Injective inst.encode_fin := by
-  intro x y; simp [Fin.eq_iff_veq, encode_fin]
+  intro x y; simp [Fin.ext_iff, encode_fin]
 
 /--An embedding function from a finite, denumerable type`α`to a Finset of size`inst.cardinality`.
 
@@ -51,7 +51,7 @@ into a number`a`that can be decoded back into`n`.-/
 theorem FinDenumerable.decode_partial_inv [inst: FinDenumerable α] (n : Fin inst.card):
   ∃a ∈ inst.decode n, inst.encode a = n := by
   have ⟨ a, pa, _ ⟩  := encode_fin_bijective.existsUnique n
-  exists a; simp [Fin.eq_iff_veq, encode_fin] at pa;
+  exists a; simp [Fin.ext_iff, encode_fin] at pa;
   simp [pa]; simp [<- pa]
 
 /--Theorem: Decoding an element`n`of a finite set gets you something.-/
@@ -96,7 +96,7 @@ theorem FinDenumerable.decode_fin_inj [inst: FinDenumerable α] {n m : Fin inst.
   simp [FinDenumerable.decode_fin, <- p₁] at h₁
   have ⟨ _, p₂ ⟩ := fin_preimage_exists m
   simp [FinDenumerable.decode_fin, <- p₂] at h₂
-  rw [h₁, h₂, Fin.eq_iff_veq, ← p₁, ← p₂]
+  rw [h₁, h₂, Fin.ext_iff, ← p₁, ← p₂]
   apply Iff.symm; apply Encodable.encode_inj
 
 /--Theorem:`decode_fin`is injective.-/
@@ -118,7 +118,7 @@ theorem FinDenumerable.encodek_fin_left_inverse [FinDenumerable α] :
 /--Theorem:`encode`is a left inverse of`decode`.`encode decode = id`.-/
 theorem FinDenumerable.decodenk [inst: FinDenumerable α] :
   ∀(n : Fin inst.card), encode_fin (decode_fin n) = n := by
-  simp [encode_fin, Fin.eq_iff_veq, decode_fin]; intro n
+  simp [encode_fin, Fin.ext_iff, decode_fin]; intro n
   have ⟨ a, ph ⟩ := fin_preimage_exists n
   simp [<- ph]
 
