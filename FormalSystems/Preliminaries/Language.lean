@@ -205,6 +205,8 @@ instance : Semiring (Language α) where
   right_distrib := Language.concat_dist_union_r
   left_distrib := Language.concat_dist_union_l
 
+  nsmul := nsmulRec
+
 def kstar (X : Language α) : Language α :=
   fun w: Word α => ∃ n : Nat, w ∈ X^n
 
