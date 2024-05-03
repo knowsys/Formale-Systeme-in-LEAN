@@ -208,6 +208,12 @@ theorem PreDerivationTree.nodeList_never_nil
       have _ : _ := List.cons_ne_nil (PreDerivationTree.inner children rule r) (NEPreDerivationTreeList.nodeList rule)
       contradiction
 end
+
+/--Return a (possibly empty) list of this nodes children.-/
+def PreDerivationTree.children {G : ContextFreeGrammar α nt} : (PDT : (PreDerivationTree G)) → List (PreDerivationTree G)
+  | leaf _ => []
+  | inner _ children _ => children.asList
+
 mutual
 /--Get the list of used production rules.-/
 def PreDerivationTree.prodRuleList {G : ContextFreeGrammar α nt} : (PreDerivationTree G) → List (ContextFreeProduction G.Z G.V)
@@ -294,15 +300,20 @@ decreasing_by
 mutual
 theorem PreDerivationTree.nodeList_eq_concat_children_nodeList
   {G : ContextFreeGrammar α nt} (PDT : PreDerivationTree G) :
-  PDT.nodeList = List.foldl (fun prev child => prev ++ child.nodeList) [] PDT.asList := by
-    induction PDT with
-    | leaf terminalWord =>
-      sorry
-    | inner var children rule h_ih =>
-      sorry
+  PDT.nodeList = [PDT] ∨
+  PDT.nodeList = List.foldl (fun prev child => prev ++ child.nodeList) [PDT] PDT.children := by
+    cases h_constructor : PDT
+    case leaf w =>
+      apply Or.inl
+      rfl
+    case inner var children rule =>
+      apply Or.inr
+      rw [PreDerivationTree.children,PreDerivationTree.nodeList]; simp
+      apply List.foldl_cons
+
 theorem NEPreDerivationTreeList.nodeList_eq_concat_children_nodeList
   {G : ContextFreeGrammar α nt} (NEPDT : NEPreDerivationTreeList G) :
-  PDT.nodeList = List.foldl (fun prev child => prev ++ child.nodeList) [] PDT.asList := by
+  NEPDT.nodeList = List.foldl (fun prev child => prev ++ child.nodeList) [] NEPDT.asList := by
     induction PDT with
     | leaf terminalWord =>
       sorry
@@ -323,6 +334,24 @@ end
 
         | cons head₂ tail₂ ih =>
           simp -/
+mutual
+theorem PreDerivationTree.children_have_less_nodes
+  {G : ContextFreeGrammar α nt} (PDT : PreDerivationTree G) :
+  (∃ w, PDT = PreDerivationTree.leaf w) ∨
+  (∃ var children rule, PDT =  PreDerivationTree.inner var children rule
+    ∧ ∀ child ∈ children.asList,
+    PDT.nodeList.length > child.nodeList.length ):= by
+      cases PDT
+      case leaf w' =>
+        apply Or.inl
+        exists w'
+      case inner var' children' rule' =>
+        apply Or.inr
+        exists var'; exists children'; exists rule'
+        apply And.intro
+        rfl
+        intro child; intro h_child_mem
+
 
 
 /--Given a NEPreDerivationTreeList, its members have less nodes than the whole list.-/
@@ -332,9 +361,8 @@ theorem NEPreDerivationTreeList.children_have_less_nodes
   intro child
   intro h_membership
 
-  simp
-  have NEPDT.nodeList.length =
-
+  sorry
+end
 mutual
 /--The condition that specifies a valid derivation tree.
 
