@@ -207,7 +207,6 @@ instance : Semiring (Language α) where
 
   nsmul := nsmulRec
 
-/--Given a language`L`, compute`(L)*`.-/
 def kstar (X : Language α) : Language α :=
   fun w: Word α => ∃ n : Nat, w ∈ X^n
 

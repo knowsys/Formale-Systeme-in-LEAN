@@ -179,6 +179,36 @@ def PreDerivationTree.nodeList {G : ContextFreeGrammar α nt} (PDT : PreDerivati
 end
 
 mutual
+/--Theorem: The list of nodes returned with nodeList is never empty.-/
+theorem NEPreDerivationTreeList.nodeList_never_nil
+  {G : ContextFreeGrammar α nt} (NEPDT : NEPreDerivationTreeList G) :
+  ¬ NEPDT.nodeList = [] := by
+    intro h_not
+    cases NEPDT
+    case single PDT =>
+      rw [NEPreDerivationTreeList.nodeList] at h_not
+      --have h_not_contra : _ := by PDT.nodeList_never_nil
+      have h_not_not : _ := PDT.nodeList_never_nil
+      contradiction
+    case cons PDT NEPDT₂ =>
+      rw [NEPreDerivationTreeList.nodeList] at h_not
+      have h_not_not : _ := List.append_ne_nil_of_left_ne_nil (PDT.nodeList) (NEPDT₂.nodeList) (PDT.nodeList_never_nil)
+      contradiction
+/--Theorem: The list of nodes returned with nodeList is never empty.-/
+theorem PreDerivationTree.nodeList_never_nil
+  {G : ContextFreeGrammar α nt} (PDT : PreDerivationTree G) :
+  ¬ PDT.nodeList = [] := by
+    intro h_not
+    cases PDT
+    case leaf _ r =>
+      rw [PreDerivationTree.nodeList] at h_not
+      contradiction
+    case inner _ children rule r =>
+      rw [PreDerivationTree.nodeList] at h_not
+      have _ : _ := List.cons_ne_nil (PreDerivationTree.inner children rule r) (NEPreDerivationTreeList.nodeList rule)
+      contradiction
+end
+mutual
 /--Get the list of used production rules.-/
 def PreDerivationTree.prodRuleList {G : ContextFreeGrammar α nt} : (PreDerivationTree G) → List (ContextFreeProduction G.Z G.V)
   | .leaf _ => []
@@ -261,12 +291,49 @@ def PreDerivationTree.depth {G : ContextFreeGrammar α nt} : (PDT : PreDerivatio
 decreasing_by
   simp
   tauto -/
+mutual
+theorem PreDerivationTree.nodeList_eq_concat_children_nodeList
+  {G : ContextFreeGrammar α nt} (PDT : PreDerivationTree G) :
+  PDT.nodeList = List.foldl (fun prev child => prev ++ child.nodeList) [] PDT.asList := by
+    induction PDT with
+    | leaf terminalWord =>
+      sorry
+    | inner var children rule h_ih =>
+      sorry
+theorem NEPreDerivationTreeList.nodeList_eq_concat_children_nodeList
+  {G : ContextFreeGrammar α nt} (NEPDT : NEPreDerivationTreeList G) :
+  PDT.nodeList = List.foldl (fun prev child => prev ++ child.nodeList) [] PDT.asList := by
+    induction PDT with
+    | leaf terminalWord =>
+      sorry
+    | inner var children rule h_ih =>
+      sorry
+end
+    /- cases h_constructor_asList : NEPDT.asList
+    case nil prodRule =>
+      have h_not : _ := NEPDT.asList_never_nil
+      contradiction
+    case cons head tail =>
+      induction NEPDT.nodeList with
+        | nil =>
+          by_contra f
+
+          have h_not : _ := NEPDT.nodeList_never_nil
+          absurd h_not
+
+        | cons head₂ tail₂ ih =>
+          simp -/
+
+
 /--Given a NEPreDerivationTreeList, its members have less nodes than the whole list.-/
-theorem NEPreDerivationTreeList.childrenHaveLessNodes
+theorem NEPreDerivationTreeList.children_have_less_nodes
   {G : ContextFreeGrammar α nt} (NEPDT : NEPreDerivationTreeList G) :
   ∀ child ∈ NEPDT.asList, NEPDT.nodeList.length > child.nodeList.length := by
   intro child
   intro h_membership
+
+  simp
+  have NEPDT.nodeList.length =
 
 mutual
 /--The condition that specifies a valid derivation tree.
@@ -301,12 +368,28 @@ structure DerivationTree (G : ContextFreeGrammar α nt) where
   tree : PreDerivationTree G
   valid : tree.treeValid
 
+/--Construct a derivation-tree leaf from a terminal word.-/
 @[match_pattern]
 def DerivationTree.leaf {G : ContextFreeGrammar α nt} (w : Word G.Z) : DerivationTree G := {
   tree := PreDerivationTree.leaf w
   valid := by rw [PreDerivationTree.treeValid]; simp
 }
 
+/--Construct a derivation-tree node from:
+
+- The variable`v`,
+
+- A list of the nodes children`children`. Must be of type`NEPreDerivationTreeList`.
+
+- The applied production rule`rule`,
+
+- Constraints on the production rule:
+
+-   -   `h_rule_lhs`
+
+-   -   `h_rule_rhs`
+
+- A proof of the validity-constraints for of the children`childrenValid`.-/
 @[match_pattern]
 def DerivationTree.inner {G : ContextFreeGrammar α nt}
   (v : G.V) (children : NEPreDerivationTreeList G)
