@@ -79,9 +79,6 @@ instance : Coe (ContextFreeGrammar α nt) (@Grammar α nt GenericProduction _) w
   }
 
 namespace ContextFreeGrammar
---Do I need to define CFDerivations?
---Probably yes, lots of cool theorems
-
 
 /--Structure: The CFDerivationStep starting in`u`. Structure has four attributes:
 
@@ -143,6 +140,35 @@ inductive NEPreDerivationTreeList (G : ContextFreeGrammar α nt)
   | single (PDT : PreDerivationTree G) : NEPreDerivationTreeList G
   | cons (PDT : PreDerivationTree G) (NEPDTL : NEPreDerivationTreeList G) : NEPreDerivationTreeList G
 end
+
+/--Define the equality determinating relation.-/
+def PreDerivationTree.decEq {G : ContextFreeGrammar α nt} [DecidableEq α] : (PDT₁ PDT₂ : PreDerivationTree G) → Decidable (Eq PDT₁ PDT₂)
+| leaf terminalWord₁ , leaf terminalWord₂ =>
+    match (terminalWord₁.hasDecEq terminalWord₂) with
+      | isTrue h_isTrue => isTrue _
+      | isFalse h_isFalse => isFalse _
+| leaf terminalWord₁ , inner _ _ _ =>
+  isFalse _
+| inner _ _ _ , leaf terminalWord₂ =>
+  isFalse _
+| inner var₁ children₁ prodRule₁, inner var₂ children₂ prodRule₂ =>
+  sorry
+/--Define the equality determinating relation.-/
+def NEPreDerivationTreeList.decEq {G : ContextFreeGrammar α nt} : (NEPDT₁ NEPDT₂ : NEPreDerivationTreeList G) → Decidable (NEPDT₁ = NEPDT₂)
+| .single PDT => False
+| .cons PDT NEPDTL₃ => False
+
+
+/--Equality is decidable for PDTs using the decEq function.-/
+instance : DecidableEq (PreDerivationTree G) := PreDerivationTree.decEq
+/--Equality is decidable for NEPDTLs using the decEq function.-/
+instance : DecidableEq (NEPreDerivationTreeList G) := NEPreDerivationTreeList.decEq
+
+/--Define syntax for NEPreDerivationTreeLists: `DT[...]`-/
+syntax "DT[" term,* "]" : term
+macro_rules
+  | `(DT[$x])    => `(NEPreDerivationTreeList.single $x)
+  | `(DT[ $x₁, $xs,* , $x₂]) => `(NEPreDerivationTreeList.cons $x₁ DT[$xs,*, $x₂])
 
 /--Convert to a List (PreDerivationTree G).-/
 def NEPreDerivationTreeList.asList (NEPDTL : NEPreDerivationTreeList G) : List (PreDerivationTree G) := match NEPDTL with
@@ -225,21 +251,6 @@ def NEPreDerivationTreeList.prodRuleList {G : ContextFreeGrammar α nt} : (NEPDT
   | .cons PDT NEPDT₂ => PDT.prodRuleList ++ NEPDT₂.prodRuleList
 end
 
-/- /--Collect the applied production rules, as left-first derivation.-/
-def PreDerivationTree.prodRuleList : (PreDerivationTree G) → List (ContextFreeProduction G.Z G.V)
-| leaf _ => []
-| inner var children prodRule =>
-    NEPreDerivationTreeList.foldl
-    (fun previous child =>
-        -- have : SizeOf.sizeOf child < 2 + SizeOf.sizeOf children + SizeOf.sizeOf prodRule := by
-        --   sorry
-        have : List.length (nodeList child) < List.length (nodeList (inner var children prodRule)) := by
-          sorry
-        previous ++ child.prodRuleList)
-    [prodRule]
-    children
-termination_by tree => tree.nodeList.length -/
-
 mutual
 /--The final result-word defined by the children of a tree-node.-/
 def PreDerivationTree.result {G : ContextFreeGrammar α nt} : (PDT : PreDerivationTree G) → Word (G.V ⊕ G.Z)
@@ -262,22 +273,6 @@ def NEPreDerivationTreeList.levelWord {G : ContextFreeGrammar α nt} : (NEPDT : 
   | .cons PDT NEPDT₂ => Word.concatListOfWords [PDT.levelWord , NEPDT₂.levelWord]
 end
 
-/- /--The final result-word defined by the children of a tree-node.-/
-def PreDerivationTree.result {G : ContextFreeGrammar α nt} (PDT : PreDerivationTree G) : Word (G.V ⊕ G.Z) :=
-  match PDT with
-    | .leaf terminalWord => Word.mk (terminalWord.map (fun terminal => Sum.inr terminal))
-    | .inner _ children prodRule =>
-      Word.mk (List.foldl List.append []
-        (children.asList.map (
-            fun child : PreDerivationTree G =>
-            (child.result : List _)
-          )
-        )
-      )
-decreasing_by
-  simp
-  tauto -/
-
 mutual
 /--Define the depth of a context-free derivation-tree.-/
 def PreDerivationTree.depth {G : ContextFreeGrammar α nt} : (PDT : PreDerivationTree G) -> Nat
@@ -288,59 +283,98 @@ def NEPreDerivationTreeList.depth {G : ContextFreeGrammar α nt} : (NEPDT : NEPr
   | .single PDT => PDT.depth
   | .cons PDT NEPDT₂ => Nat.max PDT.depth NEPDT₂.depth
 end
-/- /--Define the depth of a context-free derivation-tree.-/
-def PreDerivationTree.depth {G : ContextFreeGrammar α nt} : (PDT : PreDerivationTree G) -> Nat
-| .leaf _ => 0
-| .inner _ children _ => (
-  (List.map (fun child : _ => child.depth) children.asList
-  ).maximum_of_length_pos (by simp; exact children.asList_length )) + 1
-decreasing_by
-  simp
-  tauto -/
+
+/--Collect the nodelists of PDTs one by one.-/
+def append_nodeLists (prev : List (PreDerivationTree G)) (next : PreDerivationTree G) : (List (PreDerivationTree G)) :=
+  prev ++ next.nodeList
+/--Theorem: The append_nodeList function interacts with List.foldl in a specific way.-/
+@[simp]
+theorem append_nodeLists_cons (PDT : PreDerivationTree G) (list₁ list₂ : List (PreDerivationTree G)):
+  PDT :: List.foldl append_nodeLists list₁ list₂ = List.foldl append_nodeLists (PDT::list₁) list₂ := by
+    cases list₂
+    case nil =>
+      rw [List.foldl_nil, List.foldl_nil]
+    case cons head tail =>
+      rw [List.foldl_cons, List.foldl_cons]
+      repeat rw [append_nodeLists]
+      exact append_nodeLists_cons PDT (list₁ ++ PreDerivationTree.nodeList head) tail
+/--Theorem: The append_nodeList function interacts with List.foldl in a specific way.-/
+@[simp]
+theorem concat_nodeLists_cons (PDT_List : List (PreDerivationTree G)) (list₁ list₂ : List (PreDerivationTree G)):
+  PDT_List ++ List.foldl append_nodeLists list₁ list₂ = List.foldl append_nodeLists (PDT_List ++ list₁) list₂ := by
+    cases list₂
+    case nil =>
+      rw [List.foldl_nil, List.foldl_nil]
+    case cons head tail =>
+      rw [List.foldl_cons, List.foldl_cons]
+      repeat rw [append_nodeLists]
+      have h_concat_assoc :
+        PDT_List ++ list₁ ++ PreDerivationTree.nodeList head =
+        PDT_List ++ (list₁ ++ PreDerivationTree.nodeList head) := by simp
+      rw [h_concat_assoc]
+      exact concat_nodeLists_cons PDT_List (list₁ ++ PreDerivationTree.nodeList head) tail
+
 mutual
+/--Theorem: The PreDerivationTree.nodeList function appends all of a nodes children and itself into a large list.-/
 theorem PreDerivationTree.nodeList_eq_concat_children_nodeList
   {G : ContextFreeGrammar α nt} (PDT : PreDerivationTree G) :
   PDT.nodeList = [PDT] ∨
-  PDT.nodeList = List.foldl (fun prev child => prev ++ child.nodeList) [PDT] PDT.children := by
-    cases h_constructor : PDT
+  PDT.nodeList = List.foldl append_nodeLists [PDT] PDT.children := by
+    cases PDT
     case leaf w =>
       apply Or.inl
       rfl
     case inner var children rule =>
       apply Or.inr
-      rw [PreDerivationTree.children,PreDerivationTree.nodeList]; simp
-      apply List.foldl_cons
+      rw [PreDerivationTree.children,
+        PreDerivationTree.nodeList,
+        NEPreDerivationTreeList.nodeList_eq_concat_children_nodeList]
+      have h_list : NEPreDerivationTreeList.asList children = NEPreDerivationTreeList.asList children ++ [] := by simp
+      rw [h_list]
+      repeat rw [List.foldl_append _ _ _ []]
+      simp
 
+/--Theorem: The NEPreDerivationTreeList.nodeList function appends all of a the included nodes and their children into a large list.-/
 theorem NEPreDerivationTreeList.nodeList_eq_concat_children_nodeList
   {G : ContextFreeGrammar α nt} (NEPDT : NEPreDerivationTreeList G) :
-  NEPDT.nodeList = List.foldl (fun prev child => prev ++ child.nodeList) [] NEPDT.asList := by
-    induction PDT with
-    | leaf terminalWord =>
-      sorry
-    | inner var children rule h_ih =>
-      sorry
+  NEPDT.nodeList = List.foldl append_nodeLists [] NEPDT.asList := by
+  cases NEPDT
+  case single PDT =>
+    repeat rw [NEPreDerivationTreeList.nodeList, NEPreDerivationTreeList.asList]
+    simp; rw [append_nodeLists]
+    simp
+  case cons PDT NEPDT₂ =>
+    repeat rw [NEPreDerivationTreeList.nodeList, NEPreDerivationTreeList.asList]
+    rw [List.foldl_cons]
+    repeat rw [append_nodeLists]
+    simp
+    have h_PDT_nodeList : _ := PDT.nodeList_eq_concat_children_nodeList
+    cases h_PDT_nodeList
+    case inl h_inl =>
+      -- rewrite using mutual-recursion theorem for PDT as well as recursion-theorem for NEPDT₂,
+      rw [h_inl, NEPDT₂.nodeList_eq_concat_children_nodeList]
+      -- Use the following theorem:
+      -- PDT :: List.foldl append_nodeLists list₁ list₂ =
+      -- List.foldl append_nodeLists (PDT::list₁) list₂
+      exact append_nodeLists_cons PDT [] (NEPreDerivationTreeList.asList NEPDT₂)
+      -- could just use simp instead also
+    case inr h_inr =>
+      -- rewrite using mutual-recursion theorem for PDT as well as recursion-theorem for NEPDT₂,
+      rw [h_inr, NEPDT₂.nodeList_eq_concat_children_nodeList]
+      -- Use the same theorem as before, but for concatenation of lists
+      rw [concat_nodeLists_cons _ [] (NEPreDerivationTreeList.asList NEPDT₂)]
+      -- the above is already included in simp, but I left it in for clarity
+      simp
 end
-    /- cases h_constructor_asList : NEPDT.asList
-    case nil prodRule =>
-      have h_not : _ := NEPDT.asList_never_nil
-      contradiction
-    case cons head tail =>
-      induction NEPDT.nodeList with
-        | nil =>
-          by_contra f
 
-          have h_not : _ := NEPDT.nodeList_never_nil
-          absurd h_not
-
-        | cons head₂ tail₂ ih =>
-          simp -/
 mutual
-theorem PreDerivationTree.children_have_less_nodes
+/--Theorem: The total number on nodes in a (sub-)tree decreases the further we go down in a tree.-/
+theorem PreDerivationTree.children_have_leq_nodes
   {G : ContextFreeGrammar α nt} (PDT : PreDerivationTree G) :
   (∃ w, PDT = PreDerivationTree.leaf w) ∨
   (∃ var children rule, PDT =  PreDerivationTree.inner var children rule
     ∧ ∀ child ∈ children.asList,
-    PDT.nodeList.length > child.nodeList.length ):= by
+    PDT.nodeList.length >= child.nodeList.length ):= by
       cases PDT
       case leaf w' =>
         apply Or.inl
@@ -351,18 +385,39 @@ theorem PreDerivationTree.children_have_less_nodes
         apply And.intro
         rfl
         intro child; intro h_child_mem
-
-
+        have h_children'_nodeList : _ := children'.nodeList_eq_concat_children_nodeList
+        have h_child_nodeList := child.nodeList_eq_concat_children_nodeList
+        cases h_child_nodeList
+        case h.right.inl h_inl₁ =>
+          rw [h_inl₁, List.length_singleton]
+          have h_PDT_nodeList := (PreDerivationTree.inner var' children' rule').nodeList_eq_concat_children_nodeList
+          cases h_PDT_nodeList
+          case inl h_inl₂ =>
+            rw [h_inl₂]
+            simp
+          case inr h_inr₂ =>
+            rw [h_inr₂]
+            have h_concat_nil : [PreDerivationTree.inner var' children' rule'] ++ [] = [PreDerivationTree.inner var' children' rule'] := by simp
+            rw [← h_concat_nil, ← concat_nodeLists_cons [PreDerivationTree.inner var' children' rule'] _ _]
+            rw [List.length_append]
+            simp
+        case h.right.inr h_inr₁=>
+          have h_set_list_length : ∀ l : List (PreDerivationTree G), l.length = (@List.toFinset (PreDerivationTree G) (
+            by
+          ) l).card :=
+            by exact l.card_toFinset
+          apply (PreDerivationTree.inner var' children' rule').children_have_leq_nodes
 
 /--Given a NEPreDerivationTreeList, its members have less nodes than the whole list.-/
-theorem NEPreDerivationTreeList.children_have_less_nodes
+theorem NEPreDerivationTreeList.children_have_leq_nodes
   {G : ContextFreeGrammar α nt} (NEPDT : NEPreDerivationTreeList G) :
-  ∀ child ∈ NEPDT.asList, NEPDT.nodeList.length > child.nodeList.length := by
+  ∀ child ∈ NEPDT.asList, NEPDT.nodeList.length >= child.nodeList.length := by
   intro child
   intro h_membership
 
   sorry
 end
+
 mutual
 /--The condition that specifies a valid derivation tree.
 

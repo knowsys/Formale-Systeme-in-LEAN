@@ -8,6 +8,9 @@ import FormalSystems.Preliminaries.Alphabet
   Based on the Type List.-/
 def Word (α : Type u) := List α
 
+/--Word equality is decidable using the List equality.-/
+instance {α : Type u} [DecidableEq α] : DecidableEq (Word α) := List.hasDecEq
+
 /--Construct a word from a list.-/
 def Word.mk (w: List α) : Word α := w
 
