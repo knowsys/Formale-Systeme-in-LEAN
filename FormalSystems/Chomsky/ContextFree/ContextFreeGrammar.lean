@@ -14,7 +14,40 @@ structure ContextFreeProduction (Z: Finset α) (V: Finset nt) where
   lhs: V
   /--Right-hand side: Any string.-/
   rhs: Word (V ⊕ Z)
-  deriving DecidableEq
+
+/--Define the equality determinating relation.-/
+def ContextFreeProduction.decEq {Z: Finset α} {V: Finset nt} [DecidableEq α] [DecidableEq nt] : (CFP₁ CFP₂ : ContextFreeProduction Z V) → Decidable (Eq CFP₁ CFP₂) :=
+  fun (CFP₁ : (ContextFreeProduction Z V)) (CFP₂ : (ContextFreeProduction Z V)) =>
+  by
+    by_cases CFP₁.lhs = CFP₂.lhs
+    case pos h_pos₁ =>
+      by_cases CFP₁.rhs = CFP₂.rhs
+      case pos h_pos₂ =>
+        exact isTrue (by
+          have h_CFP₂ : CFP₂ = (ContextFreeProduction.mk CFP₁.lhs CFP₁.rhs) :=
+            by rw [h_pos₁, h_pos₂]
+          rw [h_CFP₂])
+      case neg h_neg₂ =>
+        exact isFalse (by
+          have h_CFP₁ : CFP₁ = (ContextFreeProduction.mk CFP₁.lhs CFP₁.rhs) := by simp
+          have h_CFP₂ : CFP₂ = (ContextFreeProduction.mk CFP₂.lhs CFP₂.rhs) := by simp
+          rw [h_CFP₁,h_CFP₂]
+          simp
+          intro _
+          exact h_neg₂
+        )
+    case neg h_neg₁ =>
+      exact isFalse (by
+        have h_CFP₁ : CFP₁ = (ContextFreeProduction.mk CFP₁.lhs CFP₁.rhs) := by simp
+        have h_CFP₂ : CFP₂ = (ContextFreeProduction.mk CFP₂.lhs CFP₂.rhs) := by simp
+        rw [h_CFP₁,h_CFP₂]
+        simp
+        intro h_lhs
+        contradiction)
+
+
+/--Equality is decidable for PDTs using the decEq function.-/
+instance [a : DecidableEq α] [b : DecidableEq nt] : DecidableEq (@ContextFreeProduction α nt Z V) := @ContextFreeProduction.decEq α nt Z V a b
 
 /--Shorthand for goes to ε productions.-/
 def ContextFreeProduction.isEps (cfp : (ContextFreeProduction Z V)) : Prop :=
@@ -142,9 +175,11 @@ inductive NEPreDerivationTreeList (G : ContextFreeGrammar α nt)
   | cons (PDT : PreDerivationTree G) (NEPDTL : NEPreDerivationTreeList G) : NEPreDerivationTreeList G
 end
 
+mutual
+
 /--Define the equality determinating relation.-/
-def PreDerivationTree.decEq {G : ContextFreeGrammar α nt} [DecidableEq α] : (PDT₁ PDT₂ : PreDerivationTree G) → Decidable (Eq PDT₁ PDT₂)
-| leaf terminalWord₁ , leaf terminalWord₂ =>
+def PreDerivationTree.decEq {G : ContextFreeGrammar α nt} [DecidableEq α] [DecidableEq nt] : (PDT₁ PDT₂ : PreDerivationTree G) → Decidable (Eq PDT₁ PDT₂)
+| .leaf terminalWord₁ , .leaf terminalWord₂ =>
     match (terminalWord₁.hasDecEq terminalWord₂) with
       | isTrue h_isTrue => isTrue (by rw [h_isTrue])
       | isFalse h_isFalse => isFalse (by
@@ -152,31 +187,65 @@ def PreDerivationTree.decEq {G : ContextFreeGrammar α nt} [DecidableEq α] : (P
           intro h_not
           simp at h_not
           contradiction)
-| leaf terminalWord₁ , inner _ _ _ =>
+| .leaf terminalWord₁ , .inner _ _ _ =>
   isFalse (by
     apply Not.intro
     intro h_not
     contradiction)
-| inner _ _ _ , leaf terminalWord₂ =>
+| .inner _ _ _ , .leaf terminalWord₂ =>
   isFalse (by
     apply Not.intro
     intro h_not
     contradiction)
-| inner var₁ children₁ prodRule₁, inner var₂ children₂ prodRule₂ =>
-  match (instDecidableEqContextFreeProduction prodRule₁ prodRule₂) with
-    | isFalse h_isFalse => isFalse (by
-      sorry)
-    | isTrue h_isTrue => sorry
-/--Define the equality determinating relation.-/
-def NEPreDerivationTreeList.decEq {G : ContextFreeGrammar α nt} : (NEPDT₁ NEPDT₂ : NEPreDerivationTreeList G) → Decidable (NEPDT₁ = NEPDT₂)
-| .single PDT => False
-| .cons PDT NEPDTL₃ => False
+| .inner var₁ children₁ prodRule₁, .inner var₂ children₂ prodRule₂ =>
+  match (prodRule₁.decEq prodRule₂) with
+    | isFalse h_isFalse => isFalse (by simp; intro _ _ ; exact h_isFalse)
+    | isTrue h_isTrue_prodRule =>
+      match (children₁.decEq children₂) with
+        | isFalse h_isFalse => isFalse (by simp; intro _ _; contradiction)
+        | isTrue h_isTrue_children =>
+          match (decEq var₁ var₂) with
+            | isFalse h_isFalse => isFalse (by
+              intro h_not;
+              rw [h_isTrue_children, h_isTrue_prodRule] at h_not
+              simp at h_not
+              rw [h_not] at h_isFalse
+              contradiction)
+            | isTrue h_isTrue_var => isTrue (by
+              rw [h_isTrue_prodRule, h_isTrue_children, h_isTrue_var])
 
+/--Define the equality determinating relation.-/
+def NEPreDerivationTreeList.decEq {G : ContextFreeGrammar α nt} [DecidableEq α] [DecidableEq nt] : (NEPDT₁ NEPDT₂ : NEPreDerivationTreeList G) → Decidable (NEPDT₁ = NEPDT₂)
+| .single PDT₁ , .single PDT₂ => match (PDT₁.decEq PDT₂) with
+  | isTrue h_isTrue_PDT => isTrue (by rw [h_isTrue_PDT])
+  | isFalse h_isFalse_PDT => isFalse (by simp; exact h_isFalse_PDT)
+| .single _ , .cons _ _ => isFalse (by
+    apply Not.intro
+    intro h_not
+    contradiction)
+| .cons _ _ , .single _ => isFalse (by
+    apply Not.intro
+    intro h_not
+    contradiction)
+| .cons PDT₁ NEPDTL₃, .cons PDT₂ NEPDTL₄ =>
+  match (PDT₁.decEq PDT₂) with
+    | isFalse h_isFalse_PDT => isFalse (by
+      simp
+      intro h_PDT_equal
+      contradiction)
+    | isTrue h_isTrue_PDT =>
+      match (NEPDTL₃.decEq NEPDTL₄) with
+      | isFalse h_isFalse_NEPDTL => isFalse (by
+        simp; intro _
+        exact h_isFalse_NEPDTL)
+      | isTrue h_isTrue_NEPDTL => isTrue (by rw [h_isTrue_PDT, h_isTrue_NEPDTL])
+
+end
 
 /--Equality is decidable for PDTs using the decEq function.-/
-instance : DecidableEq (PreDerivationTree G) := PreDerivationTree.decEq
+instance [DecidableEq α] [DecidableEq nt] : DecidableEq (@PreDerivationTree α nt G) := PreDerivationTree.decEq
 /--Equality is decidable for NEPDTLs using the decEq function.-/
-instance : DecidableEq (NEPreDerivationTreeList G) := NEPreDerivationTreeList.decEq
+instance [DecidableEq α] [DecidableEq nt] : DecidableEq (@NEPreDerivationTreeList α nt G) := NEPreDerivationTreeList.decEq
 
 /--Define syntax for NEPreDerivationTreeLists: `DT[...]`-/
 syntax "DT[" term,* "]" : term
@@ -386,22 +455,22 @@ theorem NEPreDerivationTreeList.children_have_leq_nodes
   {G : ContextFreeGrammar α nt} (NEPDT : NEPreDerivationTreeList G) :
   ∀ child ∈ NEPDT.asList, NEPDT.nodeList.length >= child.nodeList.length := by
   intro child h_membership
-  cases NEPDT with 
-  | single c => 
+  cases NEPDT with
+  | single c =>
     simp only [NEPreDerivationTreeList.nodeList]
-    have : child = c := by 
+    have : child = c := by
       simp [NEPreDerivationTreeList.asList] at h_membership
       exact h_membership
     rw [this]
-  | cons c list => 
+  | cons c list =>
     simp only [NEPreDerivationTreeList.nodeList]
     by_cases c = child -- TODO: this might use classical logic; should be possible with boolean equality
-    case pos h_eq => 
+    case pos h_eq =>
       rw [List.length_append]
       simp
       rw [h_eq]
       apply Nat.le_add_right
-    case neg h_neq => 
+    case neg h_neq =>
       rw [List.length_append]
       simp
       rw [← Nat.zero_add child.nodeList.length]
@@ -410,7 +479,7 @@ theorem NEPreDerivationTreeList.children_have_leq_nodes
       apply NEPreDerivationTreeList.children_have_leq_nodes
       unfold NEPreDerivationTreeList.asList at h_membership
       simp at h_membership
-      cases h_membership with 
+      cases h_membership with
       | inl h_eq => rw [h_eq] at h_neq; contradiction
       | inr h_inList => exact h_inList
 
