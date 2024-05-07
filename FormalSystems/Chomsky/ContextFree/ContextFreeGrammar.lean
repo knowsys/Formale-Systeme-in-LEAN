@@ -14,6 +14,7 @@ structure ContextFreeProduction (Z: Finset α) (V: Finset nt) where
   lhs: V
   /--Right-hand side: Any string.-/
   rhs: Word (V ⊕ Z)
+  deriving DecidableEq
 
 /--Shorthand for goes to ε productions.-/
 def ContextFreeProduction.isEps (cfp : (ContextFreeProduction Z V)) : Prop :=
@@ -145,14 +146,27 @@ end
 def PreDerivationTree.decEq {G : ContextFreeGrammar α nt} [DecidableEq α] : (PDT₁ PDT₂ : PreDerivationTree G) → Decidable (Eq PDT₁ PDT₂)
 | leaf terminalWord₁ , leaf terminalWord₂ =>
     match (terminalWord₁.hasDecEq terminalWord₂) with
-      | isTrue h_isTrue => isTrue _
-      | isFalse h_isFalse => isFalse _
+      | isTrue h_isTrue => isTrue (by rw [h_isTrue])
+      | isFalse h_isFalse => isFalse (by
+          apply Not.intro
+          intro h_not
+          simp at h_not
+          contradiction)
 | leaf terminalWord₁ , inner _ _ _ =>
-  isFalse _
+  isFalse (by
+    apply Not.intro
+    intro h_not
+    contradiction)
 | inner _ _ _ , leaf terminalWord₂ =>
-  isFalse _
+  isFalse (by
+    apply Not.intro
+    intro h_not
+    contradiction)
 | inner var₁ children₁ prodRule₁, inner var₂ children₂ prodRule₂ =>
-  sorry
+  match (instDecidableEqContextFreeProduction prodRule₁ prodRule₂) with
+    | isFalse h_isFalse => isFalse (by
+      sorry)
+    | isTrue h_isTrue => sorry
 /--Define the equality determinating relation.-/
 def NEPreDerivationTreeList.decEq {G : ContextFreeGrammar α nt} : (NEPDT₁ NEPDT₂ : NEPreDerivationTreeList G) → Decidable (NEPDT₁ = NEPDT₂)
 | .single PDT => False
