@@ -381,7 +381,39 @@ theorem NEPreDerivationTreeList.nodeList_eq_concat_children_nodeList
       simp
 end
 
-mutual
+/--Given a NEPreDerivationTreeList, its members have less nodes than the whole list.-/
+theorem NEPreDerivationTreeList.children_have_leq_nodes
+  {G : ContextFreeGrammar α nt} (NEPDT : NEPreDerivationTreeList G) :
+  ∀ child ∈ NEPDT.asList, NEPDT.nodeList.length >= child.nodeList.length := by
+  intro child h_membership
+  cases NEPDT with 
+  | single c => 
+    simp only [NEPreDerivationTreeList.nodeList]
+    have : child = c := by 
+      simp [NEPreDerivationTreeList.asList] at h_membership
+      exact h_membership
+    rw [this]
+  | cons c list => 
+    simp only [NEPreDerivationTreeList.nodeList]
+    by_cases c = child -- TODO: this might use classical logic; should be possible with boolean equality
+    case pos h_eq => 
+      rw [List.length_append]
+      simp
+      rw [h_eq]
+      apply Nat.le_add_right
+    case neg h_neq => 
+      rw [List.length_append]
+      simp
+      rw [← Nat.zero_add child.nodeList.length]
+      apply Nat.add_le_add
+      apply Nat.zero_le
+      apply NEPreDerivationTreeList.children_have_leq_nodes
+      unfold NEPreDerivationTreeList.asList at h_membership
+      simp at h_membership
+      cases h_membership with 
+      | inl h_eq => rw [h_eq] at h_neq; contradiction
+      | inr h_inList => exact h_inList
+
 /--Theorem: The total number on nodes in a (sub-)tree decreases the further we go down in a tree.-/
 theorem PreDerivationTree.children_have_leq_nodes
   {G : ContextFreeGrammar α nt} (PDT : PreDerivationTree G) :
@@ -398,39 +430,11 @@ theorem PreDerivationTree.children_have_leq_nodes
         exists var'; exists children'; exists rule'
         apply And.intro
         rfl
-        intro child; intro h_child_mem
-        have h_children'_nodeList : _ := children'.nodeList_eq_concat_children_nodeList
-        have h_child_nodeList := child.nodeList_eq_concat_children_nodeList
-        cases h_child_nodeList
-        case h.right.inl h_inl₁ =>
-          rw [h_inl₁, List.length_singleton]
-          have h_PDT_nodeList := (PreDerivationTree.inner var' children' rule').nodeList_eq_concat_children_nodeList
-          cases h_PDT_nodeList
-          case inl h_inl₂ =>
-            rw [h_inl₂]
-            simp
-          case inr h_inr₂ =>
-            rw [h_inr₂]
-            have h_concat_nil : [PreDerivationTree.inner var' children' rule'] ++ [] = [PreDerivationTree.inner var' children' rule'] := by simp
-            rw [← h_concat_nil, ← concat_nodeLists_cons [PreDerivationTree.inner var' children' rule'] _ _]
-            rw [List.length_append]
-            simp
-        case h.right.inr h_inr₁=>
-          have h_set_list_length : ∀ l : List (PreDerivationTree G), l.length = (@List.toFinset (PreDerivationTree G) (
-            by
-          ) l).card :=
-            by exact l.card_toFinset
-          apply (PreDerivationTree.inner var' children' rule').children_have_leq_nodes
-
-/--Given a NEPreDerivationTreeList, its members have less nodes than the whole list.-/
-theorem NEPreDerivationTreeList.children_have_leq_nodes
-  {G : ContextFreeGrammar α nt} (NEPDT : NEPreDerivationTreeList G) :
-  ∀ child ∈ NEPDT.asList, NEPDT.nodeList.length >= child.nodeList.length := by
-  intro child
-  intro h_membership
-
-  sorry
-end
+        intro child h_child_mem
+        simp
+        apply Nat.le_succ_of_le
+        apply NEPreDerivationTreeList.children_have_leq_nodes
+        exact h_child_mem
 
 mutual
 /--The condition that specifies a valid derivation tree.
