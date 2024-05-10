@@ -677,47 +677,47 @@ def ExampleGrammar.lang: Language ({ 'x', 'y', 'z', '+', '*', '(', ')'} : Finset
 -- Construct an example tree, bottom up.
 -- l for leaf, i for inner, indexed seperately
 -- First number is depth of node, second is numbered from left to right on this depth
-def ExamplePreTreel2_0 : DerivationTree ExampleGrammar :=
+def ExamplePreTreel2_0 : PreDerivationTree ExampleGrammar :=
 .leaf [ ⟨ '(' , by decide⟩ ]
-def ExamplePreTreel4_0 : DerivationTree ExampleGrammar :=
+def ExamplePreTreel4_0 : PreDerivationTree ExampleGrammar :=
 .leaf [ ⟨ 'x' , by decide⟩ ]
-def ExamplePreTreel2_1 : DerivationTree ExampleGrammar :=
+def ExamplePreTreel2_1 : PreDerivationTree ExampleGrammar :=
 .leaf [ ⟨ '*' , by decide⟩ ]
-def ExamplePreTreel4_1 : DerivationTree ExampleGrammar :=
+def ExamplePreTreel4_1 : PreDerivationTree ExampleGrammar :=
 .leaf [ ⟨ '(' , by decide⟩ ]
-def ExamplePreTreel6_0 : DerivationTree ExampleGrammar :=
+def ExamplePreTreel6_0 : PreDerivationTree ExampleGrammar :=
 .leaf [ ⟨ 'y' , by decide⟩ ]
-def ExamplePreTreel4_2 : DerivationTree ExampleGrammar :=
+def ExamplePreTreel4_2 : PreDerivationTree ExampleGrammar :=
 .leaf [ ⟨ '+' , by decide⟩ ]
-def ExamplePreTreel6_1 : DerivationTree ExampleGrammar :=
+def ExamplePreTreel6_1 : PreDerivationTree ExampleGrammar :=
 .leaf [ ⟨ 'z' , by decide⟩ ]
-def ExamplePreTreel4_3 : DerivationTree ExampleGrammar :=
+def ExamplePreTreel4_3 : PreDerivationTree ExampleGrammar :=
 .leaf [ ⟨ ')' , by decide⟩ ]
-def ExamplePreTreel2_2 : DerivationTree ExampleGrammar :=
+def ExamplePreTreel2_2 : PreDerivationTree ExampleGrammar :=
 .leaf [ ⟨ ')' , by decide⟩ ]
 
 def DT_Test : DerivationTree ExampleGrammar :=
-  DerivationTree.inner ⟨ 'V', by decide⟩ DT[ExamplePreTreel6_1.tree] EP.Vtoz (by decide) (by decide) (by simp)
+  DerivationTree.inner ⟨ 'V', by decide⟩ DT[ExamplePreTreel6_1] EP.Vtoz (by decide) (by decide) (by decide)
 
-def ExamplePreTreei3_0 : DerivationTree ExampleGrammar :=
+def ExamplePreTreei3_0 : PreDerivationTree ExampleGrammar :=
 .inner ⟨ 'V' , by decide⟩ DT[ExamplePreTreel4_0] EP.Vtox
-def ExamplePreTreei2_0 : DerivationTree ExampleGrammar :=
+def ExamplePreTreei2_0 : PreDerivationTree ExampleGrammar :=
 .inner ⟨ 'S' , by decide⟩ DT[ExamplePreTreei3_0] EP.StoV
-def ExamplePreTreei5_0 : DerivationTree ExampleGrammar :=
+def ExamplePreTreei5_0 : PreDerivationTree ExampleGrammar :=
 .inner ⟨ 'V' , by decide⟩ DT[ExamplePreTreel6_0] EP.Vtoy
-def ExamplePreTreei4_0 : DerivationTree ExampleGrammar :=
+def ExamplePreTreei4_0 : PreDerivationTree ExampleGrammar :=
 .inner ⟨ 'S' , by decide⟩ DT[ExamplePreTreei5_0] EP.StoV
-def ExamplePreTreei5_1 : DerivationTree ExampleGrammar :=
+def ExamplePreTreei5_1 : PreDerivationTree ExampleGrammar :=
 .inner ⟨ 'V' , by decide⟩ DT[ExamplePreTreel6_0] EP.Vtoz
-def ExamplePreTreei4_1 : DerivationTree ExampleGrammar :=
+def ExamplePreTreei4_1 : PreDerivationTree ExampleGrammar :=
 .inner ⟨ 'S' , by decide⟩ DT[ExamplePreTreei5_1] EP.StoV
-def ExamplePreTreei3_1 : DerivationTree ExampleGrammar :=
+def ExamplePreTreei3_1 : PreDerivationTree ExampleGrammar :=
 .inner ⟨ 'A' , by decide⟩ DT[ExamplePreTreel4_1, ExamplePreTreei4_0, ExamplePreTreel4_2, ExamplePreTreei4_1, ExamplePreTreel4_3] EP.AtoSplusS
-def ExamplePreTreei2_1 : DerivationTree ExampleGrammar :=
+def ExamplePreTreei2_1 : PreDerivationTree ExampleGrammar :=
 .inner ⟨ 'S' , by decide⟩ DT[ExamplePreTreei3_1] EP.StoA
-def ExamplePreTreei1_0 : DerivationTree ExampleGrammar :=
+def ExamplePreTreei1_0 : PreDerivationTree ExampleGrammar :=
 .inner ⟨ 'M' , by decide⟩ DT[ExamplePreTreel2_0, ExamplePreTreei2_0, ExamplePreTreel2_1, ExamplePreTreei2_1, ExamplePreTreel2_2] EP.MtoStimesS
-def ExamplePreTreeRoot : DerivationTree ExampleGrammar :=
+def ExamplePreTreeRoot : PreDerivationTree ExampleGrammar :=
 .inner ⟨ 'S' , by decide⟩ DT[ExamplePreTreei1_0] EP.StoM
 
 --/--Return the root of a context-free derivation tree. Is itself though.-/
