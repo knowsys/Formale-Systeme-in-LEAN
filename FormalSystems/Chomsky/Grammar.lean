@@ -386,7 +386,7 @@ instance DerivationRelation.preorder (G: Grammar Prod) : Preorder (Word (G.V ⊕
     apply Nonempty.intro
     exact d₁.trans d₂
 
-/--The language of a gammar is defined as the set of those words that can be derived
+/--The language of a grammar is defined as the set of those words that can be derived
   from the starting symbol.-/
 def GeneratedLanguage (G: Grammar Prod) : Language G.Z :=
   fun w => [.inl ↑G.start] (G)⇒* (.inr <$> w)

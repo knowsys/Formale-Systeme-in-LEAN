@@ -53,8 +53,6 @@ instance [a : DecidableEq α] [b : DecidableEq nt] : DecidableEq (@ContextFreePr
 def ContextFreeProduction.isEps (cfp : (ContextFreeProduction Z V)) : Prop :=
   cfp.rhs = Word.epsilon
 
--- TODO: Prove decidability?
-
 /--Coercion (upcast) of context free productions into generic productions.
   Changes necessary: Inserting the single variable into a "string" (actually list).-/
 instance : Coe (ContextFreeProduction Z V) (GenericProduction Z V) where
@@ -63,6 +61,15 @@ instance : Coe (ContextFreeProduction Z V) (GenericProduction Z V) where
     rhs := p.rhs,
     lhs_contains_var := ⟨ p.lhs, List.Mem.head _ ⟩
   }
+
+--variable {CFP : ContextFreeProduction Z V}
+--#check (↑CFP : GenericProduction Z V).eq_iff_lhs_and_rhs_eq
+/- GenericProduction.eq_iff_lhs_and_rhs_eq
+  (([Sum.inl CFP.lhs] →ₚ CFP.rhs)
+    (instCoeContextFreeProductionGenericProduction.proof_1
+      CFP)) : ∀ (p₂ : GenericProduction Z V),
+  ([Sum.inl CFP.lhs] →ₚ CFP.rhs) ⋯ = p₂ ↔
+    (([Sum.inl CFP.lhs] →ₚ CFP.rhs) ⋯).lhs = p₂.lhs ∧ (([Sum.inl CFP.lhs] →ₚ CFP.rhs) ⋯).rhs = p₂.rhs -/
 
 /--Define an embedding of context free productions into generic productions.-/
 def ContextFreeProduction.toProduction : ContextFreeProduction Z V ↪ GenericProduction Z V where
@@ -96,6 +103,12 @@ extends Production α nt P where
 instance : Production.ContextFree α nt ContextFreeProduction where
   lhs_var p := p.lhs
   lhs_eq_lhs _ := by rfl
+
+/--Allow for →ₚ₂ notation to construct contex-free productions. Go from a word over V ⊕ Z to another word over V ⊕ Z.
+  Still require a proof for variable-existence on the left side right after this rule.
+
+  Note: This notation is also used in `Mathlib.Data.DFinsupp.Basic`. You currently cannot use both modules at the same time.-/
+notation:40 v:40 " →ₚ₂ " u:40 => ContextFreeProduction.mk v u
 
 --=============================================================
 -- Section: Context Free Grammar
@@ -160,9 +173,15 @@ instance : Coe (@ContextFreeDerivationStep α nt G u) (@Grammar.DerivationStep �
     } : @Grammar.DerivationStep α nt GenericProduction _ (↑G : Grammar GenericProduction) u
   }
 
---New idea: Split everything up into many sub-tasks
+--Note: Need to name all type parameters explicitly for coercion to work!
+
+--variable {CFDS : (@ContextFreeDerivationStep α nt G u)}
+--#check ((↑CFDS) : @Grammar.DerivationStep α nt GenericProduction _ (↑G) u).result
+
+--Idea: Split everything up into many sub-tasks
 mutual
-/--Basic structure of a derivation tree without validity-constraints. Assume ordered-/
+/--Basic structure of a context-free derivation tree without validity-constraints. Values returned by all sub-defined functions are only
+  ordered correctly if ordered correctly during definition.-/
 inductive PreDerivationTree (G : ContextFreeGrammar α nt)
   | leaf (terminalWord : Word G.Z) : PreDerivationTree G
   | inner (var : G.V) (children : NEPreDerivationTreeList G) (prodRule : (ContextFreeProduction G.Z G.V)) : PreDerivationTree G
@@ -207,8 +226,8 @@ def PreDerivationTree.decEq {G : ContextFreeGrammar α nt} [DecidableEq α] [Dec
           match (decEq var₁ var₂) with
             | isFalse h_isFalse => isFalse (by
               intro h_not;
-              rw [h_isTrue_children, h_isTrue_prodRule] at h_not
-              simp at h_not
+              --rw [h_isTrue_children, h_isTrue_prodRule] at h_not
+              simp [h_isTrue_children, h_isTrue_prodRule] at h_not
               rw [h_not] at h_isFalse
               contradiction)
             | isTrue h_isTrue_var => isTrue (by
@@ -248,12 +267,12 @@ instance [DecidableEq α] [DecidableEq nt] : DecidableEq (@PreDerivationTree α 
 instance [DecidableEq α] [DecidableEq nt] : DecidableEq (@NEPreDerivationTreeList α nt G) := NEPreDerivationTreeList.decEq
 
 /--Define syntax for NEPreDerivationTreeLists: `DT[...]`-/
-syntax "DT[" term,* "]" : term
+syntax "DT[" term,+ "]" : term
 macro_rules
   | `(DT[$x])    => `(NEPreDerivationTreeList.single $x)
-  | `(DT[ $x₁, $xs,* , $x₂]) => `(NEPreDerivationTreeList.cons $x₁ DT[$xs,*, $x₂])
+  | `(DT[ $x₁, $xs,*]) => `(NEPreDerivationTreeList.cons $x₁ DT[$xs,*])
 
-/--Convert to a List (PreDerivationTree G).-/
+/--Convert to a List (PreDerivationTree G). Only correct order if child nodes were assigned left-to-right.-/
 def NEPreDerivationTreeList.asList (NEPDTL : NEPreDerivationTreeList G) : List (PreDerivationTree G) := match NEPDTL with
   | single PDT => [PDT]
   | cons (PDT) (NEPDTL₂) => PDT :: NEPDTL₂.asList
@@ -277,11 +296,11 @@ theorem NEPreDerivationTreeList.asList_length (NEPDTL : NEPreDerivationTreeList 
   apply List.length_pos_of_ne_nil NEPDTL.asList_never_nil
 
 mutual
-/--Return a list of the nodes children.-/
+/--Return a list of the context-free node's children. Only correct order if child nodes were assigned left-to-right.-/
 def NEPreDerivationTreeList.nodeList {G : ContextFreeGrammar α nt} (NEPDT : NEPreDerivationTreeList G) : List (PreDerivationTree G) := match (NEPDT : NEPreDerivationTreeList G) with
   | .single PDT => PDT.nodeList
   | .cons PDT NEPDT₂ => PDT.nodeList ++ NEPDT₂.nodeList -- NEPreDerivationTreeList.foldl (fun prev tree => tree.nodeList ++ prev) [PDT] NEPDT
-/--Return a list of the nodes children.-/
+/--Return a list of the context-free node's children. Only correct order if child nodes were assigned left-to-right.-/
 def PreDerivationTree.nodeList {G : ContextFreeGrammar α nt} (PDT : PreDerivationTree G) : List (PreDerivationTree G) := match (PDT : PreDerivationTree G) with
   | .leaf _ => [PDT]
   | .inner _ children _ => PDT :: children.nodeList
@@ -318,39 +337,39 @@ theorem PreDerivationTree.nodeList_never_nil
       contradiction
 end
 
-/--Return a (possibly empty) list of this nodes children.-/
+/--Return a (possibly empty) list of this nodes children. Only correct order if child nodes were assigned left-to-right.-/
 def PreDerivationTree.children {G : ContextFreeGrammar α nt} : (PDT : (PreDerivationTree G)) → List (PreDerivationTree G)
   | leaf _ => []
   | inner _ children _ => children.asList
 
 mutual
-/--Get the list of used production rules.-/
+/--Get the list of used production rules. Only correct order if child nodes were assigned left-to-right.-/
 def PreDerivationTree.prodRuleList {G : ContextFreeGrammar α nt} : (PreDerivationTree G) → List (ContextFreeProduction G.Z G.V)
   | .leaf _ => []
   | .inner _ children prodRule => prodRule :: children.prodRuleList
-/--Get the list of used production rules-/
+/--Get the list of used production rules. Only correct order if child nodes were assigned left-to-right.-/
 def NEPreDerivationTreeList.prodRuleList {G : ContextFreeGrammar α nt} : (NEPDT : (NEPreDerivationTreeList G)) → List (ContextFreeProduction G.Z G.V)
   | .single PDT => PDT.prodRuleList
   | .cons PDT NEPDT₂ => PDT.prodRuleList ++ NEPDT₂.prodRuleList
 end
 
 mutual
-/--The final result-word defined by the children of a tree-node.-/
+/--The final result-word defined by the children of a context-free tree-node. Only correct order if child nodes were assigned left-to-right.-/
 def PreDerivationTree.result {G : ContextFreeGrammar α nt} : (PDT : PreDerivationTree G) → Word (G.V ⊕ G.Z)
   | .leaf terminalWord => Word.mk (terminalWord.map (fun terminal => Sum.inr terminal))
   | .inner _ children _ => children.result
-/--The final result-word defined by the children of a tree-node.-/
+/--The final result-word defined by the children of a context-free tree-node. Only correct order if child nodes were assigned left-to-right.-/
 def NEPreDerivationTreeList.result {G : ContextFreeGrammar α nt} : (NEPDT : NEPreDerivationTreeList G) → Word (G.V ⊕ G.Z)
   | .single PDT => PDT.result
   | .cons PDT NEPDT₂ => Word.concatListOfWords [PDT.result , NEPDT₂.result]
 end
 
 mutual
-/--The intermediate level word defined by the children of a tree-node.-/
+/--The intermediate level word defined by the children of a context-free tree-node. Only correct order if child nodes were assigned left-to-right.-/
 def PreDerivationTree.levelWord {G : ContextFreeGrammar α nt} : (PDT : PreDerivationTree G) → Word (G.V ⊕ G.Z)
   | .leaf terminalWord => Word.mk (terminalWord.map (fun terminal => Sum.inr terminal))
   | .inner var _ _ => Word.mk [(Sum.inl var)]
-/--The final result-word defined by the children of a tree-node.-/
+/--The final result-word defined by the children of a context-free tree-node. Only correct order if child nodes were assigned left-to-right.-/
 def NEPreDerivationTreeList.levelWord {G : ContextFreeGrammar α nt} : (NEPDT : NEPreDerivationTreeList G) → Word (G.V ⊕ G.Z)
   | .single PDT => PDT.levelWord
   | .cons PDT NEPDT₂ => Word.concatListOfWords [PDT.levelWord , NEPDT₂.levelWord]
@@ -457,33 +476,52 @@ theorem NEPreDerivationTreeList.children_have_leq_nodes
   intro child h_membership
   cases NEPDT with
   | single c =>
+    -- nodeList of single NEPDTL is that nodes nodeList exactly
     simp only [NEPreDerivationTreeList.nodeList]
+    -- single NEPDTL has only one child ∈ NEPDT.asList
     have : child = c := by
       simp [NEPreDerivationTreeList.asList] at h_membership
       exact h_membership
+    -- then solves itself with rfl
     rw [this]
-  | cons c list =>
+  | cons PDT NEPDT₁ =>
+    -- nodeList of cons PDT NEPDTL is nodeList PDT ++ nodeList NEPDTL
     simp only [NEPreDerivationTreeList.nodeList]
-    by_cases c = child -- TODO: this might use classical logic; should be possible with boolean equality
+    -- Case distinction over if PDT is the child we are proving the expression for
+    by_cases PDT = child -- TODO: this might use classical logic; should be possible with boolean equality
+    -- Case PDT is the child over which we are proving, i.e. PDT is at the top of the list
     case pos h_eq =>
+      -- List.length l₁ ++ l₂ = List.length l₁ + List.length l₂
       rw [List.length_append]
+      -- reorder inequality
       simp
+      -- rewrite PDT to child
       rw [h_eq]
+      -- now we have a ≤ a + b
       apply Nat.le_add_right
+    -- Case PDT in not the child over which we are proving, i.e. PDT is later in the list
     case neg h_neq =>
+      -- List.length l₁ ++ l₂ = List.length l₁ + List.length l₂
       rw [List.length_append]
+      -- reorder inequality
       simp
+      -- Can add 0 + _ to the front of anything
       rw [← Nat.zero_add child.nodeList.length]
+      -- Split into two proof tasks: 0 ≤ PDTlength and childlength ≤ NEPDT₁length
       apply Nat.add_le_add
+      -- Close first goal: 0 ≤ anything
       apply Nat.zero_le
+      -- Apply recursive theorem child vs NEPDTL₁
       apply NEPreDerivationTreeList.children_have_leq_nodes
+      -- Applying the recursive theorem requires a proof that child is in NEPDT₁.asList
       unfold NEPreDerivationTreeList.asList at h_membership
+      -- Which we know from ∀ child ∈ NEPDT.asList, ... plus that it is not at the start of the list
       simp at h_membership
       cases h_membership with
       | inl h_eq => rw [h_eq] at h_neq; contradiction
       | inr h_inList => exact h_inList
 
-/--Theorem: The total number on nodes in a (sub-)tree decreases the further we go down in a tree.-/
+/--Theorem: The total number on nodes in a context-free (sub-)tree decreases the further we go down in a tree.-/
 theorem PreDerivationTree.children_have_leq_nodes
   {G : ContextFreeGrammar α nt} (PDT : PreDerivationTree G) :
   (∃ w, PDT = PreDerivationTree.leaf w) ∨
@@ -491,9 +529,12 @@ theorem PreDerivationTree.children_have_leq_nodes
     ∧ ∀ child ∈ children.asList,
     PDT.nodeList.length >= child.nodeList.length ):= by
       cases PDT
+      -- If PDT is a leaf
       case leaf w' =>
+        -- Then we prove the left side trivially
         apply Or.inl
         exists w'
+      -- If the PDT is a node
       case inner var' children' rule' =>
         apply Or.inr
         exists var'; exists children'; exists rule'
@@ -501,8 +542,10 @@ theorem PreDerivationTree.children_have_leq_nodes
         rfl
         intro child h_child_mem
         simp
-        apply Nat.le_succ_of_le
+        apply Nat.le_succ_of_le -- We tell LEAN that the number is going to increase
+        -- We simply use the NEPDTL theorem
         apply NEPreDerivationTreeList.children_have_leq_nodes
+        -- and somehow LEAN believes us, that the number increased
         exact h_child_mem
 
 mutual
@@ -532,20 +575,27 @@ def NEPreDerivationTreeList.treeValid {G : ContextFreeGrammar α nt} (NEPDTL : N
   | .cons PDT NEPDTL₂ => PDT.treeValid ∧ NEPDTL₂.treeValid
 end
 
-/--Structure: A derivation tree. Use`tree : PreDerivationTree`to define its structure and provide
-  a validity proof`valid : treeValid tree`.-/
+/--Does this tree begin in the starting symbol?-/
+def PreDerivationTree.isFromStartingSymbol {G : ContextFreeGrammar α nt} : (PDT : PreDerivationTree G) → Prop
+| .leaf _ => False
+| .inner var _ _ => var = G.start
+
+
+/--Structure: A context-free derivation tree. Use`tree : PreDerivationTree`to define its structure and provide
+  a validity proof`valid : treeValid tree`. Note that the definition of`tree`should be in correct order left-to-right.-/
 structure DerivationTree (G : ContextFreeGrammar α nt) where
   tree : PreDerivationTree G
   valid : tree.treeValid
+  deriving DecidableEq
 
-/--Construct a derivation-tree leaf from a terminal word.-/
+/--Construct a context-free derivation-tree leaf from a terminal word.-/
 @[match_pattern]
 def DerivationTree.leaf {G : ContextFreeGrammar α nt} (w : Word G.Z) : DerivationTree G := {
   tree := PreDerivationTree.leaf w
   valid := by rw [PreDerivationTree.treeValid]; simp
 }
 
-/--Construct a derivation-tree node from:
+/--Construct a context-free derivation-tree node from:
 
 - The variable`v`,
 
@@ -572,6 +622,126 @@ def DerivationTree.inner {G : ContextFreeGrammar α nt}
       simp; exact childrenValid
 }
 
+def ExampleTerminals : Finset Char := { 'x', 'y', 'z', '(', ')', '+', '*' }
+def ExampleVariables : Finset Char :=  { 'A', 'M', 'S', 'V' }
+@[simp]
+theorem ExampleVariables.definition : ExampleVariables = { 'A', 'M', 'S', 'V' } := by rw [ExampleVariables]
+@[simp]
+theorem ExampleTerminals.definition : ExampleTerminals = { 'x', 'y', 'z', '(', ')', '+', '*' } := by rw [ExampleTerminals]
+
+def EP : List (ContextFreeProduction ExampleTerminals ExampleVariables) := [
+    -- rule S -> A
+    (⟨ 'S', by simp ⟩ →ₚ₂ [ .inl ⟨ 'A', by simp ⟩ ]),
+    -- rule S -> M
+    (⟨ 'S', by simp ⟩ →ₚ₂ [ .inl ⟨ 'M', by simp ⟩ ]),
+    -- rule S -> V
+    (⟨ 'S', by simp ⟩ →ₚ₂ [ .inl ⟨ 'V', by simp ⟩ ]),
+    -- rule A -> (S+S)
+    (⟨ 'A', by simp ⟩ →ₚ₂ [ .inr ⟨ '(', by simp ⟩, .inl ⟨ 'S', by simp ⟩, .inr ⟨ '+', by simp ⟩,
+                                   .inl ⟨ 'S', by simp ⟩, .inr ⟨ ')', by simp ⟩,  ]),
+    -- rule M -> (S*S)
+    (⟨ 'M', by simp ⟩ →ₚ₂ [ .inr ⟨ '(', by simp ⟩, .inl ⟨ 'S', by simp ⟩, .inr ⟨ '*', by simp ⟩,
+                                   .inl ⟨ 'S', by simp ⟩, .inr ⟨ ')', by simp ⟩,  ]),
+    -- rule V -> x
+    (⟨ 'V', by simp ⟩ →ₚ₂ [ .inr ⟨ 'x', by simp ⟩ ]),
+    -- rule V -> y
+    (⟨ 'V', by simp ⟩ →ₚ₂ [ .inr ⟨ 'y', by simp ⟩ ]),
+    -- rule V -> z
+    (⟨ 'V', by simp ⟩ →ₚ₂ [ .inr ⟨ 'z', by simp ⟩ ])
+]
+def EP.StoA : ContextFreeProduction ExampleTerminals ExampleVariables := EP[0]
+def EP.StoM : ContextFreeProduction ExampleTerminals ExampleVariables := EP[1]
+def EP.StoV : ContextFreeProduction ExampleTerminals ExampleVariables := EP[2]
+def EP.AtoSplusS : ContextFreeProduction ExampleTerminals ExampleVariables := EP[3]
+def EP.MtoStimesS : ContextFreeProduction ExampleTerminals ExampleVariables := EP[4]
+def EP.Vtox : ContextFreeProduction ExampleTerminals ExampleVariables := EP[5]
+def EP.Vtoy : ContextFreeProduction ExampleTerminals ExampleVariables := EP[6]
+def EP.Vtoz : ContextFreeProduction ExampleTerminals ExampleVariables := EP[7]
+
+def ExampleGrammar: @ContextFreeGrammar Char Char where
+  Z := { 'x', 'y', 'z', '(', ')', '+', '*' }
+  V := { 'A', 'M', 'S', 'V' }
+  start := ⟨ 'S', by simp ⟩
+  productions := EP.toFinset
+
+theorem ExampleGrammar.productions_eq_ex_productions (p: ContextFreeProduction _ _):
+  p ∈ ExampleGrammar.productions ↔ p ∈ EP := by
+  simp [ExampleGrammar]
+  exact List.mem_toFinset
+
+def ExampleGrammar.lang: Language ({ 'x', 'y', 'z', '+', '*', '(', ')'} : Finset _) :=
+  sorry
+
+#check ExampleGrammar.GeneratedLanguage
+
+-- Construct an example tree, bottom up.
+-- l for leaf, i for inner, indexed seperately
+-- First number is depth of node, second is numbered from left to right on this depth
+def ExamplePreTreel2_0 : DerivationTree ExampleGrammar :=
+.leaf [ ⟨ '(' , by decide⟩ ]
+def ExamplePreTreel4_0 : DerivationTree ExampleGrammar :=
+.leaf [ ⟨ 'x' , by decide⟩ ]
+def ExamplePreTreel2_1 : DerivationTree ExampleGrammar :=
+.leaf [ ⟨ '*' , by decide⟩ ]
+def ExamplePreTreel4_1 : DerivationTree ExampleGrammar :=
+.leaf [ ⟨ '(' , by decide⟩ ]
+def ExamplePreTreel6_0 : DerivationTree ExampleGrammar :=
+.leaf [ ⟨ 'y' , by decide⟩ ]
+def ExamplePreTreel4_2 : DerivationTree ExampleGrammar :=
+.leaf [ ⟨ '+' , by decide⟩ ]
+def ExamplePreTreel6_1 : DerivationTree ExampleGrammar :=
+.leaf [ ⟨ 'z' , by decide⟩ ]
+def ExamplePreTreel4_3 : DerivationTree ExampleGrammar :=
+.leaf [ ⟨ ')' , by decide⟩ ]
+def ExamplePreTreel2_2 : DerivationTree ExampleGrammar :=
+.leaf [ ⟨ ')' , by decide⟩ ]
+
+def DT_Test : DerivationTree ExampleGrammar :=
+  DerivationTree.inner ⟨ 'V', by decide⟩ DT[ExamplePreTreel6_1.tree] EP.Vtoz (by decide) (by decide) (by simp)
+
+def ExamplePreTreei3_0 : DerivationTree ExampleGrammar :=
+.inner ⟨ 'V' , by decide⟩ DT[ExamplePreTreel4_0] EP.Vtox
+def ExamplePreTreei2_0 : DerivationTree ExampleGrammar :=
+.inner ⟨ 'S' , by decide⟩ DT[ExamplePreTreei3_0] EP.StoV
+def ExamplePreTreei5_0 : DerivationTree ExampleGrammar :=
+.inner ⟨ 'V' , by decide⟩ DT[ExamplePreTreel6_0] EP.Vtoy
+def ExamplePreTreei4_0 : DerivationTree ExampleGrammar :=
+.inner ⟨ 'S' , by decide⟩ DT[ExamplePreTreei5_0] EP.StoV
+def ExamplePreTreei5_1 : DerivationTree ExampleGrammar :=
+.inner ⟨ 'V' , by decide⟩ DT[ExamplePreTreel6_0] EP.Vtoz
+def ExamplePreTreei4_1 : DerivationTree ExampleGrammar :=
+.inner ⟨ 'S' , by decide⟩ DT[ExamplePreTreei5_1] EP.StoV
+def ExamplePreTreei3_1 : DerivationTree ExampleGrammar :=
+.inner ⟨ 'A' , by decide⟩ DT[ExamplePreTreel4_1, ExamplePreTreei4_0, ExamplePreTreel4_2, ExamplePreTreei4_1, ExamplePreTreel4_3] EP.AtoSplusS
+def ExamplePreTreei2_1 : DerivationTree ExampleGrammar :=
+.inner ⟨ 'S' , by decide⟩ DT[ExamplePreTreei3_1] EP.StoA
+def ExamplePreTreei1_0 : DerivationTree ExampleGrammar :=
+.inner ⟨ 'M' , by decide⟩ DT[ExamplePreTreel2_0, ExamplePreTreei2_0, ExamplePreTreel2_1, ExamplePreTreei2_1, ExamplePreTreel2_2] EP.MtoStimesS
+def ExamplePreTreeRoot : DerivationTree ExampleGrammar :=
+.inner ⟨ 'S' , by decide⟩ DT[ExamplePreTreei1_0] EP.StoM
+
+--/--Return the root of a context-free derivation tree. Is itself though.-/
+--def DerivationTree.root {G : ContextFreeGrammar α nt} (DT : DerivationTree G) : (DerivationTree G) := DT
+
+/--A context-free derivation tree is total or complete if and only if it begins from
+  the starting symbol of its grammar.-/
+def DerivationTree.isTotal {G : ContextFreeGrammar α nt} (DT : DerivationTree G) : (Prop) :=
+  DT.tree.isFromStartingSymbol
+/--A context-free derivation tree is total or complete if and only if it begins from
+  the starting symbol of its grammar.-/
+def DerivationTree.isComplete {G : ContextFreeGrammar α nt} (DT : DerivationTree G) : (Prop) := DT.isTotal
+
+/--Return the root of a context-free derivation tree. Is itself though.-/
+def DerivationTree.startOrBot {G : ContextFreeGrammar α nt} : (DT : DerivationTree G) → (WithBot G.V)
+| .leaf w => ⊥
+| .inner var children rule _ _ _ => sorry --match child. with
+  --|
+
+/-- u ≺(G)⇒* v -notation for context-free tree-based derivations. Is the proposition that there
+  exists a derivation (∃) from u to v in G.-/
+notation:40 var:40 " ≺(" G:40 ")⇒⁺ " word:41 => (∃ dt ∈ (DerivationTree G), dt.start = var ∧ dt.result = word)
+
+def DerivationTree.depth {G : ContextFreeGrammar α nt} : (DT : DerivationTree G) → () := sorry
 /- Cannot use this type of definition because fo syntax stuff and gaving
    types depend on location in list
 
@@ -623,88 +793,50 @@ inductive TreeBasedContextFreeDerivation (G : ContextFreeGrammar α nt) : (v: G.
 
 -/
 
-/--Define context free derivations v (G)=>* w inductively. Constructors:
-
-  - `same_var`  - 0 step derivations v (G)=>* v
-
-  - `same_word` - 0 step derivations v (G)=>* w with w is a "word" that looks like v
-
-  - `step`  - Given a derivation`v' → w'`, and a production rule
-
-    `v → u_mid = l_of_v' * v' * r_of_v'`,
-
-    construct a derivation
-
-    `v → l_of_v' * w' * r_of_v'`
-
-    Note: u, v and w are not the same as in type-0 derivations. This is confusing!-/
-inductive ContextFreeDerivation (G : ContextFreeGrammar α nt) : (v: G.V) → (w: Word (G.V ⊕ G.Z)) → Type
-  /--0 step derivations v (G)=>* v-/
-  | same_var {v : G.V} (w' : G.V) (h : v = w') : ContextFreeDerivation G v [.inl w']
-  /--0 step derivations v (G)=>* w with w is a "word" that looks like v-/
-  | same_word {v : G.V} {w : Word (G.V ⊕ G.Z)} (h : [.inl v] = w) : ContextFreeDerivation G v w
-  /--step: Given a derivation`v' → w'`, and a production rule`v → u_mid = l_of_v' * v' * r_of_v'`,
-    construct a derivation`v → l_of_v' * w' * r_of_v'`-/
-  | step {v v' : G.V} {w w' u_mid l_of_v' r_of_v' : Word (G.V ⊕ G.Z)}
+/--Define context free derivations u (G)=>* v inductively.
+  Either no step was made (constructor:`same`, requires a proof that u = v), or
+  we have a recursive definition with at least one step (constructor `step`)-/
+inductive ContextFreeDerivation (G : ContextFreeGrammar α nt) : (Word (G.V ⊕ G.Z)) → (Word (G.V ⊕ G.Z)) → Type
+  /--0 step derivations u (G)=>* v-/
+  | same {u : (Word (G.V ⊕ G.Z))} {v : (Word (G.V ⊕ G.Z))} (h : u = v) : ContextFreeDerivation G u v
+  /--The recursive step definition of a derivation. Requires:
+  - `step`  - The derivation step with input u,
+  - `_derivation`     - A derivation from u' to v (recursive part of the definition),
+  - `sound` - The proof that`step`yields u'.
+  -/
+  | step
+    {u u' v : Word (G.V ⊕ G.Z)}
+    (step : @ContextFreeDerivationStep α nt G u)
+    (_derivation : ContextFreeDerivation G u' v)
+    (sound : (step : @Grammar.DerivationStep α nt GenericProduction _ G u).result = u') :
+    ContextFreeDerivation G u v
+    /- {v v' : G.V} {w w' u_mid l_of_v' r_of_v' : Word (G.V ⊕ G.Z)}
     (h_production : { lhs := v, rhs := u_mid}  ∈ G.productions)
     (h_u_mid : u_mid = l_of_v' * Word.mk [Sum.inl v'] * r_of_v'):
-    ContextFreeDerivation G v' w' → ContextFreeDerivation G v (l_of_v' * w' * r_of_v')
-
-/--Define the length of a CFDerivation. Cannot use generic derivation definition due to
-  requiring this definition in the construction of the embedding.-/
-def ContextFreeDerivation.len (cfd : ContextFreeDerivation G v w) : Nat :=
-  match cfd with
-    | same_var _ _  => 0
-    | same_word _    => 0
-    | step _ _ cfd' => Nat.succ cfd'.len
+    ContextFreeDerivation G v' w' → ContextFreeDerivation G v (l_of_v' * w' * r_of_v') -/
 
 --IMPORTANT: theorems are not computable!
 /--Define an embedding of context-free derivations in generic derivations.-/
 def ContextFreeDerivation.toDerivation
-    (cfd : @ContextFreeDerivation α nt G v w) :
-    (@Grammar.Derivation α nt GenericProduction _ (↑G) (Word.mk [Sum.inl v]) w) :=
-    -- Constructing a generic-grammar derivation from a cfderivation
-    -- requires a case distinction on the constructor of cfderivation
-    -- these were same_var, same_word and step
+    (cfd : @ContextFreeDerivation α nt G u v) :
+    (@Grammar.Derivation α nt GenericProduction _ (↑G) u v) :=
     match cfd with
-
-    | same_var w' h =>
-      have h_h : (Word.mk [@Sum.inl {x // x ∈ G.V} {x // x ∈ G.Z} v] = Word.mk [Sum.inl w']) := by simp [h]
-      by exact Grammar.Derivation.same h_h
-
-    | same_word h =>
-      by exact Grammar.Derivation.same h
-
-    -- Given a derivation v' → w', and a production rule
-    -- v → u_mid = l_of_v' * v' * r_of_v',
-    -- construct a derivation v → l_of_v' * w' * r_of_v'
-    | @step α nt G v v' w w' u_mid l_of_v' r_of_v' h_production h_u_mid deriv_v'_to_w' =>
-      let G' : Grammar GenericProduction := { Z := G.Z, V := G.V, start := G.start, productions := Finset.map ContextFreeProduction.toProduction G.productions }
-      let prod_but_cf := {lhs := v, rhs := u_mid : ContextFreeProduction G'.Z G'.V}
-      let productionRule : G'.productions := ⟨ prod_but_cf ,
-        by
-          simp -- simp might already use classical reasoning in mathlib
-            -- tauto uses classical reasoning
-          tauto -- credit to Henrik for coming up with this proof
-            -- exact Exists.intro prod h_production
-          ⟩
-      by
-      apply Grammar.Derivation.step -- construct the step using generic step constructor
-      -- yields a derivation from u to v
-      case step => -- prodrule from `v` to `u_mid (= l_of_v' * v' * r_of_v')`
-        exact Grammar.DerivationStep.fromRule productionRule
-      case x => -- A derivation from u' to v (recursive part of the definition),
-        exact (@Grammar.Derivation.augment_right α nt _ _ G' r_of_v' (l_of_v' * Word.mk [(Sum.inl v')]) (l_of_v' * w') (@Grammar.Derivation.augment_left α nt _ _ G' _ _ l_of_v' (ContextFreeDerivation.toDerivation deriv_v'_to_w')))
-      case sound =>
-        rw [Grammar.DerivationStep.from_rule_result]
-        simp
-        rw [h_u_mid]
-        rfl
-termination_by (cfd.len, 0)
+    | same h_same =>
+      Grammar.Derivation.same h_same
+    | step dStep derivation h_sound =>
+      Grammar.Derivation.step dStep derivation.toDerivation h_sound
 
 --Coercion CFDerivation into generic Derivations
-instance : Coe (@ContextFreeDerivation α nt G v w) (@Grammar.Derivation α nt GenericProduction _ (↑G) (Word.mk [Sum.inl v]) w) where
+instance : Coe (@ContextFreeDerivation α nt G v w) (@Grammar.Derivation α nt GenericProduction _ (↑G) v w) where
   coe cfDerivation := ContextFreeDerivation.toDerivation cfDerivation
+
+-- variable {CDF : (@ContextFreeDerivation α nt G u v)}
+-- #check (↑(CDF) : @Grammar.Derivation α nt GenericProduction _ G u v).len
+-- Grammar.Derivation.len (ContextFreeDerivation.toDerivation CDF) : ℕ
+
+/-- u CF(G)⇒* v -notation for context-free derivations. Is the proposition that there
+  exists a derivation (∃) from u to v in G.-/
+notation:40 u:40 " CF(" G:40 ")⇒* " v:41 => (Nonempty $ ContextFreeDerivation G u v)
 
 end ContextFreeGrammar
 
