@@ -575,6 +575,85 @@ def NEPreDerivationTreeList.treeValid {G : ContextFreeGrammar α nt} (NEPDTL : N
   | .cons PDT NEPDTL₂ => PDT.treeValid ∧ NEPDTL₂.treeValid
 end
 
+variable (PDT : PreDerivationTree G) (NEPDTL : NEPreDerivationTreeList G)
+
+mutual
+def NEPreDerivationTreeList.decideTreeValid {NEPDTL : NEPreDerivationTreeList G}
+  --[decPDT : Decidable (PDT.treeValid)]
+  [_h₁ : DecidableEq (G.V)] [_h₂ : DecidableEq (G.Z)]
+  : Decidable (NEPDTL.treeValid) :=
+  match NEPDTL with
+    | .single PDT => by rw [NEPreDerivationTreeList.treeValid]; exact PDT.decideTreeValid
+    | .cons PDT₂ NEPDTL₂ =>
+      match (PDT₂.decideTreeValid : (Decidable PDT₂.treeValid)) with
+        | isFalse h_isFalse => isFalse (by
+          rw [NEPreDerivationTreeList.treeValid]
+          apply Not.intro
+          intro h_not
+          absurd h_not.left
+          exact h_isFalse)
+        | isTrue h_isTrue => by
+          rw [NEPreDerivationTreeList.treeValid]
+          have _ : _ := NEPDTL₂.decideTreeValid
+          have _ : _ := PDT₂.decideTreeValid
+          apply instDecidableAnd
+          --NEPDTL₂.decideTreeValid
+def PreDerivationTree.decideTreeValid {PDT : PreDerivationTree G}
+  --[d_terminals : DecidableEq α] [d_vars : DecidableEq nt]
+  [h₁ : DecidableEq (G.V)] [h₂ : DecidableEq (G.Z)]
+  -- [h_eqlhs : Decidable (NEPreDerivationTreeList.treeValid)]
+  --[Decidable NEPreDerivationTreeList.treeValid]
+  : Decidable PDT.treeValid :=
+  match PDT with
+    | .leaf _ => isTrue (by rw [PreDerivationTree.treeValid]; simp)
+    | .inner var children rule =>
+        @Decidable.by_cases (var = rule.lhs) (Decidable (PreDerivationTree.treeValid (PreDerivationTree.inner var children rule))) _
+          (fun h_lhs : (var = rule.lhs) =>
+            @Decidable.by_cases (children.levelWord = rule.rhs) _ _
+              (fun h_rhs : (children.levelWord = rule.rhs) =>
+                  @Decidable.by_cases (children.treeValid) (Decidable (PreDerivationTree.treeValid (PreDerivationTree.inner var children rule))) children.decideTreeValid
+                  (fun h_children : (children.treeValid) =>
+                    isTrue (by
+                      rw [PreDerivationTree.treeValid]
+                      rw [h_lhs, h_rhs]
+                      simp
+                      exact h_children
+                    )
+                  )
+                  (fun h_children : ¬(children.treeValid) =>
+                    isFalse (by
+                      apply Not.intro; intro h_not
+                      rw [PreDerivationTree.treeValid] at h_not
+                      absurd h_not.right.right
+                      exact h_children
+              )))
+                (fun h_rhs : ¬(children.levelWord = rule.rhs) =>
+                isFalse (by
+                  apply Not.intro; intro h_not
+                  rw [PreDerivationTree.treeValid] at h_not
+                  absurd h_not.right.left
+                  exact h_rhs
+                )
+              )
+          ) (fun h_lhs : ¬(var = rule.lhs) =>
+            isFalse
+            (by
+              apply Not.intro; intro h_not
+              rw [PreDerivationTree.treeValid] at h_not
+              absurd h_not.left
+              exact h_lhs
+            )
+          )
+
+end
+
+--instance : DecidableEq {x // x ∈ G.V } := by
+  --sorry
+--instance : DecidableEq {x // x ∈ G.Z } := by
+  --sorry
+instance [DecidableEq (G.V)] [DecidableEq (G.Z)] : Decidable (PDT.treeValid) := PDT.decideTreeValid
+instance [DecidableEq (G.V)] [DecidableEq (G.Z)] : Decidable (NEPDTL.treeValid) := NEPDTL.decideTreeValid
+
 /--Does this tree begin in the starting symbol?-/
 def PreDerivationTree.isFromStartingSymbol {G : ContextFreeGrammar α nt} : (PDT : PreDerivationTree G) → Prop
 | .leaf _ => False
@@ -696,9 +775,6 @@ def ExamplePreTreel4_3 : PreDerivationTree ExampleGrammar :=
 def ExamplePreTreel2_2 : PreDerivationTree ExampleGrammar :=
 .leaf [ ⟨ ')' , by decide⟩ ]
 
-def DT_Test : DerivationTree ExampleGrammar :=
-  DerivationTree.inner ⟨ 'V', by decide⟩ DT[ExamplePreTreel6_1] EP.Vtoz (by decide) (by decide) (by decide)
-
 def ExamplePreTreei3_0 : PreDerivationTree ExampleGrammar :=
 .inner ⟨ 'V' , by decide⟩ DT[ExamplePreTreel4_0] EP.Vtox
 def ExamplePreTreei2_0 : PreDerivationTree ExampleGrammar :=
@@ -708,7 +784,7 @@ def ExamplePreTreei5_0 : PreDerivationTree ExampleGrammar :=
 def ExamplePreTreei4_0 : PreDerivationTree ExampleGrammar :=
 .inner ⟨ 'S' , by decide⟩ DT[ExamplePreTreei5_0] EP.StoV
 def ExamplePreTreei5_1 : PreDerivationTree ExampleGrammar :=
-.inner ⟨ 'V' , by decide⟩ DT[ExamplePreTreel6_0] EP.Vtoz
+.inner ⟨ 'V' , by decide⟩ DT[ExamplePreTreel6_1] EP.Vtoz
 def ExamplePreTreei4_1 : PreDerivationTree ExampleGrammar :=
 .inner ⟨ 'S' , by decide⟩ DT[ExamplePreTreei5_1] EP.StoV
 def ExamplePreTreei3_1 : PreDerivationTree ExampleGrammar :=
@@ -719,6 +795,25 @@ def ExamplePreTreei1_0 : PreDerivationTree ExampleGrammar :=
 .inner ⟨ 'M' , by decide⟩ DT[ExamplePreTreel2_0, ExamplePreTreei2_0, ExamplePreTreel2_1, ExamplePreTreei2_1, ExamplePreTreel2_2] EP.MtoStimesS
 def ExamplePreTreeRoot : PreDerivationTree ExampleGrammar :=
 .inner ⟨ 'S' , by decide⟩ DT[ExamplePreTreei1_0] EP.StoM
+
+/--Define the derivation tree itself. Note: Only the root is a derivation tree.
+  Corresponds to ExamplePreTreeRoot.-/
+def ExampleDT : DerivationTree ExampleGrammar :=
+  DerivationTree.inner ⟨ 'S', by decide⟩ DT[ExamplePreTreei1_0] EP.StoM (by decide) (by decide) (by
+    decide)
+    /- rw [NEPreDerivationTreeList.treeValid]
+    unfold ExamplePreTreei1_0
+    rw [PreDerivationTree.treeValid]
+    apply And.intro
+    case left =>
+      tauto
+    case right =>
+      apply And.intro
+      case left => tauto
+      case right =>
+        repeat (rw [NEPreDerivationTreeList.treeValid]; apply And.intro; tauto)
+        rw [NEPreDerivationTreeList.treeValid]; apply And.intro; -/
+
 
 --/--Return the root of a context-free derivation tree. Is itself though.-/
 --def DerivationTree.root {G : ContextFreeGrammar α nt} (DT : DerivationTree G) : (DerivationTree G) := DT
