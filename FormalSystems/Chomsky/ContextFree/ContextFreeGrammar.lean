@@ -115,7 +115,7 @@ notation:40 v:40 " →ₚ₂ " u:40 => ContextFreeProduction.mk v u
 --=============================================================
 
 /--Define Context Free Grammars to have context free production rules.-/
-def ContextFreeGrammar (α nt: Type) := @Grammar α nt ContextFreeProduction _
+def ContextFreeGrammar (α nt: Type) := @Grammar α nt (ContextFreeProduction) _
 
 variable { CFProd: Finset α → Finset nt → Type } [Production.ContextFree α nt CFProd]
 
@@ -654,10 +654,17 @@ end
 instance [DecidableEq (G.V)] [DecidableEq (G.Z)] : Decidable (PDT.treeValid) := PDT.decideTreeValid
 instance [DecidableEq (G.V)] [DecidableEq (G.Z)] : Decidable (NEPDTL.treeValid) := NEPDTL.decideTreeValid
 
-/--Does this tree begin in the starting symbol?-/
-def PreDerivationTree.isFromStartingSymbol {G : ContextFreeGrammar α nt} : (PDT : PreDerivationTree G) → Prop
+/--The condition (prop) specifying whether it starts in the starting symbol-/
+def PreDerivationTree.isFromStartingSymbolCondition {G : ContextFreeGrammar α nt} : (PDT : PreDerivationTree G) → Prop
 | .leaf _ => False
 | .inner var _ _ => var = G.start
+/--Does this tree begin in the starting symbol?-/
+def PreDerivationTree.isFromStartingSymbol {G : ContextFreeGrammar α nt} [ DecidableEq (G.V)] : (PDT : PreDerivationTree G) → Bool
+| .leaf _ => False
+| .inner var _ _ => @Decidable.by_cases (var = G.start) (Bool) _
+  (fun _ => True)
+  (fun _ => False)
+
 
 
 /--Structure: A context-free derivation tree. Use`tree : PreDerivationTree`to define its structure and provide
@@ -801,42 +808,59 @@ def ExamplePreTreeRoot : PreDerivationTree ExampleGrammar :=
 def ExampleDT : DerivationTree ExampleGrammar :=
   DerivationTree.inner ⟨ 'S', by decide⟩ DT[ExamplePreTreei1_0] EP.StoM (by decide) (by decide) (by
     decide)
-    /- rw [NEPreDerivationTreeList.treeValid]
-    unfold ExamplePreTreei1_0
-    rw [PreDerivationTree.treeValid]
-    apply And.intro
-    case left =>
-      tauto
-    case right =>
-      apply And.intro
-      case left => tauto
-      case right =>
-        repeat (rw [NEPreDerivationTreeList.treeValid]; apply And.intro; tauto)
-        rw [NEPreDerivationTreeList.treeValid]; apply And.intro; -/
-
 
 --/--Return the root of a context-free derivation tree. Is itself though.-/
 --def DerivationTree.root {G : ContextFreeGrammar α nt} (DT : DerivationTree G) : (DerivationTree G) := DT
 
 /--A context-free derivation tree is total or complete if and only if it begins from
   the starting symbol of its grammar.-/
-def DerivationTree.isTotal {G : ContextFreeGrammar α nt} (DT : DerivationTree G) : (Prop) :=
-  DT.tree.isFromStartingSymbol
+def DerivationTree.isTotalCondition {G : ContextFreeGrammar α nt} (DT : DerivationTree G) : (Prop) :=
+  DT.tree.isFromStartingSymbolCondition
 /--A context-free derivation tree is total or complete if and only if it begins from
   the starting symbol of its grammar.-/
-def DerivationTree.isComplete {G : ContextFreeGrammar α nt} (DT : DerivationTree G) : (Prop) := DT.isTotal
+def DerivationTree.isCompleteCondition {G : ContextFreeGrammar α nt} (DT : DerivationTree G) : (Prop) := DT.isTotalCondition
+/--Return whether this derivation tree is total.-/
+def DerivationTree.isTotal {G : ContextFreeGrammar α nt} [DecidableEq (G.V)] (DT : DerivationTree G) : (Bool) :=
+  DT.tree.isFromStartingSymbol
+/--Return whether this derivation tree is complete (=total).-/
+def DerivationTree.isComplete {G : ContextFreeGrammar α nt} [DecidableEq (G.V)] (DT : DerivationTree G) : (Bool) := DT.isTotal
 
-/--Return the root of a context-free derivation tree. Is itself though.-/
-def DerivationTree.startOrBot {G : ContextFreeGrammar α nt} : (DT : DerivationTree G) → (WithBot G.V)
-| .leaf w => ⊥
-| .inner var children rule _ _ _ => sorry --match child. with
-  --|
+theorem DerivationTree.total_trees_not_leaves {G : ContextFreeGrammar α nt} [DecidableEq (G.V)] (DT : DerivationTree G)
+  (h_DT_total : DT.isTotal) :
+  ∃ var children rule h_lhs h_rhs h_valid, DT = @DerivationTree.inner α nt G var children rule h_lhs h_rhs h_valid := by
+  rw [DerivationTree.isTotal] at h_DT_total
+  rw [PreDerivationTree.isFromStartingSymbol] at h_DT_total
+  cases h_constructor : DT
+  --simp at h_DT_total
+  case mk tree treeValid=>
+    have h_DT_tree : DT.tree = tree := by rw [h_constructor]
+    cases h_tree_constructor : DT.tree
+    case leaf _ =>
+      rw [h_tree_constructor] at h_DT_total
+      contradiction
+    case inner var children rule =>
+      exists var, children, rule
+      have h_valid : _ := DT.valid
+      rw [h_tree_constructor, PreDerivationTree.treeValid] at h_valid
+      have h_lhs_ref : _ := h_valid.left
+      nth_rewrite 1 [eq_comm] at h_valid
+      nth_rewrite 2 [eq_comm] at h_valid
+      exists h_valid.left, h_valid.right.left, h_valid.right.right
+      rw [DerivationTree.inner]
+      simp
+      rw [← h_DT_tree, h_tree_constructor]
+
+def DerivationTree.startingSymbol {G : ContextFreeGrammar α nt} [DecidableEq (G.V)] {DT : DerivationTree G} (h_isTotal : DT.isTotal) : G.V := by
+  --have h_exists : _ := DT.total_trees_not_leaves h_isTotal
+  --apply Option.exists
+  sorry
 
 /-- u ≺(G)⇒* v -notation for context-free tree-based derivations. Is the proposition that there
   exists a derivation (∃) from u to v in G.-/
-notation:40 var:40 " ≺(" G:40 ")⇒⁺ " word:41 => (∃ dt ∈ (DerivationTree G), dt.start = var ∧ dt.result = word)
+notation:40 var:40 " ≺(" G:40 ")⇒⁺ " word:41 => (∃ dt : (DerivationTree G), DerivationTree.isTotal dt ∧ DerivationTree.startingSymbol dt = var ∧ DerivationTree.result dt = word)
 
-def DerivationTree.depth {G : ContextFreeGrammar α nt} : (DT : DerivationTree G) → () := sorry
+def DerivationTree.depth {G : ContextFreeGrammar α nt} (DT : DerivationTree G) : (ℕ) :=
+  DT.tree.depth + 1
 /- Cannot use this type of definition because fo syntax stuff and gaving
    types depend on location in list
 
@@ -913,6 +937,7 @@ inductive ContextFreeDerivation (G : ContextFreeGrammar α nt) : (Word (G.V ⊕ 
 --IMPORTANT: theorems are not computable!
 /--Define an embedding of context-free derivations in generic derivations.-/
 def ContextFreeDerivation.toDerivation
+    {G : ContextFreeGrammar α nt} {u : Word (G.V ⊕ G.Z) } {v : Word (G.V ⊕ G.Z)}
     (cfd : @ContextFreeDerivation α nt G u v) :
     (@Grammar.Derivation α nt GenericProduction _ (↑G) u v) :=
     match cfd with
@@ -922,7 +947,8 @@ def ContextFreeDerivation.toDerivation
       Grammar.Derivation.step dStep derivation.toDerivation h_sound
 
 --Coercion CFDerivation into generic Derivations
-instance : Coe (@ContextFreeDerivation α nt G v w) (@Grammar.Derivation α nt GenericProduction _ (↑G) v w) where
+instance {G : ContextFreeGrammar α nt} {u : Word (G.V ⊕ G.Z) } {v : Word (G.V ⊕ G.Z)}
+  : Coe (@ContextFreeDerivation α nt G u v) (@Grammar.Derivation α nt GenericProduction _ (↑G) u v) where
   coe cfDerivation := ContextFreeDerivation.toDerivation cfDerivation
 
 -- variable {CDF : (@ContextFreeDerivation α nt G u v)}
