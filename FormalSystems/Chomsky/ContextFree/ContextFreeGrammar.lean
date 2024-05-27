@@ -560,11 +560,11 @@ def PreDerivationTree.treeValid {G : ContextFreeGrammar α nt} (PDT : PreDerivat
   match PDT with
   | .leaf _ => True
   | .inner var children rule =>
-      -- 1 The production rule is applicable in this step.
+      /- 1 The production rule is applicable in this step.-/
       var = rule.lhs ∧
-      -- 2 The children match the production rules result.
+      /- 2 The children match the production rules result. -/
       children.levelWord = rule.rhs ∧
-      -- 3 The children are valid.
+      /- 3 The children are valid. -/
       children.treeValid
 /- treeWord children = rule.rhs ∧ children.all (fun c => @decide (treeValid c) (Classical.propDecidable _))
 termination_by t => depth t -/
@@ -574,6 +574,43 @@ def NEPreDerivationTreeList.treeValid {G : ContextFreeGrammar α nt} (NEPDTL : N
   | .single PDT => PDT.treeValid
   | .cons PDT NEPDTL₂ => PDT.treeValid ∧ NEPDTL₂.treeValid
 end
+
+/--Theorem: If a list of tree nodes are valid, then so is any of its members.-/
+theorem NEPreDerivationTreeList.treeValid_implies_child_valid
+  {G : ContextFreeGrammar α nt} {NEPDTL : NEPreDerivationTreeList G} {child : PreDerivationTree G}
+  (h_treeValid : NEPDTL.treeValid) (h_mem : child ∈ NEPDTL.asList) : (child.treeValid) := by
+    -- Case distinction over the list
+    cases h_constructor : NEPDTL
+    -- Singleton case
+    case single PDT =>
+      rw [h_constructor] at h_treeValid
+      rw [NEPreDerivationTreeList.treeValid] at h_treeValid
+      -- Then the child must be exactly that singleton
+      have h_equal : PDT = child := by
+        rw [h_constructor] at h_mem
+        rw [NEPreDerivationTreeList.asList] at h_mem
+        rw [List.mem_singleton] at h_mem
+        rw [h_mem]
+      rw [← h_equal]
+      -- Which by definition of NEPreDerivationTreeList.treeValid yields the childs validity
+      exact h_treeValid
+    -- Non-Empty case
+    case cons PDT NEPDTL₂ =>
+      rw [h_constructor] at h_treeValid h_mem
+      rw [NEPreDerivationTreeList.treeValid] at h_treeValid
+      rw [NEPreDerivationTreeList.asList] at h_mem
+      -- Then the child is either at the top (head) of the list, or in the tail
+      rw [List.mem_cons] at h_mem
+      cases h_mem
+      -- Case head
+      case inl h_left =>
+        rw [h_left]
+        -- Then we know the head of the list is treeValid by definition of NEPreDerivationTreeList.treeValid
+        exact h_treeValid.left
+      -- Case tail
+      case inr h_right =>
+        -- Recursive call to the theorem
+        exact NEPreDerivationTreeList.treeValid_implies_child_valid h_treeValid.right h_right
 
 variable (PDT : PreDerivationTree G) (NEPDTL : NEPreDerivationTreeList G)
 
@@ -592,7 +629,7 @@ def NEPreDerivationTreeList.decideTreeValid {NEPDTL : NEPreDerivationTreeList G}
           intro h_not
           absurd h_not.left
           exact h_isFalse)
-        | isTrue h_isTrue => by
+        | isTrue _ => by
           rw [NEPreDerivationTreeList.treeValid]
           have _ : _ := NEPDTL₂.decideTreeValid
           have _ : _ := PDT₂.decideTreeValid
@@ -665,7 +702,89 @@ def PreDerivationTree.isFromStartingSymbol {G : ContextFreeGrammar α nt} [ Deci
   (fun _ => True)
   (fun _ => False)
 
-
+-- Induction Principles for PreDerivationTrees and NEPreDerivationTreeLists
+mutual
+/--Doing an inductive proof over PDTs requires two to be proven properties.
+  One for PDTs, one for NEPTLs. Equally induction basis and step must be provided for both data structures.-/
+@[elab_as_elim]
+def PreDerivationTree.induction_principle {G : ContextFreeGrammar α nt}
+  /-Property over PDTs.-/
+  (prop : PreDerivationTree G → Prop)
+  /-Property over NEPDTLs.-/
+  (prop₂ : NEPreDerivationTreeList G → Prop)
+  /-Base case for PDTs.-/
+  (ind_basis : ∀ terminalWord : Word G.Z , prop (PreDerivationTree.leaf terminalWord))
+  /-Base case for NEPDTLs.-/
+  (ind_basis₂ :
+    ∀ PDT : PreDerivationTree G,
+      prop PDT → prop₂ (NEPreDerivationTreeList.single PDT))
+  /-Induction step for PDTs.-/
+  (ind_step :
+    ∀ (v : G.V) (children : NEPreDerivationTreeList G)
+    (rule : ContextFreeProduction G.Z G.V),
+    (ind_hyp : prop₂ children)
+    →
+    prop (PreDerivationTree.inner v children rule))
+  /-Induction step for NEPDTLs.-/
+  (ind_step₂ :
+    ∀ PDT : PreDerivationTree G, ∀ NEPDTL₂ : NEPreDerivationTreeList G,
+      prop PDT → prop₂ NEPDTL₂ → prop₂ (NEPreDerivationTreeList.cons PDT NEPDTL₂))
+  : ∀ PDT : PreDerivationTree G, prop PDT
+  := @PreDerivationTree.rec α nt G prop prop₂
+    (fun terminalWord =>
+      by apply ind_basis terminalWord)
+    (fun var children prodRule =>
+      fun h₁ : prop₂ children =>
+        ind_step var children prodRule h₁)
+    (fun PDT =>
+      fun h₂ : prop PDT =>
+        ind_basis₂ PDT h₂)
+    (fun PDT =>
+      fun NEPDTL =>
+        fun h₁ : prop PDT =>
+          fun h₂ : prop₂ NEPDTL =>
+            ind_step₂ PDT NEPDTL h₁ h₂)
+/--Doing an inductive proof over NEPDTLs requires two to be proven properties.
+  One for PDTs, one for NEPTLs. Equally induction basis and step must be provided for both data structures.-/
+@[elab_as_elim]
+def NEPreDerivationTreeList.induction_principle {G : ContextFreeGrammar α nt}
+  /-Property over PDTs.-/
+  (prop : PreDerivationTree G → Prop)
+  /-Property over NEPDTLs.-/
+  (prop₂ : NEPreDerivationTreeList G → Prop)
+  /-Base case for PDTs.-/
+  (ind_basis : ∀ terminalWord : Word G.Z , prop (PreDerivationTree.leaf terminalWord))
+  /-Base case for NEPDTLs.-/
+  (ind_basis₂ :
+    ∀ PDT : PreDerivationTree G,
+      prop PDT → prop₂ (NEPreDerivationTreeList.single PDT))
+  /-Induction step for PDTs.-/
+  (ind_step :
+    ∀ (v : G.V) (children : NEPreDerivationTreeList G)
+    (rule : ContextFreeProduction G.Z G.V),
+    (ind_hyp : prop₂ children)
+    →
+    prop (PreDerivationTree.inner v children rule))
+  /-Induction step for NEPDTLs.-/
+  (ind_step₂ :
+    ∀ PDT : PreDerivationTree G, ∀ NEPDTL₂ : NEPreDerivationTreeList G,
+      prop PDT → prop₂ NEPDTL₂ → prop₂ (NEPreDerivationTreeList.cons PDT NEPDTL₂))
+  : ∀ NEPDTL : NEPreDerivationTreeList G, prop₂ NEPDTL
+  := @NEPreDerivationTreeList.rec α nt G prop prop₂
+    (fun terminalWord =>
+      ind_basis terminalWord)
+    (fun var children prodRule =>
+      fun h₁ : prop₂ children =>
+        ind_step var children prodRule h₁)
+    (fun PDT =>
+      fun h₂ : prop PDT =>
+        ind_basis₂ PDT h₂)
+    (fun PDT =>
+      fun NEPDTL =>
+        fun h₁ : prop PDT =>
+          fun h₂ : prop₂ NEPDTL =>
+            ind_step₂ PDT NEPDTL h₁ h₂)
+end
 
 /--Structure: A context-free derivation tree. Use`tree : PreDerivationTree`to define its structure and provide
   a validity proof`valid : treeValid tree`. Note that the definition of`tree`should be in correct order left-to-right.-/
@@ -707,6 +826,132 @@ def DerivationTree.inner {G : ContextFreeGrammar α nt}
       rw[PreDerivationTree.treeValid, h_rule_lhs, h_rule_rhs]
       simp; exact childrenValid
 }
+
+/--Construct a derivation tree child from the a proof of validity of
+  the list of children and the child's membership in this list.-/
+def DerivationTree.fromChild
+  {G : ContextFreeGrammar α nt} {children : NEPreDerivationTreeList G} {child : PreDerivationTree G}
+  (childrenValid : children.treeValid) (h_child_mem : child ∈ children.asList) : DerivationTree G :=
+  match child with
+  | .leaf terminalWord => DerivationTree.leaf terminalWord
+  | .inner var child_children rule => by
+    have h : _ := NEPreDerivationTreeList.treeValid_implies_child_valid childrenValid h_child_mem
+    rw [PreDerivationTree.treeValid] at h
+    exact
+      DerivationTree.inner var child_children rule
+      (h.left.symm)
+      (h.right.left.symm)
+      (h.right.right)
+
+#check @DerivationTree.rec
+#check @PreDerivationTree.induction_principle
+
+@[elab_as_elim]
+def DerivationTree.induction_principle {G : ContextFreeGrammar α nt}
+  -- For any given property,
+  (prop : DerivationTree G → Prop)
+  -- if we can prove the prop for leaf DTs
+  (ind_basis : ∀ terminalWord : Word G.Z , prop (DerivationTree.leaf terminalWord))
+  -- and...
+  (ind_step :
+    -- for ANY inner DT
+    ∀ (v : G.V) (children : NEPreDerivationTreeList G)
+    (rule : ContextFreeProduction G.Z G.V) (h_rule_lhs : rule.lhs = v)
+    (h_rule_rhs : rule.rhs = children.levelWord) (childrenValid : children.treeValid),
+    -- from induction hypothesis (prop valid for all children)
+    (ind_hyp : ∀ child, (h_mem : child ∈ children.asList) → prop (DerivationTree.fromChild childrenValid (h_mem : child ∈ children.asList)))
+    →
+    -- we can prove the prop for this "next" DT
+    prop (DerivationTree.inner v children rule h_rule_lhs h_rule_rhs childrenValid))
+  -- then the property is valid for all DTs
+  : ∀ DT : DerivationTree G, prop DT
+  :=
+  @DerivationTree.rec α nt G
+    prop
+    (fun tree =>
+      fun valid =>
+        by
+          -- Plan: Prove via mutual structural induction on PDT & NEPDTL
+          -- that from ind_basis, ind_step we can follow prop for all
+          -- This mutual induction uses two different propositions to be proven
+          -- The difficulty lies in finding these propositions
+          -- The propositions are propHelper for PDTs and propHelper₂ for NEPDTLs
+          let propHelper : (PreDerivationTree G → Prop) :=
+            fun PDT =>
+              (h_PDT_valid : PDT.treeValid) →
+              (∀ (terminalWord : Word { x // x ∈ G.Z }), prop (leaf terminalWord)) →
+              (∀
+                (v : { x // x ∈ G.V }) (children : NEPreDerivationTreeList G) (rule : ContextFreeProduction G.Z G.V)
+                (h_rule_lhs : rule.lhs = v) (h_rule_rhs : rule.rhs = NEPreDerivationTreeList.levelWord children)
+                (childrenValid : NEPreDerivationTreeList.treeValid children),
+              (∀ (child : PreDerivationTree G) (h_mem : child ∈ NEPreDerivationTreeList.asList children),
+                  prop (fromChild childrenValid h_mem)) →
+                prop (inner v children rule h_rule_lhs h_rule_rhs childrenValid)) →
+              prop {tree := PDT, valid := h_PDT_valid}
+          let propHelper₂ : (NEPreDerivationTreeList G → Prop) :=
+            fun NEPDTL =>
+              (h_NEPDTL_valid : NEPDTL.treeValid) →
+              (∀ (terminalWord : Word { x // x ∈ G.Z }), prop (leaf terminalWord)) →
+              (∀
+                (v : { x // x ∈ G.V }) (children : NEPreDerivationTreeList G) (rule : ContextFreeProduction G.Z G.V)
+                (h_rule_lhs : rule.lhs = v) (h_rule_rhs : rule.rhs = NEPreDerivationTreeList.levelWord children)
+                (childrenValid : NEPreDerivationTreeList.treeValid children),
+              (∀ (child : PreDerivationTree G) (h_mem : child ∈ NEPreDerivationTreeList.asList children),
+                  prop (fromChild childrenValid h_mem)) →
+                prop (inner v children rule h_rule_lhs h_rule_rhs childrenValid)) →
+              ∀ (child : PreDerivationTree G) (h_mem : child ∈ NEPreDerivationTreeList.asList NEPDTL),
+                  prop (fromChild h_NEPDTL_valid h_mem)
+          -- We can follow propHelper for all PDTs using mutual structural on PDTs
+          have property_PDTs : _ := @PreDerivationTree.induction_principle α nt G propHelper propHelper₂
+          -- For this we need to prove the base case for propHelper...
+          have propHelper_basis : (∀ (terminalWord : Word G.Z), propHelper (PreDerivationTree.leaf terminalWord)) := by
+            intro tw h_PDT_valid h_basis h_step
+            exact h_basis tw
+          -- and for propHelper₂
+          have propHelper₂_basis : (∀ (PDT : PreDerivationTree G), propHelper PDT → propHelper₂ (NEPreDerivationTreeList.single PDT)) := by
+            intro PDT h_propHelper_PDT
+            intro h_NEPDTL_valid h_basis h_step child h_mem
+            have h_refl : PDT = child := by sorry
+            rw [fromChild]
+            sorry
+
+          have propHelper_step : (∀ (v : { x // x ∈ G.V }) (children : NEPreDerivationTreeList G) (rule : ContextFreeProduction G.Z G.V),
+            propHelper₂ children → propHelper (PreDerivationTree.inner v children rule)) := by
+            intro v_step children_step rule_step h_propHelper₂_children_step
+            intro h_valid_goal h_basis_goal h_basis₂_goal
+            apply h_basis₂_goal v_step children_step rule_step
+            case h_rule_lhs =>
+              exact h_valid_goal.left.symm
+            case h_rule_rhs =>
+              exact h_valid_goal.right.left.symm
+            case childrenValid =>
+              exact h_valid_goal.right.right
+            case a : ∀ (child : PreDerivationTree G) (h_mem : child ∈ NEPreDerivationTreeList.asList children_step), prop (fromChild _ h_mem) =>
+              have h_children_step_valid : children_step.treeValid := h_valid_goal.right.right
+              --have h_as : _ := h_valid_goal.right.right
+              intro child_step h_mem_step
+              have h_b : _ := children_step.treeValid_implies_child_valid h_children_step_valid h_mem_step
+
+              sorry
+
+          have propHelper₂_step : (∀ (PDT : PreDerivationTree G) (NEPDTL₂ : NEPreDerivationTreeList G),
+            propHelper PDT → propHelper₂ NEPDTL₂ → propHelper₂ (NEPreDerivationTreeList.cons PDT NEPDTL₂)) := by
+            sorry
+          apply property_PDTs at propHelper_basis
+          apply propHelper_basis at propHelper₂_basis
+          apply propHelper₂_basis at propHelper_step
+          apply propHelper_step at propHelper₂_step
+          have h_tree : _ := propHelper₂_step tree
+          apply h_tree at valid
+          apply valid at ind_basis
+          apply ind_basis at ind_step
+          exact ind_step
+          )
+   /-  (λ ts => ∀ t ∈ ts, p t)
+    leaf
+    node
+    (List.forall_mem_nil p)
+    (λ _ _ h_head h_tail => List.forall_mem_cons.mpr (And.intro h_head h_tail)) -/
 
 def ExampleTerminals : Finset Char := { 'x', 'y', 'z', '(', ')', '+', '*' }
 def ExampleVariables : Finset Char :=  { 'A', 'M', 'S', 'V' }

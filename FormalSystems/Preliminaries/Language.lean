@@ -9,6 +9,7 @@ import Mathlib.Data.Fintype.Lattice
   Technically a language is a function from a word to a proposition (requirement for inclusion),
   but`∈`should be used to reason over languages at all times.-/
 def Language (α : Type u) := Set (Word α)
+-- Note: Dvorak and mathlib have Type*. Is this a difference?
 
 namespace Language
 
@@ -179,10 +180,10 @@ theorem concat_dist_union_l (L1 L2 L3 : Language α)
         match pv with
         | ⟨h1, h2, h3⟩ => exists u, v; exact ⟨h1, Or.inr h2, h3⟩
 
-instance : Zero (Language α) where 
+instance : Zero (Language α) where
   zero := ∅
 
-instance : Add (Language α) where 
+instance : Add (Language α) where
   add := Set.union
 
 /--Languages with concatenation as multiplication and union as addition construct a semiring.-/
