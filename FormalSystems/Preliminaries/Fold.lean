@@ -77,3 +77,9 @@ theorem Finset.fold_union_subs [DecidableEq β] { f: α → Finset β } { qa qb:
   exists x; constructor
   apply Finset.mem_of_subset
   repeat { assumption }
+
+def List.mem_tuple_list {α : Type} (list : List α) : (List (α × _)) := match list with
+| nil => []
+| cons a list₂ =>
+    have h_mem : a ∈ list := by tauto
+    ⟨a , ⟨ h_mem ⟩ ⟩  :: list₂.mem_tuple_list

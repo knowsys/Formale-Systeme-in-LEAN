@@ -435,3 +435,12 @@ def ExampleGrammar.lang: Language ({ 'b', 'z' } : Finset _) :=
 -- see lecture 2, slides 18 - 21
 
 end Grammar
+
+variable { Prod: Finset α → Finset nt → Type } [Production α nt Prod]
+
+/--Convert this word to a V or Z word-/
+def Word.VtoVZ {G : Grammar Prod} (word : Word G.V) : Word (G.V ⊕ G.Z) :=
+  List.map (fun var : { x // x ∈ G.V } => Sum.inl var) word
+/--Convert this word to a V or Z word-/
+def Word.ZtoVZ {G : Grammar Prod} (word : Word G.Z) : Word (G.V ⊕ G.Z) :=
+  List.map (fun var : { x // x ∈ G.Z } => Sum.inr var) word
