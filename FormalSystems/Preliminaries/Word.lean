@@ -11,6 +11,10 @@ def Word (α : Type u) := List α
 /--Word equality is decidable using the List equality.-/
 instance {α : Type u} [DecidableEq α] : DecidableEq (Word α) := List.hasDecEq
 
+/--Words are lists and can thus be coerced.-/
+instance (_ : Word α): Coe (Word α) (List α) where
+  coe word := word
+
 /--Construct a word from a list.-/
 def Word.mk (w: List α) : Word α := w
 
