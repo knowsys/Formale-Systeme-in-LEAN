@@ -1383,12 +1383,20 @@ notation:40 u:40 " CF(" G:40 ")⇒* " v:41 => (Nonempty $ ContextFreeDerivation 
 
 def ContextFreeDerivation.toDerivationTree
   {G : ContextFreeGrammar α nt} {u : Word (G.V ⊕ G.Z) } {v : Word (G.V ⊕ G.Z)}
-  (cfd : @ContextFreeDerivation α nt G u v) :
+  (cfd : @ContextFreeDerivation α nt G u v)
+  (h_multipleStep : ¬ ∃ h_same, cfd = ContextFreeDerivation.same h_same) :
   DerivationTree G :=
-    match cfd with
-    | same h_same =>
-      DerivationTree.leaf u
-    | step dstep derivation sound => sorry
+    match h_constructor : cfd with
+    | same h_same => by
+      have h_singleStep : ∃ h_same, cfd = ContextFreeDerivation.same h_same := by use h_same
+      rw [← h_constructor] at h_multipleStep
+      contradiction
+
+      --Default? Bottom?
+
+    | step dstep derivation sound =>
+
+      sorry
 
 def DerivationTree.toContextFreeDerivation
   {G : ContextFreeGrammar α nt}
