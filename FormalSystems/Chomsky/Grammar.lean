@@ -444,3 +444,59 @@ def Word.VtoVZ {G : Grammar Prod} (word : Word G.V) : Word (G.V ⊕ G.Z) :=
 /--Convert this word to a V or Z word-/
 def Word.ZtoVZ {G : Grammar Prod} (word : Word G.Z) : Word (G.V ⊕ G.Z) :=
   List.map (fun var : { x // x ∈ G.Z } => Sum.inr var) word
+
+/--Return wether a word is all Z (terminal symbols).-/
+def Word.isAllZ {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : Bool :=
+  match word with
+  | .nil =>
+    True
+  | .cons symbol word₂ =>
+    @Decidable.by_cases (Sum.isRight symbol) _ _
+    (fun _ =>
+      Word.isAllZ (word₂ : Word (G.V ⊕ G.Z)))
+    (fun _ => False)
+
+/--Return wether a word is all Z (terminal symbols).-/
+def Word.decideIsAllZ {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : Decidable (∀ symbol ∈ word, Sum.isRight symbol) :=
+  match h_constructor : word with
+  | .nil =>
+    isTrue (by tauto)
+  | .cons symbol word₂ =>
+    @Decidable.by_cases (Sum.isRight symbol) _ _
+    (fun h_isTrue =>
+      @Decidable.by_cases (∀ symbol ∈ (word₂ : Word (G.V ⊕ G.Z)), Sum.isRight symbol) _ _
+      (fun h_isTrue₂ =>
+        isTrue (by
+          intro anySymbol
+          rw [List.mem_cons]
+          intro h_anySymbol
+          cases h_anySymbol
+          case inl h_inl =>
+            rw [h_inl, h_isTrue]
+          case inr h_inr =>
+            apply h_isTrue₂ anySymbol
+            exact h_inr))
+      (fun h_isFalse₂ =>
+        isFalse (by
+          rw [List.forall_mem_cons]
+          rw [not_and_or]
+          apply Or.inr
+          exact h_isFalse₂
+          ))
+    )
+    (fun h_isFalse => isFalse (by
+      apply Not.elim
+      rw [not_forall]
+      exists symbol
+      tauto))
+
+/--Return wether a word is all V (non-terminal symbols).-/
+def Word.isAllV {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : Bool :=
+  match word with
+  | .nil =>
+    True
+  | .cons symbol word₂ =>
+    @Decidable.by_cases (Sum.isLeft symbol) _ _
+    (fun _ =>
+      Word.isAllZ (word₂ : Word (G.V ⊕ G.Z)))
+    (fun _ => False)

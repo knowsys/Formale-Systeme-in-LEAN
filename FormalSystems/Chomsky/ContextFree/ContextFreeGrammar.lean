@@ -1217,16 +1217,16 @@ def DerivationTree.fromAny {G : ContextFreeGrammar α nt} (DT : DerivationTree G
   | PreDerivationTree.leaf tw => tw.ZtoVZ
   | PreDerivationTree.inner v _ _ => [Sum.inl v]
 
-/--Return the variable from which we begin deriving or bottom if we are a leaf.-/
-def DerivationTree.fromVarOrBot {G : ContextFreeGrammar α nt} (DT : DerivationTree G) : WithBot (G.V) := match DT.tree with
-| PreDerivationTree.leaf _ => ⊥
+/--Return the variable from which we begin deriving or none if we are a leaf.-/
+def DerivationTree.fromOptionVar {G : ContextFreeGrammar α nt} (DT : DerivationTree G) : Option (G.V) := match DT.tree with
+| PreDerivationTree.leaf _ => none
 | PreDerivationTree.inner v _ _ => v
 
 /--Return the variable from which we begin deriving if the tree is total.-/
 def DerivationTree.fromVar {G : ContextFreeGrammar α nt} [DecidableEq { x // x ∈ G.V }] (DT : DerivationTree G) (h_isTotal : DT.isTotal) : (G.V) := by
   have h_neverTerminal : _ := DT.total_trees_not_leaves₂ h_isTotal
-  let var : _ := DT.fromVarOrBot
-  have h_neverBot : var ≠ ⊥ := by
+  let var : _ := DT.fromOptionVar
+  have h_neverBot : var.isSome = true := by
     cases h_constructor : DT.tree
     case leaf tw =>
       cases h_neverTerminal; case intro var₂ h_neverTerminal₂ =>
@@ -1235,9 +1235,9 @@ def DerivationTree.fromVar {G : ContextFreeGrammar α nt} [DecidableEq { x // x 
             absurd h_neverTerminal₄
             simp [h_constructor]
     case inner v c r =>
-      have h_def : var = DT.fromVarOrBot := by simp
-      simp [h_def, fromVarOrBot, h_constructor]
-  exact WithBot.unbot var h_neverBot
+      have h_def : var = DT.fromOptionVar := by simp
+      simp [h_def, fromOptionVar, h_constructor]
+  exact Option.get var h_neverBot
 
 /--Return the resulting word of the derivation tree.-/
 def DerivationTree.result {G : ContextFreeGrammar α nt} (DT : DerivationTree G) : Word G.Z :=
@@ -1262,19 +1262,8 @@ def DerivationTree.children {G : ContextFreeGrammar α nt} (DT : DerivationTree 
       have ctv : c.treeValid := by
         rw [h_constructor, PreDerivationTree.treeValid] at valid
         exact valid.right.right
-      let cList := c.asList
-      exact List.map (λ child =>
-        have a : ∃ c ∈ cList, c = child := by
-          have b : _ := NEPDTL.asList_never_nil
-          --apply Not.elim at b
-          by_contra h_contra
-          absurd b
-          sorry
-
-        @DerivationTree.fromChild α nt G c child ctv ( by
-
-        sorry
-      )) cList
+      exact List.map (λ child : {x // x ∈ c.asList} =>
+        @DerivationTree.fromChild α nt G c child ctv child.prop) c.asList.attach
 
 /-Hard to formulate-/
 --theorem DerivationTree.depth_eq_maxDT_of_children {G : ContextFreeGrammar α nt} : ∀ DT : DerivationTree G, DT.depth = (List.foldl () 0 DT.children) := by sorry
@@ -1381,6 +1370,39 @@ instance {G : ContextFreeGrammar α nt} {u : Word (G.V ⊕ G.Z) } {v : Word (G.V
   exists a derivation (∃) from u to v in G.-/
 notation:40 u:40 " CF(" G:40 ")⇒* " v:41 => (Nonempty $ ContextFreeDerivation G u v)
 
+/--Condition specifying wether a derivation is exhaustive:
+  It needs to evaluate ALL variables to terminal symbols,
+  i.e. have exhaustively applied production rules.-/
+def ContextFreeDerivation.exhaustiveCondition
+  {G : ContextFreeGrammar α nt} {u v : Word (G.V ⊕ G.Z)}
+  (_ : ContextFreeDerivation G u v) : Prop :=
+  ∀ symbol ∈ v, Sum.isRight symbol
+
+def ContextFreeDerivation.decideExhaustive
+  (cfd : ContextFreeDerivation G u v)
+  : Decidable (cfd.exhaustiveCondition) :=
+  v.decideIsAllZ
+
+-- @Decidable.by_cases (var = rule.lhs) (Decidable (PreDerivationTree.treeValid (PreDerivationTree.inner var children rule))) _
+
+instance (cfd : ContextFreeDerivation G u v) : Decidable (cfd.exhaustiveCondition) := cfd.decideExhaustive
+
+/--Is this context-free derivation exhaustive?:
+  It needs to evaluate ALL variables to terminal symbols,
+  i.e. have exhaustively applied production rules.-/
+def ContextFreeDerivation.isExhaustive
+  {G : ContextFreeGrammar α nt} {u v : Word (G.V ⊕ G.Z)}
+  (cfd : ContextFreeDerivation G u v) : Bool :=
+  @Decidable.by_cases (cfd.exhaustiveCondition) (Bool) _
+  (fun _ => True)
+  (fun _ => False)
+
+/--Structure: Define exhaustive contextfree derivations. They -/
+structure ExhaustiveContextFreeDerivation {G : ContextFreeGrammar α nt} (u : Word (G.V ⊕ G.Z)) (v : Word (G.V ⊕ G.Z)) [DecidableEq (@ContextFreeDerivation α nt G u v)] where
+  derivation : @ContextFreeDerivation α nt G u v
+  exhaustive : derivation.exhaustiveCondition
+  deriving DecidableEq
+
 def ContextFreeDerivation.toDerivationTree
   {G : ContextFreeGrammar α nt} {u : Word (G.V ⊕ G.Z) } {v : Word (G.V ⊕ G.Z)}
   (cfd : @ContextFreeDerivation α nt G u v)
@@ -1402,7 +1424,7 @@ def DerivationTree.toContextFreeDerivation
   {G : ContextFreeGrammar α nt}
   [DecidableEq G.V]
   (DT : DerivationTree G) :
-  (cfd : @ContextFreeDerivation α nt G DT.fromAny (@Word.ZtoVZ _ _ _ _ G DT.result)) :=
+  (@ContextFreeDerivation α nt G DT.fromAny (@Word.ZtoVZ _ _ _ _ G DT.result)) :=
 
   sorry
 
