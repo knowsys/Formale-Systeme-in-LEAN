@@ -436,14 +436,88 @@ def ExampleGrammar.lang: Language ({ 'b', 'z' } : Finset _) :=
 
 end Grammar
 
-variable { Prod: Finset α → Finset nt → Type } [Production α nt Prod]
+variable { Prod : Finset α → Finset nt → Type } [Production α nt Prod]
 
-/--Convert this word to a V or Z word-/
+/--Convert this word to a V or Z word.-/
 def Word.VtoVZ {G : Grammar Prod} (word : Word G.V) : Word (G.V ⊕ G.Z) :=
   List.map (fun var : { x // x ∈ G.V } => Sum.inl var) word
-/--Convert this word to a V or Z word-/
+/--Convert this word to a V or Z word.-/
 def Word.ZtoVZ {G : Grammar Prod} (word : Word G.Z) : Word (G.V ⊕ G.Z) :=
-  List.map (fun var : { x // x ∈ G.Z } => Sum.inr var) word
+  List.map (fun terminal : { x // x ∈ G.Z } => Sum.inr terminal) word
+/--Convert this word to a Z word. Precondition requires all the word's symbols to be in Z (this aligns with ContextFreeDerivation.exhaustive).-/
+def Word.VZtoZ {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) (h_all_Z : ∀ symbol ∈ word, Sum.isRight symbol): Word (G.Z) :=
+  --have h_same : ∀ x : { x // x ∈ word }, @Sum.isRight G.V G.Z x ∨ @Sum.isLeft G.V G.Z x := by
+    --simp
+  --have h : { a // Sum.isRight a = true } ≃ { a // a ∈ word } := (@Equiv.subtypeEquivProp (G.V ⊕ G.Z) (fun a => Sum.isRight a) (fun a => a ∈ word) (_) )
+  -- {a // a ∈ G.Z} ≃ { a // Sum.isRight a = true }
+  --have h₂ : {a // a ∈ G.Z} ≃ { a // Sum.isRight a = true } :=
+  --  @Equiv.subtypeEquivProp (G.Z) (fun a => @Membership.mem (G.Z) (Finset α) Finset.instMembershipFinset a α) (fun a => (@Sum.isRight G.V G.Z (Sum.inr a))) _
+  --have h₃ : { a ∈ word | (a) ∈ (G.V ⊕ G.Z) } ≃ { a ∈ word | true } := _
+  --have h₄ : {x : α // x ∈ G.Z} ≃ { x // Sum.isRight x = true } :=
+    --(@Equiv.subtypeEquivProp (_) (fun a => a ∈ G.Z) (fun a => Sum.isRight a = true) (_) )
+  -- @Grammar.Z α nt Prod inst✝ G : Finset α
+  --by apply Equiv.subtypeEquiv
+  @List.map
+      { x : (G.V ⊕ G.Z) // x ∈ word }
+      G.Z
+    (fun symbol : { x // x ∈ word } => by
+    -- let sym : _ := @Subtype.coe_eta α (fun x => x ∈ G.Z) ↑symbol
+    --have h_type : _ := h_all_Z symbol symbol.2
+    --let symbol₂ := h.invFun symbol
+    let symbol₃ : (G.V ⊕ G.Z) := ↑symbol
+    have h_all_Z₂ := h_all_Z symbol₃ (symbol.2)
+    exact Sum.getRight symbol₃ h_all_Z₂
+    -- exact h₄.invFun symbol₂
+    --h.invFun symbol
+    /- ⟨ by
+      apply h.invFun at symbol
+      sorry
+    , _⟩ -/
+  /-( (h₂.invFun symbol))-/
+  )
+  (@List.attach (G.V ⊕ G.Z) word)
+
+/--Convert this word to a V word. Precondition requires all the word's symbols to be in V.-/
+def Word.VZtoV {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) (h_all_V : ∀ symbol ∈ word, Sum.isLeft symbol): Word (G.V) :=
+  @List.map
+      { x : (G.V ⊕ G.Z) // x ∈ word }
+      G.V
+    (fun symbol : { x // x ∈ word } => by
+    let symbol₃ : (G.V ⊕ G.Z) := ↑symbol
+    have h_all_V₂ := h_all_V symbol₃ (symbol.2)
+    exact Sum.getLeft symbol₃ h_all_V₂
+  )
+  (@List.attach (G.V ⊕ G.Z) word)
+
+/--Collect the variables in this word.-/
+def Word.collectVars {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : List G.V :=
+  List.foldl
+  (fun before : (List G.V) =>
+      fun symbol =>
+        match (symbol : (G.V ⊕ G.Z)) with
+        | Sum.inl var => before ++ [var]
+        | Sum.inr _ => before)
+  [] word
+
+/- /--Collect the variables in this word and their indexes.-/
+def Word.collectVarsWithIndexes {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : List (G.V × ℕ) :=
+  List.foldl
+  (fun before : (List G.V) =>
+      fun symbol =>
+        match (symbol : (G.V ⊕ G.Z)) with
+        | Sum.inl var => before ++ [var]
+        | Sum.inr _ => before)
+  [] word -/
+
+/--Collect the terminals in this word.-/
+def Word.collectTerminals {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : List G.Z :=
+  List.foldl
+  (fun before : (List G.Z) =>
+      fun symbol =>
+        match (symbol : (G.V ⊕ G.Z)) with
+        | Sum.inl _ => before
+        | Sum.inr terminal => before ++ [terminal])
+  [] word
 
 /--Return wether a word is all Z (terminal symbols).-/
 def Word.isAllZ {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : Bool :=

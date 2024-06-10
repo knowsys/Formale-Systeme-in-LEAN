@@ -141,6 +141,7 @@ structure ContextFreeDerivationStep (G : ContextFreeGrammar α nt) (u: Word (G.V
     have x : G.V := ContextFreeProduction.lhs prod.val -- need to ensure correct alphabet : Z+V
     have x_as_word : (Word (G.V ⊕ G.Z)) := [.inl ↑(x)]
     u = pre * x_as_word * suf
+  deriving DecidableEq
 
 /--Theorem: A context free derivation step on a word u has a word of length 1 within u (the variable we are deriving from).-/
 theorem ContextFreeDerivationStep_has_pre_1_suf_word_as_u (step : ContextFreeDerivationStep G (u : Word (G.V ⊕ G.Z))) : ∃x : Word (G.V ⊕ G.Z), x.len=1 ∧ u = step.pre * x * step.suf := by
@@ -1345,6 +1346,58 @@ inductive ContextFreeDerivation (G : ContextFreeGrammar α nt) : (Word (G.V ⊕ 
     (h_u_mid : u_mid = l_of_v' * Word.mk [Sum.inl v'] * r_of_v'):
     ContextFreeDerivation G v' w' → ContextFreeDerivation G v (l_of_v' * w' * r_of_v') -/
 
+#check instDecidableEqContextFreeDerivationStep
+
+/--Define the equality determinating relation.-/
+def ContextFreeDerivation.decEq [DecidableEq α] [DecidableEq nt] {G : ContextFreeGrammar α nt} {u v : Word (G.V ⊕ G.Z)} : (CFD₁ CFD₂ : ContextFreeDerivation G u v) → Decidable (Eq CFD₁ CFD₂) :=
+  fun (CFD₁ CFD₂ : (@ContextFreeDerivation α nt G u v)) =>
+  match h_constructor₁ : CFD₁, h_constructor₂ : CFD₂ with
+    | .same h_same₁, .same h_same₂ =>
+      isTrue ( by
+        have h_same_same : h_same₁ = h_same₂ := by simp
+        rw [h_same_same]
+      )
+    | .same _, .step _ _ _ =>
+      isFalse (by simp)
+    | .step _ _ _, .same _ =>
+      isFalse (by simp)
+    | @ContextFreeDerivation.step α nt G _ u'₁ _ step₁ derivation₁ sound₁, @ContextFreeDerivation.step α nt G _ u'₂ _ step₂ derivation₂ sound₂ =>
+      match (instDecidableEqContextFreeDerivationStep step₁ step₂) with
+      | isFalse h_isFalse => isFalse (by
+        simp; intro _;
+        rw [imp_iff_or_not];
+        apply Or.inr h_isFalse)
+      | isTrue h_isTrue =>
+        match (List.hasDecEq u'₁ u'₂) with
+        | isFalse h_isFalse₂ =>
+          isFalse (by simp [imp_iff_or_not]; apply Or.inr h_isFalse₂)
+        | isTrue h_isTrue₂ => by
+          /- have derivation1as2 : @ContextFreeDerivation α nt G u'₂ v := by
+            rw [h_isTrue₂] at derivation₁
+            exact derivation₁ -/
+          let dv₁_rw : _ := by
+            rw [h_isTrue₂] at derivation₁
+            exact derivation₁
+          have h_same : ContextFreeDerivation G u'₁ v = ContextFreeDerivation G u'₂ v := by rw [h_isTrue₂]
+          have h_dv₁_rw_same : dv₁_rw = cast h_same derivation₁ := by rfl
+          match (ContextFreeDerivation.decEq dv₁_rw derivation₂) with
+          | isFalse h_isFalse₃ => exact (isFalse (by
+            simp; intro _ _;
+            apply Not.elim
+            apply Not.intro; intro h_HEq
+            rw [← (@cast_eq_iff_heq _ (ContextFreeDerivation G u'₂ v) h_same _ derivation₂)] at h_HEq
+            rw [← h_dv₁_rw_same] at h_HEq
+            contradiction
+            ))
+          | isTrue h_isTrue₃ =>
+            exact isTrue (by
+              simp [h_isTrue, h_isTrue₂]
+              apply (@cast_eq_iff_heq _ _ h_same derivation₁ dv₁_rw).mp at h_dv₁_rw_same
+              rw [h_isTrue₃] at h_dv₁_rw_same
+              exact h_dv₁_rw_same)
+
+instance [dec₁ : DecidableEq α] [dec₂ : DecidableEq nt] {G : ContextFreeGrammar α nt} {u v : Word (G.V ⊕ G.Z)} (cfd₁ cfd₂ : @ContextFreeDerivation α nt G u v) : Decidable (cfd₁ = cfd₂) := @ContextFreeDerivation.decEq α nt dec₁ dec₂ G u v cfd₁ cfd₂
+
 --IMPORTANT: theorems are not computable!
 /--Define an embedding of context-free derivations in generic derivations.-/
 def ContextFreeDerivation.toDerivation
@@ -1378,6 +1431,20 @@ def ContextFreeDerivation.exhaustiveCondition
   (_ : ContextFreeDerivation G u v) : Prop :=
   ∀ symbol ∈ v, Sum.isRight symbol
 
+/--Condition specifying wether a derivation does one or more step,
+  i.e. is not a 0-step derivation.-/
+def ContextFreeDerivation.nonZeroStepCondition
+  {G : ContextFreeGrammar α nt} {u v : Word (G.V ⊕ G.Z)}
+  (cfd : ContextFreeDerivation G u v) : Prop :=
+  (¬ ∃ h_same, cfd = ContextFreeDerivation.same h_same)
+
+/--Condition specifying wether a derivation begins in either a single variable or a single terminal.-/
+def ContextFreeDerivation.startsIn1Condition
+  {G : ContextFreeGrammar α nt} {u v : Word (G.V ⊕ G.Z)}
+  (_ : ContextFreeDerivation G u v) : Prop :=
+  (u.length = 1)
+
+/--Decide wether this cfd is exhaustive.-/
 def ContextFreeDerivation.decideExhaustive
   (cfd : ContextFreeDerivation G u v)
   : Decidable (cfd.exhaustiveCondition) :=
@@ -1386,6 +1453,27 @@ def ContextFreeDerivation.decideExhaustive
 -- @Decidable.by_cases (var = rule.lhs) (Decidable (PreDerivationTree.treeValid (PreDerivationTree.inner var children rule))) _
 
 instance (cfd : ContextFreeDerivation G u v) : Decidable (cfd.exhaustiveCondition) := cfd.decideExhaustive
+
+/--Decide wether this cfd satisfies the non-zero step condition.-/
+def ContextFreeDerivation.decideNonZeroStepCondition
+  (cfd : ContextFreeDerivation G u v)
+  : Decidable (cfd.nonZeroStepCondition) :=
+  match cfd with
+  | same h_same => isFalse (by simp [nonZeroStepCondition, h_same])
+  | step _ _ _ => isTrue (by simp [nonZeroStepCondition])
+
+instance (cfd : ContextFreeDerivation G u v) : Decidable (cfd.nonZeroStepCondition) := cfd.decideNonZeroStepCondition
+
+/--Decide wether this cfd satisfies the starts-in-1 condition.-/
+def ContextFreeDerivation.decideStartsIn1
+  (cfd : ContextFreeDerivation G u v)
+  : Decidable (cfd.startsIn1Condition) :=
+  match u_len : u.length with
+  | 0 => isFalse (by simp [ContextFreeDerivation.startsIn1Condition, u_len])
+  | Nat.succ 0 => isTrue (by simp [ContextFreeDerivation.startsIn1Condition, u_len])
+  | Nat.succ (Nat.succ n) => isFalse (by simp [ContextFreeDerivation.startsIn1Condition, u_len])
+
+instance (cfd : ContextFreeDerivation G u v) : Decidable (cfd.startsIn1Condition) := cfd.decideStartsIn1
 
 /--Is this context-free derivation exhaustive?:
   It needs to evaluate ALL variables to terminal symbols,
@@ -1397,28 +1485,50 @@ def ContextFreeDerivation.isExhaustive
   (fun _ => True)
   (fun _ => False)
 
+/--Does this context-free derivation start in a single symbol,
+  i.e. a single variable (root) or a single terminal symbol (leaf).-/
+def ContextFreeDerivation.startsIn1
+  {G : ContextFreeGrammar α nt} {u v : Word (G.V ⊕ G.Z)}
+  (cfd : ContextFreeDerivation G u v) : Bool :=
+  @Decidable.by_cases (cfd.startsIn1Condition) (Bool) _
+  (fun _ => True)
+  (fun _ => False)
+
 /--Structure: Define exhaustive contextfree derivations. They -/
-structure ExhaustiveContextFreeDerivation {G : ContextFreeGrammar α nt} (u : Word (G.V ⊕ G.Z)) (v : Word (G.V ⊕ G.Z)) [DecidableEq (@ContextFreeDerivation α nt G u v)] where
+structure ExhaustiveContextFreeDerivation {G : ContextFreeGrammar α nt} (u : Word (G.V ⊕ G.Z)) (v : Word (G.V ⊕ G.Z)) where
   derivation : @ContextFreeDerivation α nt G u v
   exhaustive : derivation.exhaustiveCondition
+  startsIn1 : derivation.startsIn1Condition
+  -- nonZero: isn't necessary: exhaustive means .leaf constructor can be used.
   deriving DecidableEq
 
 def ContextFreeDerivation.toDerivationTree
   {G : ContextFreeGrammar α nt} {u : Word (G.V ⊕ G.Z) } {v : Word (G.V ⊕ G.Z)}
   (cfd : @ContextFreeDerivation α nt G u v)
-  (h_multipleStep : ¬ ∃ h_same, cfd = ContextFreeDerivation.same h_same) :
+  (h_exhaustive : cfd.exhaustiveCondition)
+  (h_starts_in_1 : cfd.startsIn1Condition) :
   DerivationTree G :=
     match h_constructor : cfd with
-    | same h_same => by
-      have h_singleStep : ∃ h_same, cfd = ContextFreeDerivation.same h_same := by use h_same
-      rw [← h_constructor] at h_multipleStep
-      contradiction
+    | same h_same => DerivationTree.leaf (v.VZtoZ h_exhaustive)
+    | @step _ _ _ _ u' _ dstep derivation sound => by
+      --important: derivation is not necessarily left to right!
+      let var := dstep.prod.val.lhs
+      let collectFollowVars := dstep.prod.val.rhs.collectVars --respects left to right
 
-      --Default? Bottom?
+      let children : NEPreDerivationTreeList G := sorry
+      let rule : ContextFreeProduction G.Z G.V := dstep.prod
+      let h_rule_lhs : rule.lhs = var := by simp
+      let h_rule_rhs : rule.rhs = NEPreDerivationTreeList.levelWord children := sorry
+      let childrenValid : children.treeValid := sorry
+      exact DerivationTree.inner var children rule h_rule_lhs h_rule_rhs childrenValid
 
-    | step dstep derivation sound =>
 
-      sorry
+
+def ExhaustiveContextFreeDerivation.toDerivationTree
+  {G : ContextFreeGrammar α nt} {u : Word (G.V ⊕ G.Z) } {v : Word (G.V ⊕ G.Z)}
+  (ecfd : @ExhaustiveContextFreeDerivation α nt G u v) :
+  DerivationTree G :=
+    ecfd.derivation.toDerivationTree ecfd.exhaustive ecfd.startsIn1
 
 def DerivationTree.toContextFreeDerivation
   {G : ContextFreeGrammar α nt}
@@ -1427,6 +1537,15 @@ def DerivationTree.toContextFreeDerivation
   (@ContextFreeDerivation α nt G DT.fromAny (@Word.ZtoVZ _ _ _ _ G DT.result)) :=
 
   sorry
+
+--Henrik Tipps für geile Taktiken:
+-- rcases
+--    matchexpression die gleichzeitig die Teile benennt
+-- obtain
+-- z.B. obtain ⟨ Q, uniqueness⟩ := M
+--    aus etwas komplexem zwei sachen rausholen
+-- rintro
+--    intro iwas
 
 end ContextFreeGrammar
 
