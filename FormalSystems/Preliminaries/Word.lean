@@ -120,6 +120,23 @@ theorem Word.eps_eq_nil : (ε : Word α) = ([] : Word _) := by rfl
 /--Theorem: Concatenating ε doesn't change the word.-/
 @[simp] theorem Word.eps_mul : ε * w = w := by simp; rfl
 
+/--Theorem: Appending ε doesn't change the word.-/
+@[simp] theorem Word.eps_append : List.append w ε = w := by simp [Word.eps_eq_nil, List.append_nil]
+
+/--Theorem: Appending ε doesn't change the word.-/
+@[simp] theorem Word.append_eps : List.append ε w = w := by simp [Word.eps_eq_nil, List.append_nil]
+
+/--Theorem: For words, appending and multiplying are equivalent operations.-/
+theorem Word.append_eq_mul {w v : Word α}: List.append w v = w * v := by
+  induction w
+  case nil =>
+    simp ; rw [← Word.epsilon, Word.eps_eq_nil]
+  case cons head tail h_ih =>
+    rw [List.append, h_ih]; rfl
+
+/--Theorem: For words, appending and multiplying are equivalent operations.-/
+theorem Word.mul_eq_append {w v : Word α}: w * v = List.append w v := by exact Word.append_eq_mul
+
 /--Theorem: The concatenation of two words is ε if and only if both words are ε.-/
 theorem Word.mul_eq_eps { w v : Word α } : w * v = ε ↔ w = ε ∧ v = ε :=
   List.append_eq_nil
@@ -128,6 +145,39 @@ theorem Word.mul_eq_eps { w v : Word α } : w * v = ε ↔ w = ε ∧ v = ε :=
 def Word.len: (w:Word α) → Nat
   | [] => 0
   | (_::xs) => 1 + Word.len (xs)
+
+/--Theorem: A word has length 0 if and only if it is ε.-/
+theorem Word.eps_len_0 : Word.len w = 0 ↔ w = ε := by
+  rw [Word.eps_eq_nil]
+  apply Iff.intro
+  case mp =>
+    intro h_len_0
+    cases w
+    case nil =>
+      rfl
+    case cons _ _ =>
+      rw [Word.len] at h_len_0
+      rw [Nat.add_eq_zero] at h_len_0
+      absurd h_len_0.left
+      simp
+  case mpr =>
+    intro h_nil
+    simp [h_nil, Word.len]
+
+/--Theorem: The addition of the lengths of two words is the length of their product.-/
+theorem Word.length_mul_eq_add { w v : Word α } : Word.len (w * v) = Word.len w + Word.len v := by
+  induction w
+  case nil =>
+    simp [Word.len, ← Word.eps_eq_nil]
+  case cons head tail h_ih =>
+    rw [Word.mul_eq_append]
+    have h_rw : List.append (head :: tail) v = head :: (List.append tail v) := by simp
+    rw [h_rw, Word.len, Word.len]
+    rw [Word.mul_eq_append] at h_ih
+    rw [h_ih, add_assoc]
+
+/--Theorem: The addition of the lengths of two words is the length of their product.-/
+theorem Word.length_add_eq_mul { w v : Word α } : Word.len w + Word.len v = Word.len (w * v) := by exact (@Word.length_mul_eq_add _ w v).symm
 
 /--Return the proposition, that all elements of a specific word are in a
   specific set.-/
