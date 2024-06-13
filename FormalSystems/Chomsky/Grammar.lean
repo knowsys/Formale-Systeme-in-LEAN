@@ -229,6 +229,12 @@ theorem DerivationStep.lhs_singleton (step: DerivationStep G [.inl v]) :
       . assumption
       . constructor; rfl; exact tmp.right
 
+/-Theorem: The origin for a derivation steps length is the addition of the lengths of the prefix, variable and sufix.-/
+theorem DerivationStep.len_u_composition (step: DerivationStep G u) : u.len = step.pre.len + Word.len (Production.lhs step.prod.val) + step.suf.len := by
+  have sound : _ := step.sound
+  simp at sound
+  simp [Word.length_add_eq_mul, sound]
+  
 /--Inductive definition of derivations u (G)⇒* v in Grammars.
 
   Either no step was made (constructor:`same`, requires a proof that u = v), or
@@ -499,6 +505,10 @@ def Word.collectVars {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : List G.V :
         | Sum.inr _ => before)
   [] word
 
+/--Count the variables in this word.-/
+def Word.countVars {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : ℕ :=
+  word.collectVars.length
+
 /- /--Collect the variables in this word and their indexes.-/
 def Word.collectVarsWithIndexes {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : List (G.V × ℕ) :=
   List.foldl
@@ -518,6 +528,10 @@ def Word.collectTerminals {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : List 
         | Sum.inl _ => before
         | Sum.inr terminal => before ++ [terminal])
   [] word
+
+/--Count the terminals in this word.-/
+def Word.countTerminals {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : ℕ :=
+  word.collectTerminals.length
 
 /--Return wether a word is all Z (terminal symbols).-/
 def Word.isAllZ {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : Bool :=

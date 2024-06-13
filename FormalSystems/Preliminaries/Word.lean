@@ -169,12 +169,31 @@ theorem Word.length_mul_eq_add { w v : Word α } : Word.len (w * v) = Word.len w
   induction w
   case nil =>
     simp [Word.len, ← Word.eps_eq_nil]
-  case cons head tail h_ih =>
+  case cons head tail ind_hyp =>
     rw [Word.mul_eq_append]
     have h_rw : List.append (head :: tail) v = head :: (List.append tail v) := by simp
     rw [h_rw, Word.len, Word.len]
-    rw [Word.mul_eq_append] at h_ih
-    rw [h_ih, add_assoc]
+    rw [Word.mul_eq_append] at ind_hyp
+    rw [ind_hyp, add_assoc]
+
+/--Theorem: Word construction respects list a :: xs construction as expected.-/
+@[simp]
+theorem Word.mk_cons {word : Word α} : (∃ (head : α) (tail : List α), word = Word.mk (head :: tail))
+  →
+  (∃ (head : α) (tail : List α), word = mk (head :: tail) ∧ Word.mk (head :: tail) = Word.mk [head] * Word.mk tail) := by
+  tauto
+
+/--Theorem: Word.len and List.length align.-/
+@[simp]
+theorem Word.mk_from_list_len {list : List α} : Word.len (Word.mk list) = list.length := by
+  induction list
+  case nil =>
+    simp [Word.len]
+  case cons head tail ind_hyp =>
+    have h_mk_cons : Word.mk (head :: tail) = Word.mk [head] * Word.mk tail := by tauto
+    rw [h_mk_cons, Word.length_mul_eq_add, List.length, ind_hyp]
+    have h_1 : len (Word.mk [head]) = 1 := by tauto
+    rw [h_1, add_comm]
 
 /--Theorem: The addition of the lengths of two words is the length of their product.-/
 theorem Word.length_add_eq_mul { w v : Word α } : Word.len w + Word.len v = Word.len (w * v) := by exact (@Word.length_mul_eq_add _ w v).symm

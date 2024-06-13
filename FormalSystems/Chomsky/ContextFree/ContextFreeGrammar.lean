@@ -165,6 +165,43 @@ instance : Coe (@ContextFreeDerivationStep α nt G u) (@Grammar.DerivationStep �
     } : @Grammar.DerivationStep α nt GenericProduction _ (↑G : Grammar GenericProduction) u
   }
 
+/--Define result of a derivation step as the result of applying
+  the production rule to the variable within the pre- and suffix.-/
+def ContextFreeDerivationStep.result (step : @ContextFreeDerivationStep α nt G u) : Word (G.V ⊕ G.Z) :=
+  @Grammar.DerivationStep.result α nt GenericProduction _ G u step
+
+/-Theorem: The origin for a derivation steps length is the addition of the lengths of the prefix, variable and sufix.-/
+theorem ContextFreeDerivationStep.len_u_composition (step: ContextFreeDerivationStep G u) : u.len = step.pre.len + (Word.mk [@Sum.inl G.V G.Z step.prod.val.lhs]).len + step.suf.len := by
+  have sound : _ := step.sound
+  simp at sound
+  simp [Word.length_add_eq_mul, sound]
+  rfl
+
+/--Theorem: If the right side isn't empty, then length of lhs is less or equal to the rhs of a production rule.-/
+theorem ContextFreeProduction.oneElem
+  (prod : ContextFreeProduction Z V)
+  (h_rhs_non_empty : 1 ≤ prod.rhs.len)
+  : (Word.mk [@Sum.inl V Z prod.lhs]).len ≤ prod.rhs.len := by
+  simp [Word.mk_from_list_len, List.length]
+  exact h_rhs_non_empty
+
+/--Theorem: If the right side isn't empty, then the length of the word weakly increases along derivation steps.-/
+theorem ContextFreeDerivationStep.sizeMonotoneIncreasing
+  (step: ContextFreeDerivationStep G u)
+  (h_rhs_non_empty : 1 ≤ step.prod.val.rhs.len)
+  : u.len ≤ step.result.len := by
+  rw [ContextFreeDerivationStep.result, step.len_u_composition]
+  simp [Word.length_mul_eq_add, Grammar.DerivationStep.result, Word.mk_from_list_len, List.length]
+  exact h_rhs_non_empty
+
+/-Theorem: The origin for a derivation steps length is the addition of the lengths of the prefix, variable and sufix.-/
+theorem ContextFreeDerivationStep.len_result_composition (step : ContextFreeDerivationStep G u)
+  : step.result.len = step.pre.len + step.prod.val.rhs.len + step.suf.len := by
+  have sound : _ := step.sound
+  simp at sound
+  simp [Word.length_add_eq_mul, sound, ContextFreeDerivationStep.result, Grammar.DerivationStep.result]
+  rfl
+
 --=============================================================
 -- Section: PreDerivationTree and NEPreDerivationTreeList
 --=============================================================
@@ -1562,19 +1599,112 @@ def ContextFreeDerivation.toDerivationTree
       let h_rule_rhs : rule.rhs = NEPreDerivationTreeList.levelWord children := sorry
       let childrenValid : children.treeValid := sorry
       exact DerivationTree.inner var children rule h_rule_lhs h_rule_rhs childrenValid
-
+#check Nat.lt_succ_of_le
 /--Collect the DerivationTree Nodes. Each node in the list
   corresponds to exactly one variable in u and each variable in
-  u has a returned DerivationTree node.-/
+  u has a returned DerivationTree node. Cannot be called for 0-step
+  derivations.-/
 def ContextFreeDerivation.collectDerivationTreeNodes
   {G : ContextFreeGrammar α nt} {u : Word (G.V ⊕ G.Z) } {v : Word (G.V ⊕ G.Z)}
   (cfd : @ContextFreeDerivation α nt G u v)
-  (h_exhaustive : cfd.exhaustiveCondition) :
-  List (DerivationTree G × Finset.range v.collectVars.length) := match cfd with
-    | same h_same => [⟨ DerivationTree.leaf (v.VZtoZ h_exhaustive), ⟨ 0, (by sorry)⟩ ⟩]
+  (h_exhaustive : cfd.exhaustiveCondition)
+  (h_not_same : u ≠ v):
+  List (DerivationTree G × Finset.range u.len) := match cfd with
+    | same h_same => by contradiction
     | @step _ _ _ _ u' _ dstep derivation sound => by
+      let rightSide := dstep.prod.val.rhs
+      -- This returns all the nodes corresponding to the variables within the next derivations
+      let allChildren := derivation.collectDerivationTreeNodes sorry sorry
 
-      sorry
+
+      -- CASE DISTINCTION: ON rhs:
+      -- TO TERMINALS ONLY
+
+      -- TODO
+
+      -- TO ALSO VARS
+      have h_rhs_non_empty : 1 ≤ dstep.prod.val.rhs.len := by sorry
+
+      -- Mark those areas to the outside of our relevant area
+      let leftOfCurrentCount : Finset.range u.len := ⟨ dstep.pre.len, (by
+        have u_comp := (ContextFreeDerivationStep.len_u_composition dstep).symm
+        have pre_len_less_u_len : dstep.pre.len < u.len := by
+          rw [eq_iff_le_not_lt] at u_comp
+          apply And.left at u_comp
+          have var_len_1 : Word.len (Word.mk [@Sum.inl G.V G.Z dstep.prod.val.lhs]) = 1 := by
+            rw [Word.mk_from_list_len]
+            simp
+          rw [var_len_1, add_comm] at u_comp
+          rw [← add_assoc] at u_comp
+          apply Nat.lt_succ_of_le at u_comp
+          apply Nat.lt_of_succ_lt_succ at u_comp
+          rw [add_comm] at u_comp
+          apply Nat.lt_sub_of_add_lt at u_comp
+          exact @Nat.lt_of_lt_of_le (Word.len dstep.pre) (Word.len u - Word.len dstep.suf) (Word.len u) u_comp (by
+            exact @Nat.sub_le (Word.len u) (Word.len dstep.suf))
+        simp [pre_len_less_u_len])⟩
+      let rightOfCurrentCount : Finset.range u.len := ⟨ dstep.suf.len, (by
+        have u_comp := (ContextFreeDerivationStep.len_u_composition dstep).symm
+        have suf_len_less_u_len : dstep.suf.len < u.len := by
+          rw [eq_iff_le_not_lt] at u_comp
+          apply And.left at u_comp
+          have var_len_1 : Word.len (Word.mk [@Sum.inl G.V G.Z dstep.prod.val.lhs]) = 1 := by
+            rw [Word.mk_from_list_len]
+            simp
+          rw [var_len_1, add_comm] at u_comp
+          rw [← add_assoc] at u_comp
+          apply Nat.lt_succ_of_le at u_comp
+          apply Nat.lt_of_succ_lt_succ at u_comp
+          apply Nat.lt_sub_of_add_lt at u_comp
+          exact @Nat.lt_of_lt_of_le (Word.len dstep.suf) (Word.len u - Word.len dstep.pre) (Word.len u) u_comp (by
+            exact @Nat.sub_le (Word.len u) (Word.len dstep.pre))
+        simp [suf_len_less_u_len])⟩
+      let rhs_symbol_count : ℕ := dstep.prod.val.rhs.len
+      have u'_eq_result : dstep.result = u' := by exact sound
+      have h_u_vs_u'_len : u'.len = u.len + (rhs_symbol_count-1) := by
+        have u_comp := (ContextFreeDerivationStep.len_u_composition dstep)
+        have result_comp := (dstep.len_result_composition)
+        simp [← u'_eq_result, u_comp, result_comp]
+        have lhs_len : (Word.mk [@Sum.inl G.V G.Z dstep.prod.val.lhs]).len = 1 := by
+          simp [Word.mk, Word.len]
+        have rhs_comp : Word.len (dstep.prod.val.rhs) = (Word.mk [@Sum.inl G.V G.Z dstep.prod.val.lhs]).len + (rhs_symbol_count-1) := by
+          simp [rhs_symbol_count, lhs_len]
+          rw [add_comm, Nat.sub_add_cancel]
+          exact h_rhs_non_empty
+        simp [rhs_comp, Word.length_mul_eq_add]
+        rw [add_assoc (Word.len dstep.pre + Word.len (Word.mk [Sum.inl dstep.prod.val.lhs])) (Word.len dstep.suf) (rhs_symbol_count-1)]
+        rw [add_comm (Word.len dstep.suf) (rhs_symbol_count-1)]
+        repeat rw [add_assoc]
+      -- Only those variable-nodes are children of this node, that result from
+      -- this exact derivation step
+      let childrenDT : List (DerivationTree G) := allChildren[leftOfCurrentCount]
+
+      -- extract the correct NEPDTL
+      let children : NEPreDerivationTreeList G := sorry
+      -- Construct the relevant parts for this node specifically
+      let var := dstep.prod.val.lhs
+      let var_as_word : (Word (G.V ⊕ G.Z)) := Word.mk [Sum.inl var]
+      let rule : ContextFreeProduction G.Z G.V := dstep.prod
+      let h_rule_lhs : rule.lhs = var := by simp
+      let h_rule_rhs : rule.rhs = NEPreDerivationTreeList.levelWord children := sorry
+      let childrenValid : children.treeValid := sorry
+      let thisNode := DerivationTree.inner var children rule h_rule_lhs h_rule_rhs childrenValid
+      --the number of SYMBOLS that got generated additionally tells us
+      -- by how much we need to adjust the variable count index #
+      -- for those variables to the right of the variable we transformed from
+      let shiftBy : Finset.range u.len := sorry
+
+      let returnList : List (DerivationTree G × Finset.range u.len) := []
+      -- add those left of var with no changes
+      -- TODO
+      -- index is the one after all left
+      let index : Finset.range u.len := sorry
+      -- add thisNode in the middle
+      let returnList := returnList ++ [(thisNode , index)]
+      -- add those right with shift by number
+      -- TODO
+      exact returnList
+      
 
 /-
 sound:
