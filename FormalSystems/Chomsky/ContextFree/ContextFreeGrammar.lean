@@ -175,6 +175,7 @@ theorem ContextFreeDerivationStep.len_u_composition (step: ContextFreeDerivation
   have sound : _ := step.sound
   simp at sound
   simp [Word.length_add_eq_mul, sound]
+  rw [Word.length_mul_eq_add, Word.length_mul_eq_add]
   rfl
 
 /--Theorem: If the right side isn't empty, then length of lhs is less or equal to the rhs of a production rule.-/
@@ -1543,19 +1544,24 @@ theorem ContextFreeDerivation.exhaustive_imp_child_exhaustive
   {G : ContextFreeGrammar α nt} {u : Word (G.V ⊕ G.Z) } {v : Word (G.V ⊕ G.Z)}
   (cfd : @ContextFreeDerivation α nt G u v)
   (h_exhaustive : cfd.exhaustiveCondition) :
-  ∃ u' : Word ({ x // x ∈ G.V } ⊕ { x // x ∈ G.Z }),
-  ∃ step : ContextFreeDerivationStep G u,
-  ∃ derivation : ContextFreeDerivation G u' v,
-  ∃ sound : _,
+  ∀ u' : Word ({ x // x ∈ G.V } ⊕ { x // x ∈ G.Z }),
+  ∀ step : ContextFreeDerivationStep G u,
+  ∀ derivation : ContextFreeDerivation G u' v,
+  ∀ sound : _,
   cfd = ContextFreeDerivation.step step derivation sound →
   derivation.exhaustiveCondition := by
     match cfd with
     | same h_same =>
-
-      exists u
-      sorry
+      intro u' step derivation sound
+      rw [imp_iff_not_or]
+      apply Or.inl
+      tauto
     | @step _ _ _ _ u' _ dstep derivation sound =>
-      sorry
+      intro u' step derivation sound
+      intro h_constructor
+      rw [exhaustiveCondition]
+      rw [h_constructor, exhaustiveCondition] at h_exhaustive
+      exact h_exhaustive
 
 def ContextFreeDerivation.toDerivationTree
   {G : ContextFreeGrammar α nt} {u : Word (G.V ⊕ G.Z) } {v : Word (G.V ⊕ G.Z)}
@@ -1582,6 +1588,7 @@ def ContextFreeDerivation.toDerivationTree
         have h_rw_helper₁ : ∀ a : ℕ, (1 + a = 1) ↔ (a = 0) := by simp
         apply Iff.mp (h_rw_helper₁ (Word.len dstep.pre + Word.len dstep.suf)) at h_starts_in_1
         apply Nat.add_eq_zero.mp at h_starts_in_1
+        rw [Word.eps_len_0.symm,Word.eps_len_0.symm]
         exact h_starts_in_1
       have h_pre_is_eps : dstep.pre = ε := by
         apply Nat.add_eq_zero.mp at h_pre_suff_len_0
@@ -1609,22 +1616,48 @@ def ContextFreeDerivation.collectDerivationTreeNodes
   (cfd : @ContextFreeDerivation α nt G u v)
   (h_exhaustive : cfd.exhaustiveCondition)
   (h_not_same : u ≠ v):
-  List (DerivationTree G × Finset.range u.len) := match cfd with
+  List (DerivationTree G × Finset.range u.len) := match h_constructor_cfd : cfd with
     | same h_same => by contradiction
-    | @step _ _ _ _ u' _ dstep derivation sound => by
+    | @step _ _ _ _ u' _ dstep (derivation : ContextFreeDerivation G u' v) sound => by
       let rightSide := dstep.prod.val.rhs
       -- This returns all the nodes corresponding to the variables within the next derivations
-      let allChildren := derivation.collectDerivationTreeNodes sorry sorry
 
-
-      -- CASE DISTINCTION: ON rhs:
-      -- TO TERMINALS ONLY
-
-      -- TODO
-
-      -- TO ALSO VARS
-      have h_rhs_non_empty : 1 ≤ dstep.prod.val.rhs.len := by sorry
+      let allChildren : List (DerivationTree G × { x // x ∈ Finset.range (Word.len u') }) :=
+        match h_constructor : derivation with
+        | same h_same => []
+        | @step α nt G _ u'' _ dstep' derivation' sound' => by
+          have u'_comp := (ContextFreeDerivationStep.len_u_composition dstep').symm
+          have derivation_exhaustive : derivation.exhaustiveCondition := by
+            apply @ContextFreeDerivation.exhaustive_imp_child_exhaustive α nt G u v cfd h_exhaustive u' dstep derivation sound (by rw [h_constructor_cfd, h_constructor])
+          exact (derivation.collectDerivationTreeNodes derivation_exhaustive (by
+            have h_u'_has_var : ∃ symbol ∈ u', Sum.isLeft symbol := by
+              have dstep'_var_in_u' : Sum.inl dstep'.prod.val.lhs ∈ u' := by
+                have h_dstep'_sound : _ := dstep'.sound
+                simp at h_dstep'_sound
+                simp [h_dstep'_sound, Word.mem_mul_iff_or]
+                apply Or.inl; apply Or.inr; tauto
+              exists (Sum.inl dstep'.prod.val.lhs)
+            have h_v_has_no_var : ¬ ∃ symbol ∈ v, Sum.isLeft symbol := by
+              rw [exhaustiveCondition] at h_exhaustive
+              apply not_exists_of_forall_not
+              intro symbol
+              have h_s_e : _ := h_exhaustive symbol
+              rw [Decidable.not_and_iff_or_not_not']
+              by_cases symbol ∈ v
+              case pos h_pos =>
+                apply h_s_e at h_pos
+                apply Or.inr
+                simp [h_pos]
+              case neg h_neg =>
+                apply Or.inl
+                exact h_neg
+            by_contra h_contra
+            rw [h_contra] at h_u'_has_var
+            contradiction))
       have u_comp := (ContextFreeDerivationStep.len_u_composition dstep).symm
+      have var_len_1 : Word.len (Word.mk [@Sum.inl G.V G.Z dstep.prod.val.lhs]) = 1 := by
+          rw [Word.mk_from_list_len]
+          simp
       have pre_len_less_u_len : dstep.pre.len < u.len := by
         rw [eq_iff_le_not_lt] at u_comp
         apply And.left at u_comp
@@ -1643,9 +1676,6 @@ def ContextFreeDerivation.collectDerivationTreeNodes
       have suf_len_less_u_len : dstep.suf.len < u.len := by
         rw [eq_iff_le_not_lt] at u_comp
         apply And.left at u_comp
-        have var_len_1 : Word.len (Word.mk [@Sum.inl G.V G.Z dstep.prod.val.lhs]) = 1 := by
-          rw [Word.mk_from_list_len]
-          simp
         rw [var_len_1, add_comm] at u_comp
         rw [← add_assoc] at u_comp
         apply Nat.lt_succ_of_le at u_comp
@@ -1660,112 +1690,333 @@ def ContextFreeDerivation.collectDerivationTreeNodes
         simp [suf_len_less_u_len])⟩
       let rhs_symbol_count : ℕ := dstep.prod.val.rhs.len
       have u'_eq_result : dstep.result = u' := by exact sound
-      have h_u_vs_u'_len : u'.len = u.len + (rhs_symbol_count-1) := by
-        have u_comp := (ContextFreeDerivationStep.len_u_composition dstep)
-        have result_comp := (dstep.len_result_composition)
-        simp [← u'_eq_result, u_comp, result_comp]
-        have lhs_len : (Word.mk [@Sum.inl G.V G.Z dstep.prod.val.lhs]).len = 1 := by
-          simp [Word.mk, Word.len]
-        have rhs_comp : Word.len (dstep.prod.val.rhs) = (Word.mk [@Sum.inl G.V G.Z dstep.prod.val.lhs]).len + (rhs_symbol_count-1) := by
-          simp [rhs_symbol_count, lhs_len]
-          rw [add_comm, Nat.sub_add_cancel]
-          exact h_rhs_non_empty
-        simp [rhs_comp, Word.length_mul_eq_add]
-        rw [add_assoc (Word.len dstep.pre + Word.len (Word.mk [Sum.inl dstep.prod.val.lhs])) (Word.len dstep.suf) (rhs_symbol_count-1)]
-        rw [add_comm (Word.len dstep.suf) (rhs_symbol_count-1)]
-        repeat rw [add_assoc]
-      -- Only those variable-nodes are children of this node, that result from
-      -- this exact derivation step
-      have h_u_vs_u'_len₂ : u.len ≤ u'.len := by
-        rw [h_u_vs_u'_len]
-        simp
-      have u_range_subset_u'_range : (Finset.range u.len) ⊆ (Finset.range u'.len) := by
-        apply Finset.range_subset.mpr
-        exact h_u_vs_u'_len₂
-      let leftOfVarCount₂ : Finset.range u'.len := ⟨leftOfVarCount , (by
-        simp [Nat.lt_of_lt_of_le pre_len_less_u_len h_u_vs_u'_len₂] )⟩
-      let childrenDT : List (DerivationTree G) := sorry --allChildren[leftOfVarCount₂]
 
-      -- extract the correct NEPDTL
-      let children : NEPreDerivationTreeList G := sorry
-      -- Construct the relevant parts for this node specifically
-      let var := dstep.prod.val.lhs
-      let var_as_word : (Word (G.V ⊕ G.Z)) := Word.mk [Sum.inl var]
-      let rule : ContextFreeProduction G.Z G.V := dstep.prod
-      let h_rule_lhs : rule.lhs = var := by simp
-      let h_rule_rhs : rule.rhs = NEPreDerivationTreeList.levelWord children := sorry
-      let childrenValid : children.treeValid := sorry
-      let thisNode := DerivationTree.inner var children rule h_rule_lhs h_rule_rhs childrenValid
+      -- CASE DISTINCTION: ON rhs: is zero or more symbols
+      cases h_num_vars_rhs : dstep.prod.val.rhs.len
+      case zero =>
+        let thisNode : DerivationTree G := DerivationTree.leaf ε
+        have h_u_vs_u'_len : u'.len + 1 = u.len := by
+          rw [u'_eq_result.symm, dstep.len_result_composition, u_comp.symm]
+          rw [h_num_vars_rhs, var_len_1]
+          simp [add_assoc, add_comm]
+        have h_u_vs_u'_len₂ : u'.len ≤ u.len := by
+          apply Nat.le_of_eq at h_u_vs_u'_len
+          exact Nat.le_of_succ_le h_u_vs_u'_len
+        have h_u_vs_u'_len₃ : u'.len < u.len := by
+          apply Nat.le_of_eq at h_u_vs_u'_len
+          exact Nat.lt_of_succ_le h_u_vs_u'_len
+        let returnList : List (DerivationTree G × Finset.range u.len) := []
+        -- add those left of var with no changes
+        let returnLeft : List (DerivationTree G × Finset.range u.len) := by
+            cases h_constructor_pre : dstep.pre
+            case nil =>
+              exact (@List.nil (DerivationTree G × Finset.range u.len))
+            case cons =>
+              let leftOfVarCount₂ : Finset.range (u'.len + 1) := ⟨ dstep.pre.len, (by
+                simp
+                rw [u'_eq_result.symm, dstep.len_result_composition]
+                apply Nat.lt_of_succ_le
+                rw [Nat.succ_eq_add_one]
+                rw [Nat.add_comm (Word.len dstep.pre) (Word.len dstep.prod.val.rhs)]
+                rw [Nat.add_assoc (Word.len dstep.prod.val.rhs) (Word.len dstep.pre) (Word.len dstep.suf)]
+                rw [Nat.add_comm (Word.len dstep.pre) (Word.len dstep.suf)]
+                simp [← Nat.add_assoc] )⟩
+              -- foldl f z [a, b, c] = f (f (f z a) b) c
+              exact List.foldl (fun prev (DT , index) =>
+                let index₂ : Finset.range (u'.len + 1) := ⟨ index, (by
+                  simp
+                  have h_lt_u := index.2.out
+                  simp at h_lt_u
+                  apply lt_trans h_lt_u
+                  apply Nat.lt_succ_self)⟩
+                Decidable.by_cases
+                -- Those that have an index smaller than the number of symbols left of var
+                -- are at position before the variable area
+                (fun h_lt : (index₂ < leftOfVarCount₂) =>
+                  List.append prev [(DT , ⟨ index, by
+                    apply Finset.mem_range.mpr
+                    have h_leq₂ : (index : ℕ) < leftOfVarCount₂ := h_lt
+                    apply lt_trans h_leq₂
+                    simp [pre_len_less_u_len]⟩)])
+                (fun h_ge : (¬ index₂ < leftOfVarCount₂) =>
+                  prev) ) (@List.nil (DerivationTree G × Finset.range u.len)) allChildren
+        let returnList := returnList ++ returnLeft
 
-
-      let returnList : List (DerivationTree G × Finset.range u.len) := []
-      -- add those left of var with no changes
-      let returnLeft : List (DerivationTree G × Finset.range u.len) :=
-        -- foldl f z [a, b, c] = f (f (f z a) b) c
-        List.foldl (fun prev (DT , index) =>
-          Decidable.by_cases
-          -- Those that have an index smaller than the number of symbols left of var
-          -- are at position before the variable area
-          (fun h_lt : (index < leftOfVarCount₂) =>
-            List.append prev [(DT , ⟨ index, by
-              apply Finset.mem_range.mpr
-              have h_leq₂ : (index : ℕ) < leftOfVarCount₂ := h_lt
-              apply lt_trans h_leq₂
-              simp [pre_len_less_u_len]⟩)])
-          (fun h_ge : (¬ index < leftOfVarCount₂) =>
-            prev)
-        )
-        (@List.nil (DerivationTree G × Finset.range u.len)) allChildren
-      let returnList := returnList ++ returnLeft
-
-      -- index is the one after all left, i.e. var, and we use 0-get indexing
-      let index : Finset.range u.len := leftOfVarCount
-      -- add thisNode in the middle
-      let returnList := returnList ++ [(thisNode , index)]
-      -- add those right with shift by number
-      -- the number of SYMBOLS that got generated additionally tells us
-      -- by how much we need to adjust the variable count index
-      -- for those variables to the right of the variable we transformed from
-      let shiftBy : Finset.range u'.len := ⟨ rhs_symbol_count - 1 , by
-        simp [h_u_vs_u'_len, u_comp.symm]
-        apply Or.inl; apply Or.inr
-        have lhs_len : (Word.mk [@Sum.inl G.V G.Z dstep.prod.val.lhs]).len = 1 := by
-          simp [Word.mk, Word.len]
-        simp [lhs_len]⟩
-      let returnRight : List (DerivationTree G × Finset.range u.len) :=
-        -- foldl f z [a, b, c] = f (f (f z a) b) c
-        List.foldl (fun prev (DT , index) =>
-          Decidable.by_cases
-          -- Those that have an index to the right of Var
-          -- need to be adjusted in their position by shiftBy
-          (fun h_lt : (u'.len - rightOfVarCount < index) =>
-            List.append prev [(DT , ⟨ index - shiftBy, by
-              simp
-              have h_lt₂ : Word.len u + (rhs_symbol_count - 1) - ↑rightOfVarCount < ↑index := by
+        -- index is the one after all left, i.e. var, and we use 0-get indexing
+        let index : Finset.range u.len := leftOfVarCount
+        -- add thisNode in the middle
+        let returnList := returnList ++ [(thisNode , index)]
+        -- add those right with shift by number
+        -- the number of SYMBOLS that got generated additionally tells us
+        -- by how much we need to adjust the variable count index
+        -- for those variables to the right of the variable we transformed from
+        let shiftBy : ℕ := 1
+        let returnRight : List (DerivationTree G × Finset.range u.len) :=
+          -- foldl f z [a, b, c] = f (f (f z a) b) c
+          List.foldl (fun prev (DT , index) =>
+            Decidable.by_cases
+            -- Those that have an index to the right of Var
+            -- need to be adjusted in their position by shiftBy
+            (fun h_lt : (u'.len - rightOfVarCount < index) =>
+              List.append prev [(DT , ⟨ index - shiftBy, by
+                simp
                 rw [h_u_vs_u'_len.symm]
-                exact h_lt
-              have ind_lt_u' : index < u'.len := Finset.mem_range.mp index.2
-              --have h : _ := by apply Nat.sub_lt_right_of_lt_add at h_u_vs_u'_len
-              have ind_lt_u'_rhs_symbol_count : index - rhs_symbol_count < u'.len - rhs_symbol_count := by
-                apply Nat.sub_lt_right_of_lt_add
+                have h_index_lt_u'_len := index.2.out
+                simp at h_index_lt_u'_len
+                have h_shiftBy_le_index : shiftBy ≤ index := by
+                  simp [shiftBy]
+                  by_contra h_not
+                  simp at h_not
+                  rw [h_not] at h_lt
+                  apply Nat.not_lt_zero at h_lt
+                  exact h_lt
+                rw [← Nat.add_one_sub_one (Word.len u' + 1)]
+                rw [Nat.sub_lt_sub_iff_right h_shiftBy_le_index]
+                apply Nat.lt_trans h_index_lt_u'_len
+                tauto⟩)])
+            (fun h_ge : (¬ u'.len - rightOfVarCount < index) =>
+              prev)
+          )
+          (@List.nil (DerivationTree G × Finset.range u.len)) allChildren
+        let returnList := returnList ++ returnRight
+        exact returnList
+
+      -- or at least one symbol in rhs
+      case succ n =>
+        have h_rhs_non_empty : 1 ≤ dstep.prod.val.rhs.len := by
+          rw [h_num_vars_rhs]
+          apply Nat.one_le_iff_ne_zero.mpr
+          simp
+        have h_u_vs_u'_len : u'.len = u.len + (rhs_symbol_count-1) := by
+          have u_comp := (ContextFreeDerivationStep.len_u_composition dstep)
+          have result_comp := (dstep.len_result_composition)
+          simp [← u'_eq_result, u_comp, result_comp]
+          have lhs_len : (Word.mk [@Sum.inl G.V G.Z dstep.prod.val.lhs]).len = 1 := by
+            simp [Word.mk, Word.len]
+          have rhs_comp : Word.len (dstep.prod.val.rhs) = (Word.mk [@Sum.inl G.V G.Z dstep.prod.val.lhs]).len + (rhs_symbol_count-1) := by
+            simp [rhs_symbol_count, lhs_len]
+            rw [add_comm, Nat.sub_add_cancel]
+            exact h_rhs_non_empty
+          simp [rhs_comp, Word.length_mul_eq_add]
+          rw [add_assoc (Word.len dstep.pre + 1) (Word.len dstep.suf) (rhs_symbol_count-1)]
+          rw [add_comm (Word.len dstep.suf) (rhs_symbol_count-1)]
+          repeat rw [add_assoc]
+        -- Only those variable-nodes are children of this node, that result from
+        -- this exact derivation step
+        have h_u_vs_u'_len₂ : u.len ≤ u'.len := by
+          rw [h_u_vs_u'_len]
+          simp
+        have u_range_subset_u'_range : (Finset.range u.len) ⊆ (Finset.range u'.len) := by
+          apply Finset.range_subset.mpr
+          exact h_u_vs_u'_len₂
+        let leftOfVarCount₂ : Finset.range u'.len := ⟨leftOfVarCount , (by
+          simp [Nat.lt_of_lt_of_le pre_len_less_u_len h_u_vs_u'_len₂] )⟩
+
+        let fun_find_allChildren_with_index (index₁ : Finset.range (Word.len u')) (h_index_valid : ∃ location  ∈ allChildren, location.2 = index₁) : (DerivationTree G) :=
+          let afunc : List (DerivationTree G × { x // x ∈ Finset.range (Word.len u') }) →
+                      List (DerivationTree G × { x // x ∈ Finset.range (Word.len u') }) →
+                      List (DerivationTree G × { x // x ∈ Finset.range (Word.len u') }) :=
+
+              (List.foldl
+              (fun prev (DT , index₂) =>
+              Decidable.by_cases
+              (fun h_is : index₁ = index₂ =>
+                prev ++ [(DT, index₂)])
+              (fun h_is_not : index₁ ≠ index₂ =>
+                prev) ))
+          have afuncDef : afunc = (
+              (@List.foldl _ _
+              (fun prev (DT , index₂) =>
+              Decidable.by_cases
+              (fun h_is : index₁ = index₂ =>
+                prev ++ [(DT, index₂)])
+              (fun h_is_not : index₁ ≠ index₂ =>
+                prev) ))) := by simp
+          let a : _ := afunc [] allChildren
+          have aDef : a = afunc [] allChildren := by simp
+          let b : DerivationTree G × { x // x ∈ Finset.range (Word.len u') } := a[0]'(by
+            -- use h_index_valid
+
+            apply Nat.zero_lt_of_ne_zero
+            rw [ne_eq (List.length a) 0]
+            rw [List.length_eq_zero]
+            have proof_condition : afunc [] allChildren = [] ↔ ¬ ∃ location ∈ allChildren, location.2 = index₁ := by
+              induction @List.foldlRecOn
+                ((DerivationTree G × { x // x ∈ Finset.range (Word.len u') }))
+                (List (DerivationTree G × { x // x ∈ Finset.range (Word.len u') }))
+                _
+                allChildren afunc
+              apply Iff.intro
+              case mp =>
+                intro h_nexists
+                #check List.foldlRecOn
+                /-List.foldlRecOn.{u_2, u, v} {α : Type u} {β : Type v} {C : β → Sort u_2}
+                  (l : List α) (op : β → α → β) (b : β)
+                  (hb : C) (hl : (b : β) → C b → (a : α) →
+                  a ∈ l → C (op b a)) : C (List.foldl op b l)-/
+
+                case nil =>
+                  tauto
+                case cons head tail ind_hyp =>
+                  rw [List.exists_mem_cons, not_or]
+                  apply And.intro
+                  case right =>
+                    exact ind_hyp
+                  case left =>
+                    by_contra h_head_eq_index
+                    have allChildren_constructor : allChildren = head :: tail := by tauto
+                    simp [allChildren_constructor] at aDef
+                    rw [afuncDef] at aDef
+                    simp at aDef
+
+                    sorry
+              case mpr =>
                 sorry
-                sorry
-                --apply Nat.sub_add_cancel
-                --exact ind_lt_u'
+            rw [proof_condition, not_not]
+            exact h_index_valid )
+          b.1
+
+        let current_u'_index : Finset.range u'.len := leftOfVarCount₂
+        let childrenDT : List (DerivationTree G) :=
+          -- foldl f z [a, b, c] = f (f (f z a) b) c
+          --let a : List { x // x ∈ Finset.range (Word.len rightSide) } := Fintype.ofFinset (Finset.range (rightSide.len))
+          --let b : _ := a.toList
+          @List.foldl _ (Fin (rightSide.len)) (fun prev (index : Fin (Word.len rightSide)) =>
+            let index₃ : Fin (List.length rightSide) := ⟨ index, (by simp [Word.list_length_eq_word_len]) ⟩
+            let symbol : _ := Word.get rightSide index₃
+            Decidable.by_cases
+            (fun h_var : Sum.isLeft symbol =>
+              let child : DerivationTree G :=
+                let index₂ : Finset.range (Word.len u') := ⟨index, by
+                  have rightSideDef : rightSide = dstep.prod.val.rhs := by tauto
+                  simp
+                  rw [u'_eq_result.symm, dstep.len_result_composition]
+                  rw [add_comm (Word.len dstep.pre) _]
+                  rw [add_assoc]
+
+                  apply @Nat.lt_of_lt_of_le index (Word.len dstep.prod.val.rhs) _ (by
+                    --rw [rightSideDef] at index
+                    --have proof : index < (Word.len dstep.prod.val.rhs) := by
+                    apply Nat.lt_of_le_of_ne
+                    case h₁ =>
+                      apply Finset.mem_range_le
+                      simp
+                    case h₂ =>
+                      by_contra h_not
+                      have rhs_not : _ := @Finset.not_mem_range_self (Word.len dstep.prod.val.rhs)
+                      nth_rewrite 1 [h_not.symm] at rhs_not
+                      have index_range : ↑index ∈ Finset.range (Word.len (dstep.prod.val.rhs)) := by simp
+                      apply Not.intro rhs_not index_range) (_ : Word.len rightSide ≤ Word.len dstep.prod.val.rhs + (Word.len dstep.pre + Word.len dstep.suf))
+                  rw [rightSideDef]
+                  apply Nat.le_add_right ⟩
+                fun_find_allChildren_with_index index₂ (by
+                  -- TODO require side condition proof
+                  sorry)
+              prev ++ [child]
+              )
+            (fun h_terminal : ¬ Sum.isLeft symbol =>
+              let symbol_left : ∀ symbol_1 ∈ [symbol], Sum.isRight symbol_1 = true := by
+                simp
+                simp at h_terminal
+                exact h_terminal
+              let child : DerivationTree G := DerivationTree.leaf (Word.VZtoZ [symbol] symbol_left)
+              prev ++ [child]))
+            (@List.nil (DerivationTree G))
+            (List.finRange (rightSide.len))
+
+           --allChildren[leftOfVarCount₂]
+
+        -- extract the correct NEPDTL
+        let children : NEPreDerivationTreeList G := sorry
+        -- Construct the relevant parts for this node specifically
+        let var := dstep.prod.val.lhs
+        let var_as_word : (Word (G.V ⊕ G.Z)) := Word.mk [Sum.inl var]
+        let rule : ContextFreeProduction G.Z G.V := dstep.prod
+        let h_rule_lhs : rule.lhs = var := by simp
+        let h_rule_rhs : rule.rhs = NEPreDerivationTreeList.levelWord children := sorry
+        let childrenValid : children.treeValid := sorry
+        let thisNode := DerivationTree.inner var children rule h_rule_lhs h_rule_rhs childrenValid
 
 
-              --apply Finset.mem_range.mpr
-              sorry
-              --have h_leq₂ : (index : ℕ) < leftOfVarCount₂ := h_lt
-              --apply lt_trans h_leq₂
-              --simp [pre_len_less_u_len]
-              ⟩)])
-          (fun h_ge : (¬ u'.len - rightOfVarCount < index) =>
-            prev)
-        )
-        (@List.nil (DerivationTree G × Finset.range u.len)) allChildren
-      -- TODO
-      exact returnList
+        let returnList : List (DerivationTree G × Finset.range u.len) := []
+        -- add those left of var with no changes
+        let returnLeft : List (DerivationTree G × Finset.range u.len) :=
+          -- foldl f z [a, b, c] = f (f (f z a) b) c
+          List.foldl (fun prev (DT , index) =>
+            Decidable.by_cases
+            -- Those that have an index smaller than the number of symbols left of var
+            -- are at position before the variable area
+            (fun h_lt : (index < leftOfVarCount₂) =>
+              List.append prev [(DT , ⟨ index, by
+                apply Finset.mem_range.mpr
+                have h_leq₂ : (index : ℕ) < leftOfVarCount₂ := h_lt
+                apply lt_trans h_leq₂
+                simp [pre_len_less_u_len]⟩)])
+            (fun h_ge : (¬ index < leftOfVarCount₂) =>
+              prev)
+          )
+          (@List.nil (DerivationTree G × Finset.range u.len)) allChildren
+        let returnList := returnList ++ returnLeft
+
+        -- index is the one after all left, i.e. var, and we use 0-get indexing
+        let index : Finset.range u.len := leftOfVarCount
+        -- add thisNode in the middle
+        let returnList := returnList ++ [(thisNode , index)]
+        -- add those right with shift by number
+        -- the number of SYMBOLS that got generated additionally tells us
+        -- by how much we need to adjust the variable count index
+        -- for those variables to the right of the variable we transformed from
+        let shiftBy : Finset.range u'.len := ⟨ rhs_symbol_count - 1 , by
+          simp [h_u_vs_u'_len, u_comp.symm]⟩
+        let returnRight : List (DerivationTree G × Finset.range u.len) :=
+          -- foldl f z [a, b, c] = f (f (f z a) b) c
+          List.foldl (fun prev (DT , index) =>
+            Decidable.by_cases
+            -- Those that have an index to the right of Var
+            -- need to be adjusted in their position by shiftBy
+            (fun h_lt : (u'.len - rightOfVarCount < index) =>
+              List.append prev [(DT , ⟨ index - shiftBy, by
+                simp
+                have h_lt₂ : Word.len u + (rhs_symbol_count - 1) - ↑rightOfVarCount < ↑index := by
+                  rw [h_u_vs_u'_len.symm]
+                  exact h_lt
+                have ind_lt_u' : index < u'.len := Finset.mem_range.mp index.2
+                have h_rhs_vs_u' : (rhs_symbol_count - 1) ≤ u'.len := by
+                  rw [h_u_vs_u'_len]
+                  exact Nat.le_add_left _ _
+                have h_u'_rhs_vs_u : Word.len u' - (rhs_symbol_count -1) = Word.len u := by
+                  exact (@Nat.sub_eq_iff_eq_add (rhs_symbol_count - 1) u'.len u.len h_rhs_vs_u').mpr h_u_vs_u'_len
+                rw [h_u'_rhs_vs_u.symm]
+                apply Nat.lt_sub_iff_add_lt.mpr
+                have h_rhs_lt_index : (rhs_symbol_count - 1) ≤ index := by
+                  simp [rightOfVarCount] at h_lt
+                  simp [rhs_symbol_count]
+                  simp [rhs_symbol_count] at h_rhs_vs_u'
+                  --rw [(Nat.sub_add_cancel _)]
+                  have h_u'_right_comp : u'.len - rightOfVarCount = Word.len dstep.pre + Word.len dstep.prod.val.rhs := by
+                    simp [rightOfVarCount]
+                    rw [u'_eq_result.symm, dstep.len_result_composition]
+                    simp
+                  rw [h_u'_right_comp] at h_lt
+                  simp
+                  rw [(Nat.succ_eq_add_one _).symm]
+                  rw [add_comm] at h_lt
+                  apply Nat.lt_sub_of_add_lt at h_lt
+                  --apply Nat.le_succ
+                  have h_lt₃ : Word.len dstep.prod.val.rhs < index := by
+                    apply Nat.le_trans h_lt (_ : index - (Word.len dstep.pre) ≤ index)
+                    exact Nat.sub_le _ _
+                  apply Nat.lt_succ_of_lt at h_lt₃
+                  exact Nat.le_of_lt h_lt₃
+                rw [Nat.sub_add_cancel (h_rhs_lt_index)]
+                exact ind_lt_u'
+                ⟩)])
+            (fun h_ge : (¬ u'.len - rightOfVarCount < index) =>
+              prev)
+          )
+          (@List.nil (DerivationTree G × Finset.range u.len)) allChildren
+        let returnList := returnList ++ returnRight
+        exact returnList
 
 
 /-
