@@ -147,6 +147,7 @@ def Word.len: (w:Word α) → Nat
   | (_::xs) => 1 + Word.len (xs)
 
 /--Theorem: A word has length 0 if and only if it is ε.-/
+@[simp]
 theorem Word.eps_len_0 : Word.len w = 0 ↔ w = ε := by
   rw [Word.eps_eq_nil]
   apply Iff.intro
@@ -163,6 +164,11 @@ theorem Word.eps_len_0 : Word.len w = 0 ↔ w = ε := by
   case mpr =>
     intro h_nil
     simp [h_nil, Word.len]
+
+/--Theorem: A word has length 0 if and only if it is [].-/
+@[simp]
+theorem Word.nil_len_0 : Word.len w = 0 ↔ w = [] := by
+  simp [Word.eps_eq_nil]
 
 /--Theorem: The addition of the lengths of two words is the length of their product.-/
 theorem Word.length_mul_eq_add { w v : Word α } : Word.len (w * v) = Word.len w + Word.len v := by
@@ -224,6 +230,84 @@ instance : GetElem (Word α) ℕ α (λw i ↦ i < w.length) where
 @[simp] theorem Word.map_append (f : α → β) :
   ∀ (u v : Word _), f <$> (u * v) = (f <$> u) * (f <$> v) :=
   List.map_append f
+
+/--Theorem: If a symbol is an element of a word tail, it is also an element of
+  head :: tail.-/
+theorem Word.mem_imp_cons (elem head : α) (tail : Word α) : elem ∈ tail → elem ∈ head :: tail := by
+  tauto
+
+/--Theorem: A symbol is in a word if it is either its head or in its tail.-/
+@[simp]
+theorem Word.mem_cons_iff_or (elem head : α) (tail : Word α) : elem ∈ head :: tail ↔ elem = head ∨ elem ∈ tail := by
+  simp
+
+/--Theorem: A symbol is in the concatenation of two words if and only if it is in one of the words.-/
+theorem Word.mem_mul_iff_or (a b : Word α) (elem : α) : elem ∈ a * b ↔ elem ∈ a ∨ elem ∈ b := by
+  apply Iff.intro
+  case mp =>
+    intro h_left
+    induction a
+    case nil =>
+      rw [eps_eq_nil.symm, eps_mul] at h_left
+      apply Or.inr
+      exact h_left
+    case cons head tail ind_hyp =>
+      by_cases h_eq : elem = head
+      case pos =>
+        apply Or.inl
+        rw [h_eq]
+        tauto
+      case neg =>
+        rw [mem_cons_iff_or, or_iff_right h_eq]
+        rw [Word.mul_eq_append] at h_left
+        simp [List.cons_append head tail b] at h_left
+        rw [Word.mem_cons_iff_or] at h_left
+        rw [or_iff_right h_eq] at h_left
+        apply ind_hyp at h_left
+        exact h_left
+  case mpr =>
+    intro h_right
+    cases h_right
+    case inl h_inl =>
+      induction a
+      case nil =>
+        rw [List.mem_nil_iff elem] at h_inl
+        contradiction
+      case cons head tail ind_hyp =>
+        rw [mem_cons_iff_or] at h_inl
+        cases h_inl
+        case inl h_inl =>
+          rw [Word.mul_eq_append]
+          simp [List.cons_append]
+          rw [mem_cons_iff_or]
+          apply Or.inl
+          exact h_inl
+        case inr h_inr =>
+          apply ind_hyp at h_inr
+          rw [Word.mul_eq_append]
+          simp [List.cons_append]
+          rw [mem_cons_iff_or]
+          apply Or.inr
+          exact h_inr
+    case inr h_inr =>
+      induction a
+      case nil =>
+        rw [eps_eq_nil.symm, eps_mul]
+        exact h_inr
+      case cons head tail ind_hyp =>
+        rw [mul_eq_append]
+        simp [List.cons_append]
+        rw [mem_cons_iff_or]
+        apply Or.inr
+        exact ind_hyp
+
+/--Theorem: The List.length and the Word.len functions behave the same for all words.-/
+theorem Word.list_length_eq_word_len (word : Word α) : List.length word = Word.len word := by
+  induction word
+  case nil =>
+    simp [Word.len]
+  case cons _ _ ind_hyp =>
+    simp [List.length_cons, Word.len, ind_hyp, Nat.succ_eq_add_one, add_comm]
 
 /--Construct a longer word from a list of words.-/
 def Word.concatListOfWords (list : List (Word X)) : Word X :=
