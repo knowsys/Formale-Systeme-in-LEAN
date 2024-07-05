@@ -165,10 +165,61 @@ instance : Coe (@ContextFreeDerivationStep α nt G u) (@Grammar.DerivationStep �
     } : @Grammar.DerivationStep α nt GenericProduction _ (↑G : Grammar GenericProduction) u
   }
 
+--Taken directly from Grammar version
+/--Construct a derivation step to have been applied to a left-side longer string.-/
+def ContextFreeDerivationStep.augment_left (step: ContextFreeDerivationStep G u) (w: Word (G.V ⊕ G.Z)):
+  ContextFreeDerivationStep G (w * u) :=
+  {
+    prod := step.prod,
+    pre := w * step.pre,
+    suf := step.suf,
+    sound := by
+      simp [mul_assoc]
+      have t := step.sound
+      simp [mul_assoc] at t
+      exact t
+  }
+
+--Taken directly from Grammar version
+/--Construct a derivation step to have been applied to a right-side longer string.-/
+def ContextFreeDerivationStep.augment_right (step: ContextFreeDerivationStep G u) (w: Word (G.V ⊕ G.Z)):
+  ContextFreeDerivationStep G (u * w) :=
+  {
+    prod := step.prod,
+    pre := step.pre,
+    suf := step.suf * w,
+    sound := by
+      simp [mul_assoc]
+      have t := step.sound
+      simp [← mul_assoc] at t
+      simp [← mul_assoc]
+      exact t
+  }
+
 /--Define result of a derivation step as the result of applying
   the production rule to the variable within the pre- and suffix.-/
 def ContextFreeDerivationStep.result (step : @ContextFreeDerivationStep α nt G u) : Word (G.V ⊕ G.Z) :=
   @Grammar.DerivationStep.result α nt GenericProduction _ G u step
+
+--Taken directly from Grammar version
+/--Theorem: Left-augmenting (adding a word to the left of) the input
+  string of a derivation step changes its result as expected.-/
+theorem ContextFreeDerivationStep.augment_left_result (step: ContextFreeDerivationStep G u) (w: Word (G.V ⊕ G.Z)):
+  (step.augment_left w).result = w * step.result := by
+  unfold ContextFreeDerivationStep.result
+  unfold Grammar.DerivationStep.result
+  unfold augment_left
+  simp [mul_assoc]
+
+--Taken directly from Grammar version
+/--Theorem: Right-augmenting (adding a word to the left of) the input
+  string of a derivation step changes its result as expected.-/
+theorem ContextFreeDerivationStep.augment_right_result (step: ContextFreeDerivationStep G u) (w: Word (G.V ⊕ G.Z)):
+  (step.augment_right w).result = step.result * w:= by
+  unfold ContextFreeDerivationStep.result
+  unfold Grammar.DerivationStep.result
+  unfold augment_right
+  simp [mul_assoc]
 
 /-Theorem: The origin for a derivation steps length is the addition of the lengths of the prefix, variable and sufix.-/
 theorem ContextFreeDerivationStep.len_u_composition (step: ContextFreeDerivationStep G u) : u.len = step.pre.len + (Word.mk [@Sum.inl G.V G.Z step.prod.val.lhs]).len + step.suf.len := by
@@ -217,8 +268,8 @@ mutual
 /--Basic structure of a context-free derivation tree without validity-constraints. Values returned by all sub-defined functions are only
   ordered correctly if ordered correctly during definition.-/
 inductive PreDerivationTree (G : ContextFreeGrammar α nt)
-  | leaf (terminalWord : Word G.Z) : PreDerivationTree G
-  | inner (var : G.V) (children : NEPreDerivationTreeList G) (prodRule : (ContextFreeProduction G.Z G.V)) : PreDerivationTree G
+  | leaf (terminal : WithOne G.Z) : PreDerivationTree G
+  | inner (var : G.V) (children : NEPreDerivationTreeList G) (prodRule : (G.productions)) : PreDerivationTree G
 --                                                  → (children_non_empty : 0 < List.length (↑children)) -- children is recursively bound => doesn't work
 -- We cannot ensure a non-empty children list with parameter as above or subclass (because it is the recursive argument)
 -- Thus we define this inductive structure in parallel to ensure non-emptiness
@@ -231,28 +282,38 @@ end
 mutual
 
 /--Define the equality determinating relation.-/
-def PreDerivationTree.decEq {G : ContextFreeGrammar α nt} [DecidableEq α] [DecidableEq nt] : (PDT₁ PDT₂ : PreDerivationTree G) → Decidable (Eq PDT₁ PDT₂)
-| .leaf terminalWord₁ , .leaf terminalWord₂ =>
-    match (terminalWord₁.hasDecEq terminalWord₂) with
-      | isTrue h_isTrue => isTrue (by rw [h_isTrue])
+def PreDerivationTree.decEq {G : ContextFreeGrammar α nt} [eq₁ : DecidableEq α] [eq₂ : DecidableEq nt] : (PDT₁ PDT₂ : PreDerivationTree G) → Decidable (Eq PDT₁ PDT₂)
+| .leaf terminal₁ , .leaf terminal₂ =>
+  match terminal₁, terminal₂ with
+  | none, none =>
+    isTrue (by rfl)
+  | some terminalSymbol₁, none =>
+    isFalse (by simp)
+  | none, some terminalSymbol₂ =>
+    isFalse (by simp)
+  | some terminalSymbol₁, some terminalSymbol₂ =>
+    match (eq₁ terminalSymbol₁ terminalSymbol₂) with
+      | isTrue h_isTrue => isTrue (by rw [Subtype.val_inj] at h_isTrue; rw [h_isTrue])
       | isFalse h_isFalse => isFalse (by
           apply Not.intro
           intro h_not
           simp at h_not
+          rw [Subtype.val_inj] at h_isFalse
+          rw [Option.some_inj] at h_not
           contradiction)
-| .leaf terminalWord₁ , .inner _ _ _ =>
+| .leaf terminal₁ , .inner _ _ _ =>
   isFalse (by
     apply Not.intro
     intro h_not
     contradiction)
-| .inner _ _ _ , .leaf terminalWord₂ =>
+| .inner _ _ _ , .leaf terminal₂ =>
   isFalse (by
     apply Not.intro
     intro h_not
     contradiction)
 | .inner var₁ children₁ prodRule₁, .inner var₂ children₂ prodRule₂ =>
-  match (prodRule₁.decEq prodRule₂) with
-    | isFalse h_isFalse => isFalse (by simp; intro _ _ ; exact h_isFalse)
+  match (prodRule₁.val.decEq prodRule₂.val) with
+    | isFalse h_isFalse => isFalse (by simp; intro _ _ ; rw [Subtype.val_inj] at h_isFalse; exact h_isFalse)
     | isTrue h_isTrue_prodRule =>
       match (children₁.decEq children₂) with
         | isFalse h_isFalse => isFalse (by simp; intro _ _; contradiction)
@@ -261,10 +322,12 @@ def PreDerivationTree.decEq {G : ContextFreeGrammar α nt} [DecidableEq α] [Dec
             | isFalse h_isFalse => isFalse (by
               intro h_not;
               --rw [h_isTrue_children, h_isTrue_prodRule] at h_not
-              simp [h_isTrue_children, h_isTrue_prodRule] at h_not
+              simp [h_isTrue_children, h_isTrue_prodRule, Subtype.val_inj] at h_not
+              apply And.left at h_not
               rw [h_not] at h_isFalse
               contradiction)
             | isTrue h_isTrue_var => isTrue (by
+              rw [Subtype.val_inj] at h_isTrue_prodRule
               rw [h_isTrue_prodRule, h_isTrue_children, h_isTrue_var])
 
 /--Define the equality determinating relation.-/
@@ -378,11 +441,11 @@ def PreDerivationTree.children {G : ContextFreeGrammar α nt} : (PDT : (PreDeriv
 
 mutual
 /--Get the list of used production rules. Only correct order if child nodes were assigned left-to-right.-/
-def PreDerivationTree.prodRuleList {G : ContextFreeGrammar α nt} : (PreDerivationTree G) → List (ContextFreeProduction G.Z G.V)
+def PreDerivationTree.prodRuleList {G : ContextFreeGrammar α nt} : (PreDerivationTree G) → List (G.productions)
   | .leaf _ => []
   | .inner _ children prodRule => prodRule :: children.prodRuleList
 /--Get the list of used production rules. Only correct order if child nodes were assigned left-to-right.-/
-def NEPreDerivationTreeList.prodRuleList {G : ContextFreeGrammar α nt} : (NEPDT : (NEPreDerivationTreeList G)) → List (ContextFreeProduction G.Z G.V)
+def NEPreDerivationTreeList.prodRuleList {G : ContextFreeGrammar α nt} : (NEPDT : (NEPreDerivationTreeList G)) → List (G.productions)
   | .single PDT => PDT.prodRuleList
   | .cons PDT NEPDT₂ => PDT.prodRuleList ++ NEPDT₂.prodRuleList
 end
@@ -390,7 +453,12 @@ end
 mutual
 /--The final result-word defined by the children of a context-free tree-node. Only correct order if child nodes were assigned left-to-right.-/
 def PreDerivationTree.result {G : ContextFreeGrammar α nt} : (PDT : PreDerivationTree G) → Word (G.Z)
-  | .leaf terminalWord => Word.mk (terminalWord.map (fun terminal => terminal))
+  | .leaf terminal =>
+    match terminal with
+    | none =>
+      ε
+    | some terminalSymbol =>
+      Word.mk [terminalSymbol]
   | .inner _ children _ => children.result
 /--The final result-word defined by the children of a context-free tree-node. Only correct order if child nodes were assigned left-to-right.-/
 def NEPreDerivationTreeList.result {G : ContextFreeGrammar α nt} : (NEPDT : NEPreDerivationTreeList G) → Word (G.Z)
@@ -401,7 +469,12 @@ end
 mutual
 /--The intermediate level word defined by the children of a context-free tree-node. Only correct order if child nodes were assigned left-to-right.-/
 def PreDerivationTree.levelWord {G : ContextFreeGrammar α nt} : (PDT : PreDerivationTree G) → Word (G.V ⊕ G.Z)
-  | .leaf terminalWord => Word.mk (terminalWord.map (fun terminal => Sum.inr terminal))
+  | .leaf terminal =>
+    match terminal with
+    | none =>
+      ε
+    | some terminalSymbol =>
+      Word.mk [Sum.inr terminalSymbol]
   | .inner var _ _ => Word.mk [(Sum.inl var)]
 /--The final result-word defined by the children of a context-free tree-node. Only correct order if child nodes were assigned left-to-right.-/
 def NEPreDerivationTreeList.levelWord {G : ContextFreeGrammar α nt} : (NEPDT : NEPreDerivationTreeList G) → Word (G.V ⊕ G.Z)
@@ -595,9 +668,9 @@ def PreDerivationTree.treeValid {G : ContextFreeGrammar α nt} (PDT : PreDerivat
   | .leaf _ => True
   | .inner var children rule =>
       /- 1 The production rule is applicable in this step.-/
-      var = rule.lhs ∧
+      var = rule.1.lhs ∧
       /- 2 The children match the production rules result. -/
-      children.levelWord = rule.rhs ∧
+      children.levelWord = rule.1.rhs ∧
       /- 3 The children are valid. -/
       children.treeValid
 /- treeWord children = rule.rhs ∧ children.all (fun c => @decide (treeValid c) (Classical.propDecidable _))
@@ -678,10 +751,10 @@ def PreDerivationTree.decideTreeValid {PDT : PreDerivationTree G}
   match PDT with
     | .leaf _ => isTrue (by rw [PreDerivationTree.treeValid]; simp)
     | .inner var children rule =>
-        @Decidable.by_cases (var = rule.lhs) (Decidable (PreDerivationTree.treeValid (PreDerivationTree.inner var children rule))) _
-          (fun h_lhs : (var = rule.lhs) =>
-            @Decidable.by_cases (children.levelWord = rule.rhs) _ _
-              (fun h_rhs : (children.levelWord = rule.rhs) =>
+        @Decidable.by_cases (var = rule.1.lhs) (Decidable (PreDerivationTree.treeValid (PreDerivationTree.inner var children rule))) _
+          (fun h_lhs : (var = rule.1.lhs) =>
+            @Decidable.by_cases (children.levelWord = rule.1.rhs) _ _
+              (fun h_rhs : (children.levelWord = rule.1.rhs) =>
                   @Decidable.by_cases (children.treeValid) (Decidable (PreDerivationTree.treeValid (PreDerivationTree.inner var children rule))) children.decideTreeValid
                   (fun h_children : (children.treeValid) =>
                     isTrue (by
@@ -698,7 +771,7 @@ def PreDerivationTree.decideTreeValid {PDT : PreDerivationTree G}
                       absurd h_not.right.right
                       exact h_children
               )))
-                (fun h_rhs : ¬(children.levelWord = rule.rhs) =>
+                (fun h_rhs : ¬(children.levelWord = rule.1.rhs) =>
                 isFalse (by
                   apply Not.intro; intro h_not
                   rw [PreDerivationTree.treeValid] at h_not
@@ -706,7 +779,7 @@ def PreDerivationTree.decideTreeValid {PDT : PreDerivationTree G}
                   exact h_rhs
                 )
               )
-          ) (fun h_lhs : ¬(var = rule.lhs) =>
+          ) (fun h_lhs : ¬(var = rule.1.lhs) =>
             isFalse
             (by
               apply Not.intro; intro h_not
@@ -747,7 +820,7 @@ def PreDerivationTree.induction_principle {G : ContextFreeGrammar α nt}
   /-Property over NEPDTLs.-/
   (prop₂ : NEPreDerivationTreeList G → Prop)
   /-Base case for PDTs.-/
-  (ind_basis : ∀ terminalWord : Word G.Z , prop (PreDerivationTree.leaf terminalWord))
+  (ind_basis : ∀ terminal : Option G.Z , prop (PreDerivationTree.leaf terminal))
   /-Base case for NEPDTLs.-/
   (ind_basis₂ :
     ∀ PDT : PreDerivationTree G,
@@ -755,7 +828,7 @@ def PreDerivationTree.induction_principle {G : ContextFreeGrammar α nt}
   /-Induction step for PDTs.-/
   (ind_step :
     ∀ (v : G.V) (children : NEPreDerivationTreeList G)
-    (rule : ContextFreeProduction G.Z G.V),
+    (rule : G.productions),
     (ind_hyp : prop₂ children)
     →
     prop (PreDerivationTree.inner v children rule))
@@ -765,8 +838,8 @@ def PreDerivationTree.induction_principle {G : ContextFreeGrammar α nt}
       prop PDT → prop₂ NEPDTL₂ → prop₂ (NEPreDerivationTreeList.cons PDT NEPDTL₂))
   : ∀ PDT : PreDerivationTree G, prop PDT
   := @PreDerivationTree.rec α nt G prop prop₂
-    (fun terminalWord =>
-      by apply ind_basis terminalWord)
+    (fun terminal =>
+      by apply ind_basis terminal)
     (fun var children prodRule =>
       fun h₁ : prop₂ children =>
         ind_step var children prodRule h₁)
@@ -787,7 +860,7 @@ def NEPreDerivationTreeList.induction_principle {G : ContextFreeGrammar α nt}
   /-Property over NEPDTLs.-/
   (prop₂ : NEPreDerivationTreeList G → Prop)
   /-Base case for PDTs.-/
-  (ind_basis : ∀ terminalWord : Word G.Z , prop (PreDerivationTree.leaf terminalWord))
+  (ind_basis : ∀ terminal : Option G.Z , prop (PreDerivationTree.leaf terminal))
   /-Base case for NEPDTLs.-/
   (ind_basis₂ :
     ∀ PDT : PreDerivationTree G,
@@ -795,7 +868,7 @@ def NEPreDerivationTreeList.induction_principle {G : ContextFreeGrammar α nt}
   /-Induction step for PDTs.-/
   (ind_step :
     ∀ (v : G.V) (children : NEPreDerivationTreeList G)
-    (rule : ContextFreeProduction G.Z G.V),
+    (rule : G.productions),
     (ind_hyp : prop₂ children)
     →
     prop (PreDerivationTree.inner v children rule))
@@ -805,8 +878,8 @@ def NEPreDerivationTreeList.induction_principle {G : ContextFreeGrammar α nt}
       prop PDT → prop₂ NEPDTL₂ → prop₂ (NEPreDerivationTreeList.cons PDT NEPDTL₂))
   : ∀ NEPDTL : NEPreDerivationTreeList G, prop₂ NEPDTL
   := @NEPreDerivationTreeList.rec α nt G prop prop₂
-    (fun terminalWord =>
-      ind_basis terminalWord)
+    (fun terminal =>
+      ind_basis terminal)
     (fun var children prodRule =>
       fun h₁ : prop₂ children =>
         ind_step var children prodRule h₁)
@@ -833,9 +906,9 @@ structure DerivationTree (G : ContextFreeGrammar α nt) where
 
 /--Construct a context-free derivation-tree leaf from a terminal word.-/
 @[match_pattern]
-def DerivationTree.leaf {G : ContextFreeGrammar α nt} (w : Word G.Z) : DerivationTree G := {
+def DerivationTree.leaf {G : ContextFreeGrammar α nt} (w : Option G.Z) : DerivationTree G := {
   tree := PreDerivationTree.leaf w
-  valid := by rw [PreDerivationTree.treeValid]; simp
+  valid := by simp [PreDerivationTree.treeValid]
 }
 
 /--Construct a context-free derivation-tree node from:
@@ -856,8 +929,8 @@ def DerivationTree.leaf {G : ContextFreeGrammar α nt} (w : Word G.Z) : Derivati
 @[match_pattern]
 def DerivationTree.inner {G : ContextFreeGrammar α nt}
   (v : G.V) (children : NEPreDerivationTreeList G)
-  (rule : ContextFreeProduction G.Z G.V)
-  (h_rule_lhs : rule.lhs = v) (h_rule_rhs : rule.rhs = children.levelWord) (childrenValid : children.treeValid)
+  (rule : G.productions)
+  (h_rule_lhs : rule.1.lhs = v) (h_rule_rhs : rule.1.rhs = children.levelWord) (childrenValid : children.treeValid)
   : DerivationTree G := {
     tree := PreDerivationTree.inner v children rule
     valid := by
@@ -871,7 +944,7 @@ def DerivationTree.fromChild
   {G : ContextFreeGrammar α nt} {children : NEPreDerivationTreeList G} {child : PreDerivationTree G}
   (childrenValid : children.treeValid) (h_child_mem : child ∈ children.asList) : DerivationTree G :=
   match child with
-  | .leaf terminalWord => DerivationTree.leaf terminalWord
+  | .leaf terminal => DerivationTree.leaf terminal
   | .inner var child_children rule => by
     have h : _ := NEPreDerivationTreeList.treeValid_implies_child_valid childrenValid h_child_mem
     rw [PreDerivationTree.treeValid] at h
@@ -884,7 +957,7 @@ def DerivationTree.fromChild
 /--Induction principle for Derivation Trees.
   Induction basis is prop validity for any leaf.
 
-  `∀ terminalWord : Word G.Z , prop (DerivationTree.leaf terminalWord)`
+  `∀ terminal : Word G.Z , prop (DerivationTree.leaf terminal)`
 
   Induction step requires a proof, that from prop being valid for
   an unknown collection of children we can generate prop(parent), where the parent is synthesized from
@@ -896,13 +969,13 @@ def DerivationTree.induction_principle {G : ContextFreeGrammar α nt}
   /-For any given property,-/
   (prop : DerivationTree G → Prop)
   /-if we can prove the prop for leaf DTs-/
-  (ind_basis : ∀ terminalWord : Word G.Z , prop (DerivationTree.leaf terminalWord))
+  (ind_basis : ∀ terminal : Option G.Z , prop (DerivationTree.leaf terminal))
   /- and...-/
   (ind_step :
     /- for ANY inner DT-/
     ∀ (v : G.V) (children : NEPreDerivationTreeList G)
-    (rule : ContextFreeProduction G.Z G.V) (h_rule_lhs : rule.lhs = v)
-    (h_rule_rhs : rule.rhs = children.levelWord) (childrenValid : children.treeValid),
+    (rule : G.productions) (h_rule_lhs : rule.1.lhs = v)
+    (h_rule_rhs : rule.1.rhs = children.levelWord) (childrenValid : children.treeValid),
     /- from induction hypothesis (prop valid for all children)-/
     (ind_hyp : ∀ child, (h_mem : child ∈ children.asList) → prop (DerivationTree.fromChild childrenValid (h_mem : child ∈ children.asList)))
     →
@@ -931,12 +1004,12 @@ def DerivationTree.induction_principle {G : ContextFreeGrammar α nt}
               /-Validity of the PDT,-/
               (h_PDT_valid : PDT.treeValid) →
               /-the induction basis for DTs be proven,-/
-              (∀ (terminalWord : Word { x // x ∈ G.Z }), prop (leaf terminalWord)) →
+              (∀ (terminal : Option { x // x ∈ G.Z }), prop (leaf terminal)) →
               /-... and a match from the induction step via actual recursive constructor for DTs to the
               more easily useable fromChild induction step for DTs.-/
               (∀
-                (v : { x // x ∈ G.V }) (children : NEPreDerivationTreeList G) (rule : ContextFreeProduction G.Z G.V)
-                (h_rule_lhs : rule.lhs = v) (h_rule_rhs : rule.rhs = NEPreDerivationTreeList.levelWord children)
+                (v : { x // x ∈ G.V }) (children : NEPreDerivationTreeList G) (rule : G.productions)
+                (h_rule_lhs : rule.1.lhs = v) (h_rule_rhs : rule.1.rhs = NEPreDerivationTreeList.levelWord children)
                 (childrenValid : NEPreDerivationTreeList.treeValid children),
               (∀ (child : PreDerivationTree G) (h_mem : child ∈ NEPreDerivationTreeList.asList children),
                   prop (fromChild childrenValid h_mem)) →
@@ -950,12 +1023,12 @@ def DerivationTree.induction_principle {G : ContextFreeGrammar α nt}
               /-Validity of the NEPDTL,-/
               (h_NEPDTL_valid : NEPDTL.treeValid) →
               /-the induction basis for DTs be proven,-/
-              (∀ (terminalWord : Word { x // x ∈ G.Z }), prop (leaf terminalWord)) →
+              (∀ (terminal : Option { x // x ∈ G.Z }), prop (leaf terminal)) →
               /-... and a match from the induction step via actual recursive constructor for DTs to the
               more easily useable fromChild induction step for DTs.-/
               (∀
-                (v : { x // x ∈ G.V }) (children : NEPreDerivationTreeList G) (rule : ContextFreeProduction G.Z G.V)
-                (h_rule_lhs : rule.lhs = v) (h_rule_rhs : rule.rhs = NEPreDerivationTreeList.levelWord children)
+                (v : { x // x ∈ G.V }) (children : NEPreDerivationTreeList G) (rule : G.productions)
+                (h_rule_lhs : rule.1.lhs = v) (h_rule_rhs : rule.1.rhs = NEPreDerivationTreeList.levelWord children)
                 (childrenValid : NEPreDerivationTreeList.treeValid children),
               (∀ (child : PreDerivationTree G) (h_mem : child ∈ NEPreDerivationTreeList.asList children),
                   prop (fromChild childrenValid h_mem)) →
@@ -966,7 +1039,7 @@ def DerivationTree.induction_principle {G : ContextFreeGrammar α nt}
           /-We now use structural induction on PDTs to prove propHelper for all DTs.-/
           have property_PDTs : _ := @PreDerivationTree.induction_principle α nt G propHelper propHelper₂
           /- For this we need to prove the base case for propHelper...-/
-          have propHelper_basis : (∀ (terminalWord : Word G.Z), propHelper (PreDerivationTree.leaf terminalWord)) := by
+          have propHelper_basis : (∀ (terminal : Option G.Z), propHelper (PreDerivationTree.leaf terminal)) := by
             /-Name the implication pre-conditions of the base case.-/
             intro tw
             /-Name the implication pre-conditions of the property propHelper (...).-/
@@ -1008,7 +1081,7 @@ def DerivationTree.induction_principle {G : ContextFreeGrammar α nt}
             rw [h_refl₂]
             exact h_prop
           /-Prove the induction step for propHelper.-/
-          have propHelper_step : (∀ (v : { x // x ∈ G.V }) (children : NEPreDerivationTreeList G) (rule : ContextFreeProduction G.Z G.V),
+          have propHelper_step : (∀ (v : { x // x ∈ G.V }) (children : NEPreDerivationTreeList G) (rule : G.productions),
             propHelper₂ children → propHelper (PreDerivationTree.inner v children rule)) := by
             /-Name the implication pre-conditions of the induction step.-/
             intro v_step children_step rule_step h_propHelper₂_children_step
@@ -1115,20 +1188,21 @@ def EP : List (ContextFreeProduction ExampleTerminals ExampleVariables) := [
     -- rule V -> z
     (⟨ 'V', by simp ⟩ →ₚ₂ [ .inr ⟨ 'z', by simp ⟩ ])
 ]
-def EP.StoA : ContextFreeProduction ExampleTerminals ExampleVariables := EP[0]
-def EP.StoM : ContextFreeProduction ExampleTerminals ExampleVariables := EP[1]
-def EP.StoV : ContextFreeProduction ExampleTerminals ExampleVariables := EP[2]
-def EP.AtoSplusS : ContextFreeProduction ExampleTerminals ExampleVariables := EP[3]
-def EP.MtoStimesS : ContextFreeProduction ExampleTerminals ExampleVariables := EP[4]
-def EP.Vtox : ContextFreeProduction ExampleTerminals ExampleVariables := EP[5]
-def EP.Vtoy : ContextFreeProduction ExampleTerminals ExampleVariables := EP[6]
-def EP.Vtoz : ContextFreeProduction ExampleTerminals ExampleVariables := EP[7]
 
 def ExampleGrammar: @ContextFreeGrammar Char Char where
   Z := { 'x', 'y', 'z', '(', ')', '+', '*' }
   V := { 'A', 'M', 'S', 'V' }
   start := ⟨ 'S', by simp ⟩
   productions := EP.toFinset
+
+def EP.StoA : ExampleGrammar.productions := ⟨ EP[0], by decide ⟩
+def EP.StoM : ExampleGrammar.productions := ⟨ EP[1], by decide ⟩
+def EP.StoV : ExampleGrammar.productions := ⟨ EP[2], by decide ⟩
+def EP.AtoSplusS : ExampleGrammar.productions := ⟨ EP[3], by decide ⟩
+def EP.MtoStimesS : ExampleGrammar.productions := ⟨ EP[4], by decide ⟩
+def EP.Vtox : ExampleGrammar.productions := ⟨ EP[5], by decide ⟩
+def EP.Vtoy : ExampleGrammar.productions := ⟨ EP[6], by decide ⟩
+def EP.Vtoz : ExampleGrammar.productions := ⟨ EP[7], by decide ⟩
 
 theorem ExampleGrammar.productions_eq_ex_productions (p: ContextFreeProduction _ _):
   p ∈ ExampleGrammar.productions ↔ p ∈ EP := by
@@ -1144,23 +1218,23 @@ def ExampleGrammar.lang: Language ({ 'x', 'y', 'z', '+', '*', '(', ')'} : Finset
 -- l for leaf, i for inner, indexed seperately
 -- First number is depth of node, second is numbered from left to right on this depth
 def ExamplePreTreel2_0 : PreDerivationTree ExampleGrammar :=
-.leaf [ ⟨ '(' , by decide⟩ ]
+.leaf (some ⟨ '(' , by decide⟩)
 def ExamplePreTreel4_0 : PreDerivationTree ExampleGrammar :=
-.leaf [ ⟨ 'x' , by decide⟩ ]
+.leaf (some ⟨ 'x' , by decide⟩)
 def ExamplePreTreel2_1 : PreDerivationTree ExampleGrammar :=
-.leaf [ ⟨ '*' , by decide⟩ ]
+.leaf (some ⟨ '*' , by decide⟩)
 def ExamplePreTreel4_1 : PreDerivationTree ExampleGrammar :=
-.leaf [ ⟨ '(' , by decide⟩ ]
+.leaf (some ⟨ '(' , by decide⟩)
 def ExamplePreTreel6_0 : PreDerivationTree ExampleGrammar :=
-.leaf [ ⟨ 'y' , by decide⟩ ]
+.leaf (some ⟨ 'y' , by decide⟩)
 def ExamplePreTreel4_2 : PreDerivationTree ExampleGrammar :=
-.leaf [ ⟨ '+' , by decide⟩ ]
+.leaf (some ⟨ '+' , by decide⟩)
 def ExamplePreTreel6_1 : PreDerivationTree ExampleGrammar :=
-.leaf [ ⟨ 'z' , by decide⟩ ]
+.leaf (some ⟨ 'z' , by decide⟩)
 def ExamplePreTreel4_3 : PreDerivationTree ExampleGrammar :=
-.leaf [ ⟨ ')' , by decide⟩ ]
+.leaf (some ⟨ ')' , by decide⟩)
 def ExamplePreTreel2_2 : PreDerivationTree ExampleGrammar :=
-.leaf [ ⟨ ')' , by decide⟩ ]
+.leaf (some ⟨ ')' , by decide⟩)
 
 def ExamplePreTreei3_0 : PreDerivationTree ExampleGrammar :=
 .inner ⟨ 'V' , by decide⟩ DT[ExamplePreTreel4_0] EP.Vtox
@@ -1253,7 +1327,11 @@ def DerivationTree.startingSymbol {G : ContextFreeGrammar α nt} [DecidableEq (G
 /--The variable from which we begin deriving if we are a tree, or the terminal word if we are a leaf.-/
 def DerivationTree.fromAny {G : ContextFreeGrammar α nt} (DT : DerivationTree G) : Word (G.V ⊕ G.Z) :=
   match DT.tree with
-  | PreDerivationTree.leaf tw => tw.ZtoVZ
+  | PreDerivationTree.leaf tw => match tw with
+    | none =>
+      ε
+    | some ts =>
+      [Sum.inr ts]
   | PreDerivationTree.inner v _ _ => [Sum.inl v]
 
 /--Return the variable from which we begin deriving or none if we are a leaf.-/
@@ -1303,6 +1381,11 @@ def DerivationTree.children {G : ContextFreeGrammar α nt} (DT : DerivationTree 
         exact valid.right.right
       exact List.map (λ child : {x // x ∈ c.asList} =>
         @DerivationTree.fromChild α nt G c child ctv child.prop) c.asList.attach
+
+def DerivationTree.collect_prodRules
+  {G : ContextFreeGrammar α nt}
+  (DT : DerivationTree G) :
+  List (G.productions) := DT.tree.prodRuleList
 
 /-Hard to formulate-/
 --theorem DerivationTree.depth_eq_maxDT_of_children {G : ContextFreeGrammar α nt} : ∀ DT : DerivationTree G, DT.depth = (List.foldl () 0 DT.children) := by sorry
@@ -1563,6 +1646,7 @@ theorem ContextFreeDerivation.exhaustive_imp_child_exhaustive
       rw [h_constructor, exhaustiveCondition] at h_exhaustive
       exact h_exhaustive
 
+-- TODO make this use colelctDerivationTreeNodes
 def ContextFreeDerivation.toDerivationTree
   {G : ContextFreeGrammar α nt} {u : Word (G.V ⊕ G.Z) } {v : Word (G.V ⊕ G.Z)}
   (cfd : @ContextFreeDerivation α nt G u v)
@@ -1570,7 +1654,7 @@ def ContextFreeDerivation.toDerivationTree
   (h_starts_in_1 : cfd.startsIn1Condition) :
   DerivationTree G :=
     match h_constructor : cfd with
-    | same h_same => DerivationTree.leaf (v.VZtoZ h_exhaustive)
+    | same h_same => sorry
     | @step _ _ _ _ u' _ dstep derivation sound => by
       let var := dstep.prod.val.lhs
       let var_as_word : (Word (G.V ⊕ G.Z)) := Word.mk [Sum.inl var]
@@ -1601,9 +1685,9 @@ def ContextFreeDerivation.toDerivationTree
       let collectFollowVars := dstep.prod.val.rhs.collectVars --respects left to right
 
       let children : NEPreDerivationTreeList G := sorry
-      let rule : ContextFreeProduction G.Z G.V := dstep.prod
-      let h_rule_lhs : rule.lhs = var := by simp
-      let h_rule_rhs : rule.rhs = NEPreDerivationTreeList.levelWord children := sorry
+      let rule : G.productions := dstep.prod
+      let h_rule_lhs : rule.1.lhs = var := by simp
+      let h_rule_rhs : rule.1.rhs = NEPreDerivationTreeList.levelWord children := sorry
       let childrenValid : children.treeValid := sorry
       exact DerivationTree.inner var children rule h_rule_lhs h_rule_rhs childrenValid
 #check Nat.lt_succ_of_le
@@ -1694,7 +1778,7 @@ def ContextFreeDerivation.collectDerivationTreeNodes
       -- CASE DISTINCTION: ON rhs: is zero or more symbols
       cases h_num_vars_rhs : dstep.prod.val.rhs.len
       case zero =>
-        let thisNode : DerivationTree G := DerivationTree.leaf ε
+        let thisNode : DerivationTree G := DerivationTree.leaf none -- equivalent to ε
         have h_u_vs_u'_len : u'.len + 1 = u.len := by
           rw [u'_eq_result.symm, dstep.len_result_composition, u_comp.symm]
           rw [h_num_vars_rhs, var_len_1]
@@ -1814,64 +1898,85 @@ def ContextFreeDerivation.collectDerivationTreeNodes
 
         let fun_find_allChildren_with_index (index₁ : Finset.range (Word.len u')) (h_index_valid : ∃ location  ∈ allChildren, location.2 = index₁) : (DerivationTree G) :=
           let afunc : List (DerivationTree G × { x // x ∈ Finset.range (Word.len u') }) →
-                      List (DerivationTree G × { x // x ∈ Finset.range (Word.len u') }) →
+                      (DerivationTree G × { x // x ∈ Finset.range (Word.len u') }) →
                       List (DerivationTree G × { x // x ∈ Finset.range (Word.len u') }) :=
+              (fun prev (DT , index₂) =>
+              dite (index₁ = index₂)
+              (fun h_is : index₁ = index₂ =>
+                prev ++ [(DT, index₂)])
+              (fun h_is_not : index₁ ≠ index₂ =>
+                prev) )
+          have afuncDef : afunc =
+              (fun prev (DT , index₂) =>
+              dite (index₁ = index₂)
+              (fun h_is : index₁ = index₂ =>
+                prev ++ [(DT, index₂)])
+              (fun h_is_not : index₁ ≠ index₂ =>
+                prev) ) := by tauto
+          let a : _ := List.foldl afunc [] allChildren
+          have aDef : a = List.foldl afunc [] allChildren := by simp
+          have afunc_monotone : ∀ list₁ list₂ : List _, list₁ ≠ [] → List.foldl afunc list₁ list₂ ≠ [] := by
+            intro list₁ list₂
+            induction list₁
+            case nil =>
+              tauto
+            case cons head₁ tail₁ ind_hyp₁ =>
+              induction list₂
+              case nil =>
+                tauto
+              case cons head₂ tail₂ ind_hyp₂ =>
+                intro h_head_tail_neq_nil
+                by_cases tail₂ ≠ []
+                case pos h_pos₂ =>
+                  by_cases tail₁ ≠ []
+                  case pos h_pos₁ =>
+                    simp [h_pos₁] at ind_hyp₂
+                    simp [h_pos₁] at ind_hyp₁
 
-              (List.foldl
-              (fun prev (DT , index₂) =>
-              Decidable.by_cases
-              (fun h_is : index₁ = index₂ =>
-                prev ++ [(DT, index₂)])
-              (fun h_is_not : index₁ ≠ index₂ =>
-                prev) ))
-          have afuncDef : afunc = (
-              (@List.foldl _ _
-              (fun prev (DT , index₂) =>
-              Decidable.by_cases
-              (fun h_is : index₁ = index₂ =>
-                prev ++ [(DT, index₂)])
-              (fun h_is_not : index₁ ≠ index₂ =>
-                prev) ))) := by simp
-          let a : _ := afunc [] allChildren
-          have aDef : a = afunc [] allChildren := by simp
+                    rw [List.foldl_cons]
+
+                    simp [afuncDef]
+                    by_cases index₁ = head₂.2
+                    case pos h_pos_head₂ =>
+                      sorry
+                    --#check ite_cond_eq_true
+                    /-ite_cond_eq_true.{u} {α : Sort u} {c : Prop}
+                    {x✝ : Decidable c} (a b : α) (h : c = True) :
+                    (if c then a else b) = a-/
+                    case neg h_neg_head₂ =>
+                      sorry
+                  case neg h_neg₁ =>
+                    sorry
+                case neg h_neg₂ =>
+
+                  sorry
           let b : DerivationTree G × { x // x ∈ Finset.range (Word.len u') } := a[0]'(by
             -- use h_index_valid
 
             apply Nat.zero_lt_of_ne_zero
             rw [ne_eq (List.length a) 0]
             rw [List.length_eq_zero]
-            have proof_condition : afunc [] allChildren = [] ↔ ¬ ∃ location ∈ allChildren, location.2 = index₁ := by
-              induction @List.foldlRecOn
-                ((DerivationTree G × { x // x ∈ Finset.range (Word.len u') }))
-                (List (DerivationTree G × { x // x ∈ Finset.range (Word.len u') }))
-                _
-                allChildren afunc
-              apply Iff.intro
-              case mp =>
-                intro h_nexists
-                #check List.foldlRecOn
-                /-List.foldlRecOn.{u_2, u, v} {α : Type u} {β : Type v} {C : β → Sort u_2}
-                  (l : List α) (op : β → α → β) (b : β)
-                  (hb : C) (hl : (b : β) → C b → (a : α) →
-                  a ∈ l → C (op b a)) : C (List.foldl op b l)-/
-
-                case nil =>
-                  tauto
-                case cons head tail ind_hyp =>
-                  rw [List.exists_mem_cons, not_or]
-                  apply And.intro
-                  case right =>
-                    exact ind_hyp
-                  case left =>
-                    by_contra h_head_eq_index
-                    have allChildren_constructor : allChildren = head :: tail := by tauto
-                    simp [allChildren_constructor] at aDef
-                    rw [afuncDef] at aDef
-                    simp at aDef
-
+            have proof_condition : List.foldl afunc [] allChildren = [] ↔ ¬ ∃ location ∈ allChildren, location.2 = index₁ := by
+              induction allChildren
+              case nil =>
+                tauto
+              case cons head tail ind_hyp =>
+                apply Iff.intro
+                case mp =>
+                  intro h_nil
+                  simp
+                  rw [not_or]
+                  simp at h_nil
+                  simp [afuncDef] at h_nil
+                  by_cases index₁ = head.2
+                  case pos h_is =>
+                    simp [h_is, List.foldl] at h_nil
+                    absurd h_nil
                     sorry
-              case mpr =>
-                sorry
+                  case neg h_isnot =>
+                    sorry
+                case mpr =>
+                  sorry
             rw [proof_condition, not_not]
             exact h_index_valid )
           b.1
@@ -1915,25 +2020,22 @@ def ContextFreeDerivation.collectDerivationTreeNodes
               prev ++ [child]
               )
             (fun h_terminal : ¬ Sum.isLeft symbol =>
-              let symbol_left : ∀ symbol_1 ∈ [symbol], Sum.isRight symbol_1 = true := by
-                simp
-                simp at h_terminal
-                exact h_terminal
-              let child : DerivationTree G := DerivationTree.leaf (Word.VZtoZ [symbol] symbol_left)
+
+              let symbol₂ := symbol.getRight (by simp at h_terminal; exact h_terminal)
+              let child : DerivationTree G := DerivationTree.leaf (some symbol₂)
               prev ++ [child]))
             (@List.nil (DerivationTree G))
             (List.finRange (rightSide.len))
 
-           --allChildren[leftOfVarCount₂]
 
         -- extract the correct NEPDTL
         let children : NEPreDerivationTreeList G := sorry
         -- Construct the relevant parts for this node specifically
         let var := dstep.prod.val.lhs
         let var_as_word : (Word (G.V ⊕ G.Z)) := Word.mk [Sum.inl var]
-        let rule : ContextFreeProduction G.Z G.V := dstep.prod
-        let h_rule_lhs : rule.lhs = var := by simp
-        let h_rule_rhs : rule.rhs = NEPreDerivationTreeList.levelWord children := sorry
+        let rule : G.productions := dstep.prod
+        let h_rule_lhs : rule.1.lhs = var := by simp
+        let h_rule_rhs : rule.1.rhs = NEPreDerivationTreeList.levelWord children := sorry
         let childrenValid : children.treeValid := sorry
         let thisNode := DerivationTree.inner var children rule h_rule_lhs h_rule_rhs childrenValid
 
@@ -2018,13 +2120,114 @@ def ContextFreeDerivation.collectDerivationTreeNodes
         let returnList := returnList ++ returnRight
         exact returnList
 
+/--Theorem: It is possible to augment a prefix-word`w`to the left side of in- and output of a
+  valid derivation. We recieve a valid derivation.-/
+theorem ContextFreeDerivation.augment_left {u v w: Word _} (d: ContextFreeDerivation G u v) :
+  ContextFreeDerivation G (w * u) (w * v) := by
+  induction d with
+  | same h => apply same; simp [h]
+  | step s _ sound =>
+    apply step
+    . assumption
+    swap
+    . exact s.augment_left w
+    . rw [<- sound]; exact s.augment_left_result _
 
-/-
-sound:
-    have x : G.V := ContextFreeProduction.lhs prod.val -- need to ensure correct alphabet : Z+V
-    have x_as_word : (Word (G.V ⊕ G.Z)) := [.inl ↑(x)]
-    u = pre * x_as_word * suf
--/
+/--Theorem: It is possible to augment a prefix-word`w`to the left side of in- and output of a
+  valid derivation. We recieve a valid derivation.-/
+def ContextFreeDerivation.augment_left_mul {u v w: Word _} (d: ContextFreeDerivation G u v) :
+  ContextFreeDerivation G (w * u) (w * v) := by
+  match d with
+  | same h => apply same; simp [h]
+  | step s d' sound =>
+    apply step
+    . exact d'.augment_left_mul
+    swap
+    . exact s.augment_left w
+    . rw [<- sound]; exact s.augment_left_result _
+
+/--Return a derivation where we have added a new prefix-symbol`w`to the left sides of in-
+  and output of the input derivation.-/
+def ContextFreeDerivation.augment_left_cons {u v: Word _} (d: ContextFreeDerivation G u v) :
+  ContextFreeDerivation G (w :: u) (w :: v) := by
+  --exact Grammar.Derivation.augment_left_cons d
+  match d with
+  | same h => apply same; simp [h]
+  | step s d' sound =>
+    apply step
+    . exact d'.augment_left_cons
+    swap
+    . exact s.augment_left [w]
+    . rw [<- sound]; exact s.augment_left_result _
+
+
+/--Return a derivation where we have added a new prefix-word`w`to the right sides of in-
+  and output of the input derivation.-/
+theorem ContextFreeDerivation.augment_right {u v: Word (G.V ⊕ G.Z)} (d: ContextFreeDerivation G u v) :
+  ContextFreeDerivation G (u * w) (v * w) := by induction d with
+  | same h => apply same; simp [h]
+  | step s _ sound =>
+    apply step
+    .assumption
+    swap
+    . exact s.augment_right w
+    rw [<- sound]; exact s.augment_right_result _
+
+/--Return a derivation where we have added a new prefix-symbol`w`to the right sides of in-
+  and output of the input derivation.-/
+def ContextFreeDerivation.augment_right_mul {u v: Word (G.V ⊕ G.Z)} (d: ContextFreeDerivation G u v) :
+  ContextFreeDerivation G (u.append w) (v.append w) := by
+  match d with
+  | .same h => apply ContextFreeDerivation.same; simp [h]
+  | .step s d' sound =>
+    apply ContextFreeDerivation.step
+    . exact d'.augment_right_mul
+    swap
+    . exact s.augment_right w
+    . rw [<- sound]; exact s.augment_right_result _
+
+/--Return a derivation where we have added a new prefix-symbol`w`to the right sides of in-
+  and output of the input derivation.-/
+def ContextFreeDerivation.augment_right_cons {u v: Word (G.V ⊕ G.Z)} (d: ContextFreeDerivation G u v) :
+  ContextFreeDerivation G (u.append w) (v.append w) := by
+  match d with
+  | .same h => apply ContextFreeDerivation.same; simp [h]
+  | .step s d' sound =>
+    apply ContextFreeDerivation.step
+    . exact d'.augment_right_cons
+    swap
+    . exact s.augment_right w
+    . rw [<- sound]; exact s.augment_right_result _
+
+/--Concatenate two derivations: Such that they are left/right of each other.-/
+def ContextFreeDerivation.concat
+  {G : ContextFreeGrammar α nt} {u₁ u₂ v₁ v₂ : (Word (G.V ⊕ G.Z))}
+  (cfd₁ : (@ContextFreeDerivation α nt G u₁ v₁))
+  (cfd₂ : (@ContextFreeDerivation α nt G u₂ v₂)) :
+  (ContextFreeDerivation G (u₁ * u₂) (v₁ * v₂)) := by
+  match cfd₁, cfd₂ with
+  | .same h_same₁, .same h_same₂ =>
+    exact @ContextFreeDerivation.same α nt G (u₁ * u₂) (v₁ * v₂) (by rw [h_same₁, h_same₂])
+  | .same h_same₁, .step _ _ _ =>
+    rw [h_same₁.symm]
+    apply @ContextFreeDerivation.augment_left_mul α nt G u₂ v₂ u₁ cfd₂
+  | .step _ _ _, .same h_same₂ =>
+    rw [h_same₂.symm]
+    apply @ContextFreeDerivation.augment_right_mul α nt G u₂ u₁ v₁ cfd₁
+  | @ContextFreeDerivation.step α nt G _ u' _ step₁ deriv₁ sound₁, .step _ _ _ =>
+    apply ContextFreeDerivation.step
+    case u' =>
+      exact u' * u₂
+    case _derivation =>
+      apply ContextFreeDerivation.concat deriv₁ cfd₂
+    case step =>
+      exact step₁.augment_right u₂
+    case sound =>
+      have step_augmented_result : _ := step₁.augment_right_result u₂
+      simp [ContextFreeDerivationStep.result, Grammar.DerivationStep.result] at step_augmented_result
+      simp [Grammar.DerivationStep.result, step_augmented_result]
+      simp [Grammar.DerivationStep.result] at sound₁
+      rw [← sound₁]
 
 def ExhaustiveContextFreeDerivation.toDerivationTree
   {G : ContextFreeGrammar α nt} {u : Word (G.V ⊕ G.Z) } {v : Word (G.V ⊕ G.Z)}
@@ -2032,15 +2235,88 @@ def ExhaustiveContextFreeDerivation.toDerivationTree
   DerivationTree G :=
     ecfd.derivation.toDerivationTree ecfd.exhaustive ecfd.startsIn1
 
-def DerivationTree.toContextFreeDerivation
+def ExhaustiveContextFreeDerivation.fromProdRuleList
+  {G : ContextFreeGrammar α nt}
+  (startWord : Word (G.V ⊕ G.Z))
+  (endWord : Word (G.V ⊕ G.Z))
+  (prodRules : List G.productions) :
+  ExhaustiveContextFreeDerivation startWord endWord :=
+    sorry
+
+def DerivationTree.toExhaustiveContextFreeDerivation
   {G : ContextFreeGrammar α nt}
   [DecidableEq G.V]
   (DT : DerivationTree G) :
-  (@ContextFreeDerivation α nt G DT.fromAny (@Word.ZtoVZ _ _ _ _ G DT.result)) :=
+  (@ExhaustiveContextFreeDerivation α nt G DT.fromAny (@Word.ZtoVZ _ _ _ _ G DT.result)) :=
+    --ExhaustiveContextFreeDerivation.fromProdRuleList DT.fromAny (@Word.ZtoVZ _ _ _ _ G DT.result) DT.collect_prodRules
+    match h_constructor : DT.tree with
+    | .leaf tw =>
+      match tw with
+      | none =>
+        -- Epsilon: CFD hat das aber nicht als base case!
+        sorry
+      | some terminalSymbol =>
+        { derivation := .same (by
+            simp [result, PreDerivationTree.result, h_constructor]
+            simp [fromAny, h_constructor]
+            rfl),
+          exhaustive := (by
+            rw [ContextFreeDerivation.exhaustiveCondition]
+            rw [result]
+            rw [h_constructor]
+            rw [PreDerivationTree.result]
+            rw [Word.ZtoVZ]
+            intro symbol
+            intro symbol_mem
+            simp at symbol_mem
+            rw [List.mem_map] at symbol_mem
+            have any : ∀ (a : { x // x ∈ G.Z }),
+              a ∈ [terminalSymbol]
+              ∧ Sum.inr a = symbol → Sum.isRight symbol = true := by
+                intro a a_mem
+                cases a
+                rw [← a_mem.right]
+                simp
+            apply Exists.elim symbol_mem any),
+          startsIn1 := by
+            rw [ContextFreeDerivation.startsIn1Condition]
+            simp [fromAny, h_constructor]
+            tauto
+            }
+    | .inner v c r =>
+      let children := DT.children
+      --let children_derivations : List _ :=
+      -- List.map.{u, v} {α : Type u} {β : Type v} (f : α → β) (a✝ : List α) : List β
+        --@List.map (DerivationTree G) (ExhaustiveContextFreeDerivation _ _) (fun child => child.toExhaustiveContextFreeDerivation) children
+      let step : ContextFreeDerivationStep G DT.fromAny :=
+        -- result should be result of current rule
+        { prod := r,
+          pre := ε,
+          suf := ε,
+          sound := by
+            simp [fromAny, h_constructor]
+            have valid := DT.valid;
+            rw [h_constructor, PreDerivationTree.treeValid] at valid;
+            rw [valid.left]
+        }
+      -- Konstruiere mithilfe von CFD.concat plus Rekursion
+      -- die Ableitung
+      -- Problem: Typen passen nicht zusammen d.h. foldl nicht anwendbar
+      -- Außerdem: Reihenfolge der Kinder unpraktisch
+      let derivation : ContextFreeDerivation G step.result DT.result.ZtoVZ :=
+        --Order of children not guaranteed
+        sorry
+      { derivation :=
+          .step
+          step
+          derivation
+          (by simp [step, Grammar.DerivationStep.result, ContextFreeDerivationStep.result, ContextFreeProduction.toProduction])
+          ,
+        exhaustive := sorry,
+        startsIn1 := sorry}
 
-  sorry
 
---Henrik Tipps für geile Taktiken:
+-- Some advanced tactics to try out at some point:
 -- rcases
 --    matchexpression die gleichzeitig die Teile benennt
 -- obtain
@@ -2050,6 +2326,16 @@ def DerivationTree.toContextFreeDerivation
 --    intro iwas
 
 end ContextFreeGrammar
+
+--=============================================================
+-- Section: Pumping Lemma
+--=============================================================
+
+class ContextFreeLanguage (α : Type) {nt : Type} (language : Language α) where
+  language := language
+  generated := ∃ CFG : (ContextFreeGrammar α nt), CFG.GeneratedLanguage = language
+
+
 
 --=============================================================
 -- Section: Miscellaneous Theorems
