@@ -234,7 +234,7 @@ theorem DerivationStep.len_u_composition (step: DerivationStep G u) : u.len = st
   have sound : _ := step.sound
   simp at sound
   simp [Word.length_add_eq_mul, sound]
-  
+
 /--Inductive definition of derivations u (G)⇒* v in Grammars.
 
   Either no step was made (constructor:`same`, requires a proof that u = v), or
@@ -494,6 +494,42 @@ def Word.VZtoV {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) (h_all_V : ∀ sym
     exact Sum.getLeft symbol₃ h_all_V₂
   )
   (@List.attach (G.V ⊕ G.Z) word)
+
+/--Theorem: Word type conversion doesn't affect word length.-/
+theorem Word.VZtoV_len {G : Grammar Prod}
+  (word : Word (G.V ⊕ G.Z))
+  (h_all_V : ∀ symbol ∈ word, Sum.isLeft symbol) :
+  Word.len (word.VZtoV h_all_V) = Word.len word := by
+    induction word
+    case nil =>
+      simp [VZtoV]
+      rfl
+    case cons head tail ind_hyp =>
+      nth_rewrite 1 [Word.len]
+      have h_all_V₂ : ∀ symbol ∈ tail, Sum.isLeft symbol = true := by
+        exact And.right (List.forall_mem_cons.mp h_all_V)
+      rw [← ind_hyp h_all_V₂]
+      rw [VZtoV]
+      rw [← Word.list_length_eq_word_len]
+      simp [ind_hyp, ← Word.list_length_eq_word_len, Nat.succ_eq_add_one, Nat.add_comm]
+
+/--Theorem: Word type conversion doesn't affect word length.-/
+theorem Word.VZtoZ_len {G : Grammar Prod}
+  (word : Word (G.V ⊕ G.Z))
+  (h_all_Z : ∀ symbol ∈ word, Sum.isRight symbol) :
+  Word.len (word.VZtoZ h_all_Z) = Word.len word := by
+    induction word
+    case nil =>
+      simp [VZtoZ]
+      rfl
+    case cons head tail ind_hyp =>
+      nth_rewrite 1 [Word.len]
+      have h_all_Z₂ : ∀ symbol ∈ tail, Sum.isRight symbol = true := by
+        exact And.right (List.forall_mem_cons.mp h_all_Z)
+      rw [← ind_hyp h_all_Z₂]
+      rw [VZtoZ]
+      rw [← Word.list_length_eq_word_len]
+      simp [ind_hyp, ← Word.list_length_eq_word_len, Nat.succ_eq_add_one, Nat.add_comm]
 
 /--Collect the variables in this word.-/
 def Word.collectVars {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : List G.V :=
