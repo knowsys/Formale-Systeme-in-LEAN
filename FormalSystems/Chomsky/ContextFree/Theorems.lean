@@ -1,0 +1,234 @@
+import FormalSystems.Chomsky.Grammar
+import Mathlib.Data.Finset.Functor
+import Mathlib.Tactic.Tauto
+import FormalSystems.Chomsky.ContextFree.ContextFreeDerivation
+--import FormalSystems.Chomsky.ContextFree.Path
+
+--=============================================================
+-- Section: Pumping Lemma
+--=============================================================
+variable {α nt : Type} {Prod : Finset α → Finset nt → Type} [Production α nt Prod]
+
+def coerceWord {α} {Z : Finset α} (w : Word Z) : Word α := w.map (fun t => t.val)
+
+def coerceLang {α} {Z : Finset α} (l : Language Z) : Language α := fun word => ∃ w, w ∈ l ∧ (coerceWord w = word)
+
+instance {α : Type} {Z : Finset α} : CoeOut (Word Z) (Word α) where
+  coe word := @coerceWord α Z word
+
+theorem coerceLang_mem {α} {Z : Finset α} {w : Word Z} (l : Language Z) :  w ∈ l ↔ coerceWord w ∈ coerceLang l := by sorry
+theorem coerceLang_not_mem {α} {Z : Finset α} {w : Word Z} (l : Language Z) :  w ∉ l ↔ coerceWord w ∉ coerceLang l := by sorry
+
+theorem coerceLang_mem_imp_word_of_type : ∀ word : Word α, ∀ G : Grammar Prod, word ∈ coerceLang G.GeneratedLanguage → ∃ word₂ : Word G.Z, word₂ ∈ G.GeneratedLanguage ∧ coerceWord word₂ = word := by
+  sorry
+theorem coerceCFGLang_mem_imp_word_of_type : ∀ word : Word α, ∀ G : ContextFreeGrammar α nt, word ∈ coerceLang G.GeneratedLanguage → ∃ word₂ : Word G.Z, word₂ ∈ G.GeneratedLanguage ∧ coerceWord word₂ = word := by
+  sorry
+
+def Language.is_context_free (language : Language α) := ∃ (nt : _) (CFG : ContextFreeGrammar α nt), (coerceLang CFG.GeneratedLanguage) = language
+
+def ContextFreeLanguage := { l : Language α // l.is_context_free}
+
+def isInChomskyNormalForm (cfg : ContextFreeGrammar α nt) :=
+  ∀ production ∈ cfg.productions,
+  (∃ A B C : cfg.V, production = {lhs := A, rhs := Word.mk [Sum.inl B]* Word.mk [Sum.inl C]})
+  ∨ (∃ A : cfg.V, ∃ c : cfg.Z, production = {lhs := A, rhs := Word.mk [Sum.inr c]})
+
+def ContextFreeGrammarCNF := { l : ContextFreeGrammar α nt // isInChomskyNormalForm l}
+
+theorem deriv_length_monotone_CNF :
+  ∀ (cfg : @ContextFreeGrammarCNF α nt),
+  ∀ u v, (∃ (_ : (ContextFreeGrammar.ContextFreeDerivation cfg.1 u v)), True) →
+  u.len ≤ v.len := by
+    intro cfg
+    intro u v h_exists
+    apply @Exists.elim _ _ (Word.len u ≤ Word.len v) h_exists
+    intro deriv _
+    induction deriv
+    case same h_same =>
+      rw [h_same]
+    case step u u' v dstep deriv sound h_ind =>
+      have h_ind_applied :=
+        h_ind
+          (Exists.intro deriv (by tauto))
+      have h_step_len : Word.len u ≤ Word.len u' := by
+        simp [sound.symm, Grammar.DerivationStep.result]
+        simp [dstep.len_u_composition, Word.length_mul_eq_add]
+        have dstep_CNF := cfg.2 dstep.prod.1 dstep.prod.2
+        cases rule_form : dstep_CNF
+        case inl h_var_form =>
+          cases h_var_form
+          case intro A h_var_form =>
+            cases h_var_form
+            case intro B h_var_form =>
+              cases h_var_form
+              case intro C h_var_form =>
+                simp [h_var_form, ContextFreeProduction.toProduction, Production.rhs, Word.len]
+        case inr h_terminal_form =>
+          cases h_terminal_form
+          case intro A h_terminal_form =>
+            cases h_terminal_form
+            case intro c h_terminal_form =>
+              simp [h_terminal_form, ContextFreeProduction.toProduction, Production.rhs, Word.len]
+      apply Nat.le_trans h_step_len h_ind_applied
+
+theorem eps_not_in_CNF_Grammar {α nt : Type} :
+  ∀ grammar : @ContextFreeGrammarCNF α nt,
+  ε ∉ grammar.val.GeneratedLanguage := by
+    --intro cfg h_contra
+    intro cfg h_contra
+    unfold ContextFreeGrammar.GeneratedLanguage at h_contra
+    apply Nonempty.elim_to_inhabited at h_contra
+    apply h_contra
+    case f =>
+    --apply Inhabited.default
+      intro h_inhabited
+      have default_CFGCNF := h_inhabited.default
+      have monotone := deriv_length_monotone_CNF cfg _ _ (Exists.intro default_CFGCNF (by tauto))
+      nth_rewrite 2 [Word.eps_len_0.mpr] at monotone
+      have start_len_1 : Word.len [@Sum.inl cfg.1.V cfg.1.Z cfg.1.start] = 1 := by tauto
+      rw [start_len_1] at monotone
+      rw [Nat.le_zero_eq 1] at monotone
+      tauto
+      rfl
+
+theorem equivalent_CNF_Grammar :
+  ∀ α nt nt₂,
+  ∀ cfg : {cfg : ContextFreeGrammar α nt | ε ∉ cfg.GeneratedLanguage},
+  ∃ cfg₂ : { cfg₂ : ContextFreeGrammar α nt₂ // isInChomskyNormalForm cfg₂},
+    coerceLang cfg.val.GeneratedLanguage
+    =
+    coerceLang cfg₂.val.GeneratedLanguage := by
+      sorry
+
+def generate_equivalent_CNF
+  (cfg : {cfg : ContextFreeGrammar α nt // ε ∉ cfg.GeneratedLanguage})
+  : { cfg₂ : ContextFreeGrammar α nt₂ // isInChomskyNormalForm cfg₂} := sorry
+
+def generate_equivalent_CNF_is_eq :
+  ∀ α nt nt₂ : Type,
+  ∀ (cfg : {cfg : ContextFreeGrammar α nt // ε ∉ cfg.GeneratedLanguage}),
+   @coerceLang α _ cfg.val.GeneratedLanguage
+  = @coerceLang α
+    ((Subtype.val (@generate_equivalent_CNF α nt nt₂ cfg)).Z) (generate_equivalent_CNF cfg).val.GeneratedLanguage := sorry
+
+
+theorem CNF_derivation_lengths {α nt : Type}:
+  ∀ cfgCNF : @ContextFreeGrammarCNF α nt, ∀ word : Word cfgCNF.val.Z,
+  (word ∈ cfgCNF.val.GeneratedLanguage →
+  (∀ derivation : (ContextFreeGrammar.ContextFreeDerivation cfgCNF.val (Word.mk [Sum.inl cfgCNF.val.start]) word.ZtoVZ),
+  (2 * word.len) - 1 = derivation.length)) := by sorry
+
+theorem derivation_result_is_leaf_count : ∀ dt : ContextFreeGrammar.DerivationTree G, Word.len dt.result = List.length dt.collectLeaves := by
+  sorry
+
+theorem derivation_path_length : ∀ n : ℕ, ∀ cfg_CNF : ContextFreeGrammarCNF,
+  ∀ dt : (ContextFreeGrammar.DerivationTree cfg_CNF.1),
+  dt.collectLeaves.length = n → ∃ path : ContextFreeGrammar.ExhaustiveContextFreeDerivation [Sum.inl cfg_CNF.1.start] (@Word.ZtoVZ α nt _ _ cfg_CNF.1 dt.result), path.derivation.length ≥ Nat.log2 n := by
+  sorry
+
+def PumpingLemma :
+  ∀ language : ContextFreeLanguage, ∃ n : ℕ,
+  ∀ z : {z ∈ language.val | z.len ≥ n},
+  ∃ u v w x y : Word α, z.val = u * v * w * x * y ∧ Word.len (v * x) ≥ 1 ∧ Word.len (v * w * x) ≤ n
+  ∧ (∀ k : ℕ, u * (v^k) * w * (x^k) * y ∈ language.val) := by
+    intro language
+    by_cases ε ∈ language.1
+    case pos =>
+      --Ignoriere den Fall ε ∈ L
+      sorry
+    case neg h_eps_not_in_language =>
+      -- Forme um: Sprache ist kontextfrei
+      have property := language.2
+      simp [Language.is_context_free] at property
+      cases property
+      case intro nt property =>
+        cases property
+        -- Dann haben wir eine kontextfreie Grammatik cfg,
+        -- welche genau die Sprache akzeptiert.
+        case intro cfg h_cfg_gen_is_lang =>
+          -- Ohne Beschränkung der Allgemeinheit, sei diese
+          -- Grammatik in Chomsky-Normalform.
+          -- Man bemerke hier, dass nt₂ mit sorry generiert werden muss,
+          -- obwohl wir auf diesem Abstraktionslevel definitiv nicht darüber
+          -- nachdenken wollen!
+
+          -- Generiere die äquivalente Grammatik in CNF
+          have nt₂ : Type := sorry
+          have h_eps_not_gen : ε ∉ ContextFreeGrammar.GeneratedLanguage cfg := by
+            rw [h_cfg_gen_is_lang.symm] at h_eps_not_in_language
+            have eps_coe : @Word.epsilon α = coerceWord (@Word.epsilon cfg.Z) := by tauto
+            rw [eps_coe, ← coerceLang_not_mem] at h_eps_not_in_language
+            exact h_eps_not_in_language
+          -- und beweise die Äquivalenz
+          let cfg_CNF := @generate_equivalent_CNF α nt nt₂ ⟨ cfg , h_eps_not_gen⟩
+          have h_cfg_CNF_gen_is_lang : coerceLang (cfg.GeneratedLanguage) = coerceLang (cfg_CNF.1.GeneratedLanguage) := by
+            apply generate_equivalent_CNF_is_eq _ _ _ ⟨ cfg, h_eps_not_gen ⟩
+
+          -- Wähle n wie folgt:
+          exists 2^cfg_CNF.val.V.card
+          -- Führe z sowie die Eigenschaften von z ein
+          intro z
+          have z_mem := z.prop
+          simp at z_mem
+          -- Benenne z's Eigenschaften sinnvoll
+          have z_exists_deriv := z_mem.left
+          simp [h_cfg_gen_is_lang.symm, h_cfg_CNF_gen_is_lang] at z_exists_deriv
+          -- Man ist gezwungen z₂ vom Typ Word G.Z einzuführen
+          apply coerceCFGLang_mem_imp_word_of_type z.val cfg_CNF.1 at z_exists_deriv
+          cases z_exists_deriv
+          case intro z₂ z₂_mem
+          -- Benenne z₂'s Eigenschaften sinnvoll
+          have z_eq_z₂ := z₂_mem.right
+          have z₂_mem := z₂_mem.left
+          -- Erlange die Existenz einer Ableitung nach z₂ in cfg
+          unfold ContextFreeGrammar.GeneratedLanguage at z₂_mem
+          apply Nonempty.elim_to_inhabited at z₂_mem
+          apply z₂_mem
+          case f =>
+          intro h_exists_deriv_z₂
+          -- Die Ableitung von z₂ in cfg_CNF
+          let default_deriv_z₂ := h_exists_deriv_z₂.default
+          let proof_exhaustive : ContextFreeGrammar.ContextFreeDerivation.exhaustiveCondition default_deriv_z₂ := (by
+            unfold ContextFreeGrammar.ContextFreeDerivation.exhaustiveCondition
+            intro symbol symbol_mem
+            simp at symbol_mem
+            rw [List.mem_map] at symbol_mem
+            cases symbol_mem
+            case intro symbol₂ symbol₂_mem =>
+            rw [symbol₂_mem.right.symm]
+            tauto)
+          let default_derivTree_z₂ := (default_deriv_z₂.toDerivationTree (proof_exhaustive) (by tauto))
+          let defaultDerivTree_z₂_respects_result :=
+            ContextFreeGrammar.ContextFreeDerivation.toDerivationTree_respects_result default_deriv_z₂ proof_exhaustive (by tauto)
+          let _ : DecidableEq { x // x ∈ cfg_CNF.val.V } := sorry
+          let defaultDerivTree_z₂_respects_start :=
+            ContextFreeGrammar.ContextFreeDerivation.toDerivationTree_respects_start default_deriv_z₂ cfg_CNF.val.start rfl (by tauto) (by tauto) (by tauto)
+
+          -- Word.len (v * x) ≥ 1, da die Ursprungsvariable A,
+          -- welche wir mit der Schleife erreichen, aufgrund von
+          -- CNF genau zwei Kinder hat. Eins der Kinder wird die Schleife,
+          -- das andere Kind landet in dem Vorgänger von v oder in dem von x.
+          -- (Dann wende Monotonie der Ableitungsterme für CNF an.)
+
+          -- Schritte:
+          -- 1) Ableitungsbaum für z hat Word.len z Blätter
+          have lemma_deriv_leaf_count := derivation_result_is_leaf_count (default_derivTree_z₂)
+
+          -- 2) Ein Binärbaum mit Word.len z Blättern muss Pfade der Länge
+          -- ≥ log₂ Word.len z enthalten
+          have lemma_deriv_log := @derivation_path_length α nt₂ z₂.len cfg_CNF default_derivTree_z₂ lemma_deriv_leaf_count.symm
+
+          -- 3) Jeder Pfad der Länge ≥ Z.card muss mindestens eine Variable doppelt
+          -- enthalten
+
+          -- Konsequenz: Wenn Word.len z ≥ 2^Z.card dann gibt es einen Pfad, in dem
+          -- eine Variable doppelt vorkommt
+
+          -- Word.len (v * w * x) ≤ n
+          --Ein Binärbaum der Tiefe ℓ hat maximal 2ℓ Blätter
+          --• Wir können annehmen, dass das obere doppelte Vorkommen der gewählten
+          --Variable maximal |V| Schritte von der vorletzten Ebene (d.h. der letzten im inneren
+          --Binärbaum) entfernt ist
+          --• Also kann der Baum unterhalb dieses Vorkommens maximal 2|V| = n Blätter haben
+          --(dies sind die Symbole in vwx)
+          sorry
