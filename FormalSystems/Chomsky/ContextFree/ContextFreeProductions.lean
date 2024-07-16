@@ -1,9 +1,12 @@
 import FormalSystems.Chomsky.Grammar
 import Mathlib.Data.Finset.Functor
 import Mathlib.Tactic.Tauto
---=============================================================
--- Section: Context Free Productions
---=============================================================
+
+--================================================================================
+-- File: ContextFreeProduction
+/-  Containts ContextFree Production definition.
+-/
+--================================================================================
 
 /--Structure: A context free production over a set of terminal symbols Z and non-terminal symbols V
   has a single variable as its left-hand side (`lhs`) and any string as its right-hand side (`rhs`).-/
@@ -52,7 +55,7 @@ def ContextFreeProduction.isEps (cfp : (ContextFreeProduction Z V)) : Prop :=
   cfp.rhs = Word.epsilon
 
 /--Coercion (upcast) of context free productions into generic productions.
-  Changes necessary: Inserting the single variable into a "string" (actually list).-/
+  Changes necessary: Inserting the single variable into a word a.k.a. list.-/
 instance : Coe (ContextFreeProduction Z V) (GenericProduction Z V) where
   coe p := {
     lhs := [.inl p.lhs],
@@ -78,7 +81,7 @@ instance : Production α nt ContextFreeProduction :=
 /--Class: The class of context free productions is such, that they are a subclass of productions (the class)
   with two new attributes:
 
-  - `lhs_var` - The variable on the left-hand side of the production rule (possibly a function???)
+  - `lhs_var` - A function that returns the variable on the left-hand side of the production rule
 
   - `lhs_eq_lhs`  - A lemma that tells us, that the left-hand side of a production (`lhs`)
       is the left-hand side variable (`lhs_vr`) (in string form).-/

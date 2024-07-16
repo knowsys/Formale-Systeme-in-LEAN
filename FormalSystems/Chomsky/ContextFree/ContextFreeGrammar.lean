@@ -1,11 +1,15 @@
 import FormalSystems.Chomsky.Grammar
 import Mathlib.Data.Finset.Functor
 import Mathlib.Tactic.Tauto
+
 import FormalSystems.Chomsky.ContextFree.ContextFreeProductions
 
---=============================================================
--- Section: Context Free Grammar and Step
---=============================================================
+--================================================================================
+-- File: ContextFreeGrammar
+/-  Defines contex-free grammars, derivation steps and lots
+    of concatenation theorems.
+-/
+--================================================================================
 
 /--Define Context Free Grammars to have context free production rules.-/
 def ContextFreeGrammar (α nt: Type) := @Grammar α nt (ContextFreeProduction) _
@@ -38,7 +42,8 @@ structure ContextFreeDerivationStep (G : ContextFreeGrammar α nt) (u: Word (G.V
   suf: Word (G.V ⊕ G.Z)
   /--A proof that the production rules are applicable to the variable
   that is encased in the left side of the derivation step, and of the inclusion
-  of this variable.-/
+  of this variable. When used in a proof, use "simp" at this hypothesis
+  to yield a more readable form.-/
   sound:
     have x : G.V := ContextFreeProduction.lhs prod.val -- need to ensure correct alphabet : Z+V
     have x_as_word : (Word (G.V ⊕ G.Z)) := [.inl ↑(x)]
@@ -123,7 +128,7 @@ theorem ContextFreeDerivationStep.augment_right_result (step: ContextFreeDerivat
   unfold augment_right
   simp [mul_assoc]
 
-/-Theorem: The origin for a derivation steps length is the addition of the lengths of the prefix, variable and sufix.-/
+/-Theorem: The origin for a derivation step's length is the addition of the lengths of the prefix, variable and sufix.-/
 theorem ContextFreeDerivationStep.len_u_composition (step: ContextFreeDerivationStep G u) : u.len = step.pre.len + (Word.mk [@Sum.inl G.V G.Z step.prod.val.lhs]).len + step.suf.len := by
   have sound : _ := step.sound
   simp at sound
@@ -156,13 +161,7 @@ theorem ContextFreeDerivationStep.len_result_composition (step : ContextFreeDeri
   simp [Word.length_add_eq_mul, sound, ContextFreeDerivationStep.result, Grammar.DerivationStep.result]
   rfl
 
-
---=============================================================
--- Section: Miscellaneous Theorems
---=============================================================
-
 variable [i: Production.ContextFree α nt P] { G: Grammar P}
-
 
 /--Theorem: Derivation steps in context free grammars that start in the string
   lhs, with lhs = a :: xs, where a is a terminal symbol,
@@ -218,6 +217,9 @@ theorem derivation_preserves_prefix
     let h_lhs' := r.symm
     exact ContextFreeGrammar.derivation_preserves_prefix d h_lhs' h_rhs
 
+end ContextFreeGrammar
+variable [i: Production.ContextFree α nt P] { G: Grammar P}
+
 /--Given a word derivation step
 
   a::xs (G)=> w,
@@ -250,8 +252,6 @@ def Grammar.DerivationStep.cancelLeft
     rw [ContextFreeGrammar.derivation_step_prefix d h_lhs]
     simp
 
-
-
 /--Given a derivation a::xs (G)=>* w,
   construct a derivation xs (G)=>* w-/
 def Grammar.Derivation.cancelLeft
@@ -268,11 +268,11 @@ def Grammar.Derivation.cancelLeft
     rw [List.cons_eq_cons] at h_rhs
     simp [h_rhs.2]
   | .step s d r =>
-    let ⟨s', r'⟩ := ContextFreeGrammar.Grammar.DerivationStep.cancelLeft s h_lhs
+    let ⟨s', r'⟩ := Grammar.DerivationStep.cancelLeft s h_lhs
     rw [r] at r'
     apply Grammar.Derivation.step (u' := s'.result)
     swap; rfl
-    apply (ContextFreeGrammar.Grammar.Derivation.cancelLeft d)
+    apply (Grammar.Derivation.cancelLeft d)
     rw [r', <-r]
     simp [Grammar.DerivationStep.result, HMul.hMul, Mul.mul]
     rw [ContextFreeGrammar.derivation_step_prefix s _]
@@ -295,7 +295,7 @@ theorem Grammar.Derivation.cancelLeft_len_same
   and the derivation xs (G)=>* w.tail have the same length.-/
 theorem Grammar.Derivation.cancelLeft_len
   (d: G.Derivation lhs rhs):
-  (ContextFreeGrammar.Grammar.Derivation.cancelLeft d h_lhs h_rhs).len = d.len := by
+  (Grammar.Derivation.cancelLeft d h_lhs h_rhs).len = d.len := by
   match d with
   | .same _ => simp [Grammar.Derivation.len]
   | .step _ _ _ =>
