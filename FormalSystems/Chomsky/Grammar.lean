@@ -2,6 +2,13 @@ import Mathlib.Data.Finset.Basic
 import Mathlib.Algebra.Group.Defs
 
 import FormalSystems.Preliminaries.Language
+--================================================================================
+-- File: Grammar
+/-  Containts generic Production Rules, derivation steps, derivations
+    Grammars, as well as some word functions / theorems specific to
+    words from a grammar's symbols.
+-/
+--================================================================================
 
 --  Denote commonly used implicit typed variable names:
 --  α   - An alphabet+, the type of symbols (terminal and? non-terminal symbols).
@@ -56,6 +63,8 @@ structure GenericProduction (Z: Finset α) (V: Finset nt) where
 
 /--Production is an instance of Generic Production.-/
 instance : Production α nt GenericProduction where
+  -- the · notation causes this to become a function, where
+  -- · is automatically infered as the parameter
   lhs := (·.lhs)
   rhs := (·.rhs)
   lhs_contains_var := (·.lhs_contains_var)
@@ -91,7 +100,12 @@ instance [DecidableEq (Z: Finset α)] [DecidableEq (V: Finset nt)] : DecidableEq
 
   - start - a start symbol from the set of variables
 
-  - productions - a finite set of production rules (type Production)-/
+  - productions - a finite set of production rules (type Production)
+
+  TODO: Note, that nt is part of the input type. This forces us to supply nt as a type-parameter
+  in all future code, even when this is non-sensical (see for example the
+  context-free PumpingLemma). nt should be refactored as a purely internal type,
+  e.g. with Z being a Fintype.-/
 structure Grammar (Prod: Finset α → Finset nt → Type) [Production α nt Prod] where
   /--A finite set of terminal symbols-/
   Z: Finset α
@@ -114,7 +128,11 @@ variable { Prod: Finset α → Finset nt → Type } [Production α nt Prod]
 
   - `sound` - Show the soundness of a derivation step by proving
   the equality`u = pre * x * suf`and showing that x appears on the left side of the
-  production rule`prod`.-/
+  production rule`prod`.
+
+  TODO: Note, that the input word is part of the type. This may cause issues
+  when concatenating multiple derivation steps and the return type
+  is not known beforehand.-/
 structure DerivationStep (G: Grammar Prod) (u: Word (G.V ⊕ G.Z)) where
   /--The set grammars productions applied in this derivation step.-/
   prod: G.productions
@@ -124,7 +142,8 @@ structure DerivationStep (G: Grammar Prod) (u: Word (G.V ⊕ G.Z)) where
   suf: Word (G.V ⊕ G.Z)
   /--A proof that the production rules are applicable to the variable
   that is encased in the left side of the derivation step, and of the inclusion
-  of this variable.-/
+  of this variable. Remove the "have" terms when this is a hypothesis, by
+  applying the simp tactic to the "sound"-hypothesis.-/
   sound:
     have x := Production.lhs prod.val
     u = pre * x * suf
@@ -230,7 +249,9 @@ theorem DerivationStep.lhs_singleton (step: DerivationStep G [.inl v]) :
       . constructor; rfl; exact tmp.right
 
 /-Theorem: The origin for a derivation steps length is the addition of the lengths of the prefix, variable and sufix.-/
-theorem DerivationStep.len_u_composition (step: DerivationStep G u) : u.len = step.pre.len + Word.len (Production.lhs step.prod.val) + step.suf.len := by
+theorem DerivationStep.len_u_composition (step: DerivationStep G u) :
+  u.len =
+    step.pre.len + Word.len (Production.lhs step.prod.val) + step.suf.len := by
   have sound : _ := step.sound
   simp at sound
   simp [Word.length_add_eq_mul, sound]
@@ -238,7 +259,12 @@ theorem DerivationStep.len_u_composition (step: DerivationStep G u) : u.len = st
 /--Inductive definition of derivations u (G)⇒* v in Grammars.
 
   Either no step was made (constructor:`same`, requires a proof that u = v), or
-  we have a recursive definition with at least one step (constructor `step`).-/
+  we have a recursive definition with at least one step (constructor `step`).
+
+  TODO: Note, that the output string is part of the type-line. This means we
+  cannot concatenate derivations indefinetly, where the resulting word
+  is not known at compile time. See file: ContextFreeDerivation.lean
+  function: toExhaustiveContextFreeDerivation-/
 inductive Derivation (G: Grammar Prod) : Word (G.V ⊕ G.Z) → Word (G.V ⊕ G.Z) → Type
 /--A 0 step derivation. On proof of u=v, return a 0-step derivation from u to v.-/
 | same {u v: Word (G.V ⊕ G.Z)} (h: u = v) : G.Derivation u v
@@ -265,7 +291,7 @@ instance : DerivationCls G (G.Derivation a b) where
   result := b
 
 /-- u (G)⇒* v -notation for derivations. Is the proposition that there
-  exists a derivation (∃) from u to v in G.-/
+  exists a derivation (∃) from u to v in G. Eliminate with the tactic "cases <h_derivation>".-/
 notation:40 u:40 " (" G:40 ")⇒* " v:41 => (Nonempty $ Derivation G u v)
 
 /--The length of a derivation (∈ ℕ).
@@ -316,7 +342,6 @@ theorem augment_right {u v: Word (G.V ⊕ G.Z)} (d: G.Derivation u v) :
     swap
     . exact s.augment_right w
     rw [<- sound]; exact s.augment_right_result _
-
 
 /--Return a derivation where we have added a new prefix-symbol`w`to the right sides of in-
   and output of the input derivation.-/
@@ -447,41 +472,22 @@ variable { Prod : Finset α → Finset nt → Type } [Production α nt Prod]
 /--Convert this word to a V or Z word.-/
 def Word.VtoVZ {G : Grammar Prod} (word : Word G.V) : Word (G.V ⊕ G.Z) :=
   List.map (fun var : { x // x ∈ G.V } => Sum.inl var) word
+
 /--Convert this word to a V or Z word.-/
 def Word.ZtoVZ {G : Grammar Prod} (word : Word G.Z) : Word (G.V ⊕ G.Z) :=
   List.map (fun terminal : { x // x ∈ G.Z } => Sum.inr terminal) word
+
 /--Convert this word to a Z word. Precondition requires all the word's symbols to be in Z (this aligns with ContextFreeDerivation.exhaustive).-/
 def Word.VZtoZ {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) (h_all_Z : ∀ symbol ∈ word, Sum.isRight symbol): Word (G.Z) :=
-  --have h_same : ∀ x : { x // x ∈ word }, @Sum.isRight G.V G.Z x ∨ @Sum.isLeft G.V G.Z x := by
-    --simp
-  --have h : { a // Sum.isRight a = true } ≃ { a // a ∈ word } := (@Equiv.subtypeEquivProp (G.V ⊕ G.Z) (fun a => Sum.isRight a) (fun a => a ∈ word) (_) )
-  -- {a // a ∈ G.Z} ≃ { a // Sum.isRight a = true }
-  --have h₂ : {a // a ∈ G.Z} ≃ { a // Sum.isRight a = true } :=
-  --  @Equiv.subtypeEquivProp (G.Z) (fun a => @Membership.mem (G.Z) (Finset α) Finset.instMembershipFinset a α) (fun a => (@Sum.isRight G.V G.Z (Sum.inr a))) _
-  --have h₃ : { a ∈ word | (a) ∈ (G.V ⊕ G.Z) } ≃ { a ∈ word | true } := _
-  --have h₄ : {x : α // x ∈ G.Z} ≃ { x // Sum.isRight x = true } :=
-    --(@Equiv.subtypeEquivProp (_) (fun a => a ∈ G.Z) (fun a => Sum.isRight a = true) (_) )
-  -- @Grammar.Z α nt Prod inst✝ G : Finset α
-  --by apply Equiv.subtypeEquiv
   @List.map
-      { x : (G.V ⊕ G.Z) // x ∈ word }
-      G.Z
+    { x : (G.V ⊕ G.Z) // x ∈ word }
+    G.Z
     (fun symbol : { x // x ∈ word } => by
-    -- let sym : _ := @Subtype.coe_eta α (fun x => x ∈ G.Z) ↑symbol
-    --have h_type : _ := h_all_Z symbol symbol.2
-    --let symbol₂ := h.invFun symbol
-    let symbol₃ : (G.V ⊕ G.Z) := ↑symbol
-    have h_all_Z₂ := h_all_Z symbol₃ (symbol.2)
-    exact Sum.getRight symbol₃ h_all_Z₂
-    -- exact h₄.invFun symbol₂
-    --h.invFun symbol
-    /- ⟨ by
-      apply h.invFun at symbol
-      sorry
-    , _⟩ -/
-  /-( (h₂.invFun symbol))-/
-  )
-  (@List.attach (G.V ⊕ G.Z) word)
+      let symbol₃ : (G.V ⊕ G.Z) := ↑symbol
+      have h_all_Z₂ := h_all_Z symbol₃ (symbol.2)
+      exact Sum.getRight symbol₃ h_all_Z₂
+    )
+    (@List.attach (G.V ⊕ G.Z) word) -- add Membership-Prop information
 
 /--Convert this word to a V word. Precondition requires all the word's symbols to be in V.-/
 def Word.VZtoV {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) (h_all_V : ∀ symbol ∈ word, Sum.isLeft symbol): Word (G.V) :=
@@ -531,6 +537,37 @@ theorem Word.VZtoZ_len {G : Grammar Prod}
       rw [← Word.list_length_eq_word_len]
       simp [ind_hyp, ← Word.list_length_eq_word_len, Nat.succ_eq_add_one, Nat.add_comm]
 
+/--Theorem: Mapping Sum.inr to a word does not change its length.-/
+theorem Word.len_cancel_inr
+  {G : Grammar Prod}
+  (word : Word (G.Z)) :
+  Word.len ((@Sum.inr G.V G.Z <$> word)) = word.len := by
+    induction word
+    case nil =>
+      tauto
+    case cons head tail ind_hyp =>
+      simp [Word.len]
+      exact ind_hyp
+
+/--Theorem: Word.VZtoZ type conversion does not change its length.-/
+theorem Word.VZtoZ_cancel_inr {G : Grammar Prod}
+  (word : Word (G.Z)) (h_all_Z : ∀ symbol ∈ (@Sum.inr G.V G.Z <$> word), Sum.isRight symbol) :
+  (Word.VZtoZ (@Sum.inr G.V G.Z <$> word) h_all_Z) = word := by
+    induction word
+    case nil =>
+      tauto
+    case cons a word₂ ind_hyp =>
+      have h_all_Z₂ : ∀ symbol ∈ Sum.inr <$> word₂, Sum.isRight symbol = true := by tauto
+      have asny := ind_hyp h_all_Z₂
+      have asfdy := asny.symm
+      /-
+      simp [VZtoZ, List.map]
+      have bs : word₂ = (↑((VZtoZ (Sum.inr <$> word₂) h_all_Z₂) : List _) : List _) := by tauto
+      -- Cannot currently rewrite using the above, because word₂ has type List ...
+      -- while the right side of the equation has type Word ...
+      -/
+      sorry
+
 /--Collect the variables in this word.-/
 def Word.collectVars {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : List G.V :=
   List.foldl
@@ -548,10 +585,10 @@ def Word.countVars {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : ℕ :=
 /- /--Collect the variables in this word and their indexes.-/
 def Word.collectVarsWithIndexes {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : List (G.V × ℕ) :=
   List.foldl
-  (fun before : (List G.V) =>
+  (fun before : (List (G.V × ℕ)) =>
       fun symbol =>
         match (symbol : (G.V ⊕ G.Z)) with
-        | Sum.inl var => before ++ [var]
+        | Sum.inl var => before ++ [⟨var, ???⟩]
         | Sum.inr _ => before)
   [] word -/
 
@@ -569,7 +606,7 @@ def Word.collectTerminals {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : List 
 def Word.countTerminals {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : ℕ :=
   word.collectTerminals.length
 
-/--Return wether a word is all Z (terminal symbols).-/
+/--Return wether a word is all Z (terminal symbols) as a Bool.-/
 def Word.isAllZ {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : Bool :=
   match word with
   | .nil =>
@@ -580,7 +617,7 @@ def Word.isAllZ {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : Bool :=
       Word.isAllZ (word₂ : Word (G.V ⊕ G.Z)))
     (fun _ => False)
 
-/--Return wether a word is all Z (terminal symbols).-/
+/--Decide wether a word is all Z (terminal symbols).-/
 def Word.decideIsAllZ {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : Decidable (∀ symbol ∈ word, Sum.isRight symbol) :=
   match h_constructor : word with
   | .nil =>
@@ -614,7 +651,7 @@ def Word.decideIsAllZ {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : Decidable
       exists symbol
       tauto))
 
-/--Return wether a word is all V (non-terminal symbols).-/
+/--Return wether a word is all V (non-terminal symbols) as a Bool.-/
 def Word.isAllV {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : Bool :=
   match word with
   | .nil =>

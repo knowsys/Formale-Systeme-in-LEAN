@@ -3,6 +3,12 @@ import Mathlib.Data.List.Basic
 import Mathlib.Data.Nat.ModEq
 
 import FormalSystems.Preliminaries.Alphabet
+--================================================================================
+-- File: Word
+/-  Containts Word definition, ε, Word.len, Word.concat and multiple
+    Word related theorems.
+-/
+--================================================================================
 
 /--A Word, input for automatons. Depends on an Alphabet α.
   Based on the Type List.-/
@@ -141,7 +147,13 @@ theorem Word.mul_eq_append {w v : Word α}: w * v = List.append w v := by exact 
 theorem Word.mul_eq_eps { w v : Word α } : w * v = ε ↔ w = ε ∧ v = ε :=
   List.append_eq_nil
 
-/--Return the length of a word.-/
+/--Return the length of a word.
+    TODO: Note, that all usage of Word.len could probably
+    have been done with List.length, since coercion between
+    the two types is trivial. This would have saved us from
+    proving all the theorems below, as they have mostly
+    been proven for List.length. Maybe replace this definition
+    with List.length in the future.-/
 def Word.len: (w:Word α) → Nat
   | [] => 0
   | (_::xs) => 1 + Word.len (xs)
@@ -328,23 +340,17 @@ def Word.concat2ListsOfWordsAlternating (A : List (Word X)) (B : List (Word X)) 
 
 -- This section illustrates how we can define and use alphabets.
 
-/--Define a finite set of symbols to use in the alphabet.-/
+/--Define a finite set of symbols.-/
 def alphabetSymbolList : Finset Char := List.toFinset ['a','b','c','1','2','3','4']
---Defining the type of alphabets over this set of symbols is not necessary
---def anAlphabetType : Type := Alphabet alphabetSymbolList
 /--Defining an Alphabet is not neccessary and is basically
   just proving, that the alphabet is finite, denumerable and
   non-empty. Because Alphabet is defined as a class, anything that
-  is finite, denumerable and non-empty is automatically converted
-  into an alphabet.-/
-/- def anAlphabet : Alphabet alphabetSymbolList := @Alphabet.mk
-  alphabetSymbolList
-  (FinDenumerable.mk ( by --proof that the symbol list is finite and denum.
-    --encode_lt_card : ∀ {card : ℕ} (a : α), Encodable.encode a < card)
-    sorry
-  ))  Inhabited.mk (sorry) -/
+  is finite, denumerable and non-empty is automatically considered
+  an alphabet.-/
+
 def abcList : List (Word alphabetSymbolList) := [Word.mk [⟨ 'a' , by decide
   ⟩] , Word.mk [⟨ 'b' , by decide ⟩], Word.mk [⟨ 'c', by decide⟩ ]]
 def numberList : List (Word alphabetSymbolList) := [Word.mk [⟨'1', by decide⟩], Word.mk [⟨'2', by decide⟩], Word.mk [⟨'3', by decide⟩], Word.mk [⟨'4', by decide⟩]]
-#eval (Word.concat2ListsOfWordsAlternating abcList numberList (by decide) (by decide))
-#eval Word.mk ['a'] * Word.mk ['d'] * Word.mk ['D','d']
+
+--#eval (Word.concat2ListsOfWordsAlternating abcList numberList (by decide) (by decide))
+--#eval Word.mk ['a'] * Word.mk ['d'] * Word.mk ['D','d']

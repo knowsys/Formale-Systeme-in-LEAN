@@ -1,40 +1,84 @@
 import FormalSystems.Chomsky.Grammar
 import Mathlib.Data.Finset.Functor
 import Mathlib.Tactic.Tauto
-import FormalSystems.Chomsky.ContextFree.ContextFreeDerivation
---import FormalSystems.Chomsky.ContextFree.Path
 
---=============================================================
--- Section: Pumping Lemma
---=============================================================
+import FormalSystems.Chomsky.ContextFree.ContextFreeDerivation
+--================================================================================
+-- File: Theorems
+/-  Containts multiple theorems leading up to the Pumping Lemma for context-free
+    languages, includes definitions of context-free languages, chomsky normal form.
+-/
+--================================================================================
+
 variable {α nt : Type} {Prod : Finset α → Finset nt → Type} [Production α nt Prod]
 
+/--Coerce a word from a grammars terminal symbol type (a.k.a. finset) into
+  that finsets supertype.-/
 def coerceWord {α} {Z : Finset α} (w : Word Z) : Word α := w.map (fun t => t.val)
 
+/--Coerce a language from a grammars terminal symbol type (a.k.a. finset) into
+  that finsets supertype.-/
 def coerceLang {α} {Z : Finset α} (l : Language Z) : Language α := fun word => ∃ w, w ∈ l ∧ (coerceWord w = word)
 
 instance {α : Type} {Z : Finset α} : CoeOut (Word Z) (Word α) where
   coe word := @coerceWord α Z word
 
-theorem coerceLang_mem {α} {Z : Finset α} {w : Word Z} (l : Language Z) :  w ∈ l ↔ coerceWord w ∈ coerceLang l := by sorry
-theorem coerceLang_not_mem {α} {Z : Finset α} {w : Word Z} (l : Language Z) :  w ∉ l ↔ coerceWord w ∉ coerceLang l := by sorry
+instance {α : Type} {Z : Finset α} : CoeOut (Language Z) (Language α) where
+  coe lang := @coerceLang α Z lang
 
-theorem coerceLang_mem_imp_word_of_type : ∀ word : Word α, ∀ G : Grammar Prod, word ∈ coerceLang G.GeneratedLanguage → ∃ word₂ : Word G.Z, word₂ ∈ G.GeneratedLanguage ∧ coerceWord word₂ = word := by
+/--Theorem: coerceWord and coerceLang respect the language membership relation.-/
+theorem coerceLang_mem {α} {Z : Finset α} {w : Word Z} (l : Language Z) :
+  w ∈ l ↔ coerceWord w ∈ coerceLang l := by sorry
+/--Theorem: coerceWord and coerceLang respect the language membership relation.-/
+theorem coerceLang_not_mem {α} {Z : Finset α} {w : Word Z} (l : Language Z) :
+  w ∉ l ↔ coerceWord w ∉ coerceLang l := by sorry
+
+/--Theorem: All words over a type of terminal symbols that are in a coerced
+  version of a grammar's generated language have a corresponding word in the generated
+  language that is of the type of the grammar's terminal symbol finset.-/
+theorem coerceLang_mem_imp_word_of_type :
+  ∀ word : Word α, ∀ G : Grammar Prod,
+  word ∈ coerceLang G.GeneratedLanguage
+  →
+  ∃ word₂ : Word G.Z, word₂ ∈ G.GeneratedLanguage ∧ coerceWord word₂ = word := by
+    sorry
+
+/--Theorem: All words over a type of terminal symbols that are in a coerced
+  version of a context-free grammar's generated language have a corresponding word in the generated
+  language that is of the type of the context-free grammar's terminal symbol finset.-/
+theorem coerceCFGLang_mem_imp_word_of_type :
+  ∀ word : Word α, ∀ G : ContextFreeGrammar α nt,
+  word ∈ coerceLang G.GeneratedLanguage
+  →
+  ∃ word₂ : Word G.Z, word₂ ∈ G.GeneratedLanguage ∧ coerceWord word₂ = word := by
   sorry
-theorem coerceCFGLang_mem_imp_word_of_type : ∀ word : Word α, ∀ G : ContextFreeGrammar α nt, word ∈ coerceLang G.GeneratedLanguage → ∃ word₂ : Word G.Z, word₂ ∈ G.GeneratedLanguage ∧ coerceWord word₂ = word := by
-  sorry
 
-def Language.is_context_free (language : Language α) := ∃ (nt : _) (CFG : ContextFreeGrammar α nt), (coerceLang CFG.GeneratedLanguage) = language
+/--A language is context-free if it has a context-free grammar that produces it.
+  Requires the usage of coerceLang to adjust the types.-/
+def Language.is_context_free (language : Language α) :=
+  ∃ (nt : _) (CFG : ContextFreeGrammar α nt),
+  (coerceLang CFG.GeneratedLanguage) = language
 
+/--The Subtype of context-free languages is those languages, that are context-free.-/
 def ContextFreeLanguage := { l : Language α // l.is_context_free}
 
+/--A context-free grammar is in chomsky normal-form if all of its productions have
+  either of the shapes:
+
+  - `A → B * C` where `A`,`B` and`C`are variables, or
+
+  - `A → c` where `A`is a variable and`c`is a terminal symbol.-/
 def isInChomskyNormalForm (cfg : ContextFreeGrammar α nt) :=
   ∀ production ∈ cfg.productions,
   (∃ A B C : cfg.V, production = {lhs := A, rhs := Word.mk [Sum.inl B]* Word.mk [Sum.inl C]})
   ∨ (∃ A : cfg.V, ∃ c : cfg.Z, production = {lhs := A, rhs := Word.mk [Sum.inr c]})
 
+/--The Subtype of context-free grammars are those context-free grammars, that are in chomsky normal-form.-/
 def ContextFreeGrammarCNF := { l : ContextFreeGrammar α nt // isInChomskyNormalForm l}
 
+/--All derivations that take place in context-free grammars in chomsky normal
+  form have the attribute, that the length of the manipulated string is
+  monotonically increasing along said derivation.-/
 theorem deriv_length_monotone_CNF :
   ∀ (cfg : @ContextFreeGrammarCNF α nt),
   ∀ u v, (∃ (_ : (ContextFreeGrammar.ContextFreeDerivation cfg.1 u v)), True) →
@@ -71,26 +115,53 @@ theorem deriv_length_monotone_CNF :
               simp [h_terminal_form, ContextFreeProduction.toProduction, Production.rhs, Word.len]
       apply Nat.le_trans h_step_len h_ind_applied
 
+/--Theorem: ε is not in the generated languages of context-free grammars in chomsky normal-form.-/
 theorem eps_not_in_CNF_Grammar {α nt : Type} :
   ∀ grammar : @ContextFreeGrammarCNF α nt,
   ε ∉ grammar.val.GeneratedLanguage := by
     --intro cfg h_contra
     intro cfg h_contra
     unfold ContextFreeGrammar.GeneratedLanguage at h_contra
-    apply Nonempty.elim_to_inhabited at h_contra
-    apply h_contra
-    case f =>
-    --apply Inhabited.default
-      intro h_inhabited
-      have default_CFGCNF := h_inhabited.default
-      have monotone := deriv_length_monotone_CNF cfg _ _ (Exists.intro default_CFGCNF (by tauto))
-      nth_rewrite 2 [Word.eps_len_0.mpr] at monotone
-      have start_len_1 : Word.len [@Sum.inl cfg.1.V cfg.1.Z cfg.1.start] = 1 := by tauto
-      rw [start_len_1] at monotone
-      rw [Nat.le_zero_eq 1] at monotone
-      tauto
-      rfl
+    cases h_contra
+    case intro default_CFGCNF
+    have monotone := deriv_length_monotone_CNF cfg _ _ (Exists.intro default_CFGCNF (by tauto))
+    nth_rewrite 2 [Word.eps_len_0.mpr] at monotone
+    have start_len_1 : Word.len [@Sum.inl cfg.1.V cfg.1.Z cfg.1.start] = 1 := by tauto
+    rw [start_len_1] at monotone
+    rw [Nat.le_zero_eq 1] at monotone
+    tauto
+    rfl
 
+/--Return a corresponding context-free grammar in chomsky normal-form that accepts
+  the same language.
+
+  TODO: Note, that nt and nt₂ are part of the input. This is nonsensical and
+  stems from our definition of grammars / context-free grammars that has
+  the type of non-terminals as an input type parameter.-/
+def generate_equivalent_CNF
+  (cfg : {cfg : ContextFreeGrammar α nt // ε ∉ cfg.GeneratedLanguage})
+  : { cfg₂ : ContextFreeGrammar α nt₂ // isInChomskyNormalForm cfg₂} := sorry
+
+/--The grammar returned by`generate_equivalent_CNF`has the same generated language
+  as the input context-free grammar.
+
+  TODO: Note, that nt and nt₂ are part of the input. This is nonsensical and
+  stems from our definition of grammars / context-free grammars that has
+  the type of non-terminals as an input type parameter.-/
+def generate_equivalent_CNF_is_eq :
+  ∀ α nt nt₂ : Type,
+  ∀ (cfg : {cfg : ContextFreeGrammar α nt // ε ∉ cfg.GeneratedLanguage}),
+   @coerceLang α _ cfg.val.GeneratedLanguage
+  = @coerceLang α
+    ((Subtype.val (@generate_equivalent_CNF α nt nt₂ cfg)).Z) (generate_equivalent_CNF cfg).val.GeneratedLanguage := sorry
+
+/--Theorem: For every context-free grammar without
+  ε there is a corresponding context-free grammar in chomsky normal-form that
+  accepts the same language. (Requires coerceLang).
+
+  TODO: Note, that nt and nt₂ are part of the input. This is nonsensical and
+  stems from our definition of grammars / context-free grammars that has
+  the type of non-terminals as an input type parameter.-/
 theorem equivalent_CNF_Grammar :
   ∀ α nt nt₂,
   ∀ cfg : {cfg : ContextFreeGrammar α nt | ε ∉ cfg.GeneratedLanguage},
@@ -100,32 +171,33 @@ theorem equivalent_CNF_Grammar :
     coerceLang cfg₂.val.GeneratedLanguage := by
       sorry
 
-def generate_equivalent_CNF
-  (cfg : {cfg : ContextFreeGrammar α nt // ε ∉ cfg.GeneratedLanguage})
-  : { cfg₂ : ContextFreeGrammar α nt₂ // isInChomskyNormalForm cfg₂} := sorry
-
-def generate_equivalent_CNF_is_eq :
-  ∀ α nt nt₂ : Type,
-  ∀ (cfg : {cfg : ContextFreeGrammar α nt // ε ∉ cfg.GeneratedLanguage}),
-   @coerceLang α _ cfg.val.GeneratedLanguage
-  = @coerceLang α
-    ((Subtype.val (@generate_equivalent_CNF α nt nt₂ cfg)).Z) (generate_equivalent_CNF cfg).val.GeneratedLanguage := sorry
-
-
-theorem CNF_derivation_lengths {α nt : Type}:
+/--Theorem: The length of a context-free derivation in chomsky normal-form
+  is two times the length of the result word minus 1.-/
+theorem CNF_derivation_lengths {α nt : Type} :
   ∀ cfgCNF : @ContextFreeGrammarCNF α nt, ∀ word : Word cfgCNF.val.Z,
   (word ∈ cfgCNF.val.GeneratedLanguage →
   (∀ derivation : (ContextFreeGrammar.ContextFreeDerivation cfgCNF.val (Word.mk [Sum.inl cfgCNF.val.start]) word.ZtoVZ),
   (2 * word.len) - 1 = derivation.length)) := by sorry
 
-theorem derivation_result_is_leaf_count : ∀ dt : ContextFreeGrammar.DerivationTree G, Word.len dt.result = List.length dt.collectLeaves := by
+/--Theorem: A context-free derivation tree has a number of leaves equal to
+  the length of the result word.-/
+theorem derivation_result_is_leaf_count :
+  ∀ dt : ContextFreeGrammar.DerivationTree G,
+  Word.len dt.result = List.length dt.collectLeaves := by
   sorry
 
-theorem derivation_path_length : ∀ n : ℕ, ∀ cfg_CNF : ContextFreeGrammarCNF,
+/--Theorem: A path in a context-free derivation tree in chomsky normal-form
+  has a length of at least log2 of the number of leaves in said tree. .-/
+theorem derivation_path_length :
+  ∀ n : ℕ, ∀ cfg_CNF : ContextFreeGrammarCNF,
   ∀ dt : (ContextFreeGrammar.DerivationTree cfg_CNF.1),
-  dt.collectLeaves.length = n → ∃ path : ContextFreeGrammar.ExhaustiveContextFreeDerivation [Sum.inl cfg_CNF.1.start] (@Word.ZtoVZ α nt _ _ cfg_CNF.1 dt.result), path.derivation.length ≥ Nat.log2 n := by
+  dt.collectLeaves.length = n
+  →
+  ∃ path : ContextFreeGrammar.ExhaustiveContextFreeDerivation [Sum.inl cfg_CNF.1.start] (@Word.ZtoVZ α nt _ _ cfg_CNF.1 dt.result),
+  path.derivation.length ≥ Nat.log2 n := by
   sorry
 
+/--An attempt at proving the pumping lemma for context-free languages.-/
 def PumpingLemma :
   ∀ language : ContextFreeLanguage, ∃ n : ℕ,
   ∀ z : {z ∈ language.val | z.len ≥ n},
@@ -202,7 +274,7 @@ def PumpingLemma :
             ContextFreeGrammar.ContextFreeDerivation.toDerivationTree_respects_result default_deriv_z₂ proof_exhaustive (by tauto)
           let _ : DecidableEq { x // x ∈ cfg_CNF.val.V } := sorry
           let defaultDerivTree_z₂_respects_start :=
-            ContextFreeGrammar.ContextFreeDerivation.toDerivationTree_respects_start default_deriv_z₂ cfg_CNF.val.start rfl (by tauto) (by tauto) (by tauto)
+            ContextFreeGrammar.ContextFreeDerivation.toDerivationTree_respects_start default_deriv_z₂ cfg_CNF.val.start rfl (by tauto) (by tauto) (by sorry)
 
           -- Word.len (v * x) ≥ 1, da die Ursprungsvariable A,
           -- welche wir mit der Schleife erreichen, aufgrund von
@@ -216,7 +288,7 @@ def PumpingLemma :
 
           -- 2) Ein Binärbaum mit Word.len z Blättern muss Pfade der Länge
           -- ≥ log₂ Word.len z enthalten
-          have lemma_deriv_log := @derivation_path_length α nt₂ z₂.len cfg_CNF default_derivTree_z₂ lemma_deriv_leaf_count.symm
+          have lemma_deriv_log := @derivation_path_length α nt₂ z₂.len cfg_CNF default_derivTree_z₂ (by rw [defaultDerivTree_z₂_respects_result, Word.VZtoZ_len, Word.len_cancel_inr] at lemma_deriv_leaf_count; exact lemma_deriv_leaf_count.symm)
 
           -- 3) Jeder Pfad der Länge ≥ Z.card muss mindestens eine Variable doppelt
           -- enthalten

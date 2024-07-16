@@ -1,12 +1,20 @@
 import FormalSystems.Chomsky.Grammar
 import Mathlib.Data.Finset.Functor
 import Mathlib.Tactic.Tauto
+
 import FormalSystems.Chomsky.ContextFree.DerivationTree
-import FormalSystems.Preliminaries.Word
---=============================================================
--- Section: Context-free derivations: => form
---=============================================================
+--================================================================================
+-- File: ContextFreeDerivation
+/-  Containts context-free derivation definition, some decidability theorems,
+    conditions for exhaustiveness / totality and beginning in the root,
+    exhaustive context-free derivations and two attempts at coercion:
+    from CFDs to derivation trees and vice versa. These currently probably
+    cannot succeed and need a lot of work still.
+-/
+--================================================================================
+
 namespace ContextFreeGrammar
+
 /--Define context free derivations u (G)=>* v inductively.
   Either no step was made (constructor:`same`, requires a proof that u = v), or
   we have a recursive definition with at least one step (constructor `step`)-/
@@ -29,7 +37,7 @@ inductive ContextFreeDerivation (G : ContextFreeGrammar α nt) : (Word (G.V ⊕ 
     (h_u_mid : u_mid = l_of_v' * Word.mk [Sum.inl v'] * r_of_v'):
     ContextFreeDerivation G v' w' → ContextFreeDerivation G v (l_of_v' * w' * r_of_v') -/
 
-#check instDecidableEqContextFreeDerivationStep
+--#check instDecidableEqContextFreeDerivationStep
 
 /--Define the equality determinating relation.-/
 def ContextFreeDerivation.decEq [DecidableEq α] [DecidableEq nt] {G : ContextFreeGrammar α nt} {u v : Word (G.V ⊕ G.Z)} : (CFD₁ CFD₂ : ContextFreeDerivation G u v) → Decidable (Eq CFD₁ CFD₂) :=
@@ -55,9 +63,6 @@ def ContextFreeDerivation.decEq [DecidableEq α] [DecidableEq nt] {G : ContextFr
         | isFalse h_isFalse₂ =>
           isFalse (by simp [imp_iff_or_not]; apply Or.inr h_isFalse₂)
         | isTrue h_isTrue₂ => by
-          /- have derivation1as2 : @ContextFreeDerivation α nt G u'₂ v := by
-            rw [h_isTrue₂] at derivation₁
-            exact derivation₁ -/
           let dv₁_rw : _ := by
             rw [h_isTrue₂] at derivation₁
             exact derivation₁
@@ -79,13 +84,18 @@ def ContextFreeDerivation.decEq [DecidableEq α] [DecidableEq nt] {G : ContextFr
               rw [h_isTrue₃] at h_dv₁_rw_same
               exact h_dv₁_rw_same)
 
-instance [dec₁ : DecidableEq α] [dec₂ : DecidableEq nt] {G : ContextFreeGrammar α nt} {u v : Word (G.V ⊕ G.Z)} (cfd₁ cfd₂ : @ContextFreeDerivation α nt G u v) : Decidable (cfd₁ = cfd₂) := @ContextFreeDerivation.decEq α nt dec₁ dec₂ G u v cfd₁ cfd₂
+/--Decide equality for CFDs.-/
+instance [dec₁ : DecidableEq α] [dec₂ : DecidableEq nt]
+  {G : ContextFreeGrammar α nt} {u v : Word (G.V ⊕ G.Z)}
+  (cfd₁ cfd₂ : @ContextFreeDerivation α nt G u v)
+  : Decidable (cfd₁ = cfd₂) :=
+  @ContextFreeDerivation.decEq α nt dec₁ dec₂ G u v cfd₁ cfd₂
 
 /--Define the length of a derivation.-/
 def ContextFreeDerivation.length
     {G : ContextFreeGrammar α nt} {u : Word (G.V ⊕ G.Z) }
-    {v : Word (G.V ⊕ G.Z)} (cfd : @ContextFreeDerivation α nt G u v) :
-    ℕ := match cfd with
+    {v : Word (G.V ⊕ G.Z)} (cfd : @ContextFreeDerivation α nt G u v)
+    : ℕ := match cfd with
     | .same _ => 0
     | .step _ derivation _ => 1 + derivation.length
 
@@ -101,17 +111,13 @@ def ContextFreeDerivation.toDerivation
     | step dStep derivation h_sound =>
       Grammar.Derivation.step dStep derivation.toDerivation h_sound
 
---Coercion CFDerivation into generic Derivations
+/--Coerce CFDs in generic derivations-/
 instance {G : ContextFreeGrammar α nt} {u : Word (G.V ⊕ G.Z) } {v : Word (G.V ⊕ G.Z)}
   : Coe (@ContextFreeDerivation α nt G u v) (@Grammar.Derivation α nt GenericProduction _ (↑G) u v) where
   coe cfDerivation := ContextFreeDerivation.toDerivation cfDerivation
 
--- variable {CDF : (@ContextFreeDerivation α nt G u v)}
--- #check (↑(CDF) : @Grammar.Derivation α nt GenericProduction _ G u v).len
--- Grammar.Derivation.len (ContextFreeDerivation.toDerivation CDF) : ℕ
-
 /-- u CF(G)⇒* v -notation for context-free derivations. Is the proposition that there
-  exists a derivation (∃) from u to v in G.-/
+  exists a derivation (∃) from u to v in G. Eliminate this in a hypothesis by using`cases h_cfd`.-/
 notation:40 u:40 " CF(" G:40 ")⇒* " v:41 => (Nonempty $ ContextFreeDerivation G u v)
 
 /--The language of a grammar is defined as the set of those words that can be derived
@@ -146,8 +152,7 @@ def ContextFreeDerivation.decideExhaustive
   : Decidable (cfd.exhaustiveCondition) :=
   v.decideIsAllZ
 
--- @Decidable.by_cases (var = rule.lhs) (Decidable (PreDerivationTree.treeValid (PreDerivationTree.inner var children rule))) _
-
+/--Exhaustiveness is decidable.-/
 instance (cfd : ContextFreeDerivation G u v) : Decidable (cfd.exhaustiveCondition) := cfd.decideExhaustive
 
 /--Decide wether this cfd satisfies the non-zero step condition.-/
@@ -158,6 +163,7 @@ def ContextFreeDerivation.decideNonZeroStepCondition
   | same h_same => isFalse (by simp [nonZeroStepCondition, h_same])
   | step _ _ _ => isTrue (by simp [nonZeroStepCondition])
 
+/--Non-zero stepness is decidable.-/
 instance (cfd : ContextFreeDerivation G u v) : Decidable (cfd.nonZeroStepCondition) := cfd.decideNonZeroStepCondition
 
 /--Decide wether this cfd satisfies the starts-in-1 condition.-/
@@ -169,11 +175,12 @@ def ContextFreeDerivation.decideStartsIn1
   | Nat.succ 0 => isTrue (by simp [ContextFreeDerivation.startsIn1Condition, u_len])
   | Nat.succ (Nat.succ n) => isFalse (by simp [ContextFreeDerivation.startsIn1Condition, u_len])
 
+/--starts in 1 is decidable-/
 instance (cfd : ContextFreeDerivation G u v) : Decidable (cfd.startsIn1Condition) := cfd.decideStartsIn1
 
 /--Is this context-free derivation exhaustive?:
   It needs to evaluate ALL variables to terminal symbols,
-  i.e. have exhaustively applied production rules.-/
+  i.e. have exhaustively applied production rules. (Bool)-/
 def ContextFreeDerivation.isExhaustive
   {G : ContextFreeGrammar α nt} {u v : Word (G.V ⊕ G.Z)}
   (cfd : ContextFreeDerivation G u v) : Bool :=
@@ -182,7 +189,7 @@ def ContextFreeDerivation.isExhaustive
   (fun _ => False)
 
 /--Does this context-free derivation start in a single symbol,
-  i.e. a single variable (root) or a single terminal symbol (leaf).-/
+  i.e. a single variable (root) or a single terminal symbol (leaf). (Bool)-/
 def ContextFreeDerivation.startsIn1
   {G : ContextFreeGrammar α nt} {u v : Word (G.V ⊕ G.Z)}
   (cfd : ContextFreeDerivation G u v) : Bool :=
@@ -190,14 +197,23 @@ def ContextFreeDerivation.startsIn1
   (fun _ => True)
   (fun _ => False)
 
-/--Structure: Define exhaustive contextfree derivations. They -/
-structure ExhaustiveContextFreeDerivation {G : ContextFreeGrammar α nt} (u : Word (G.V ⊕ G.Z)) (v : Word (G.V ⊕ G.Z)) where
+/--Structure: Exhaustive contextfree derivations. Attributes:
+
+  - `derivation`  - the underlying context-free derivation
+
+  - `exhaustive`  - a proof for the exhaustiveness of the derivation
+
+  - `startsin1` - a proof that the derivation starts in a single symbol-/
+structure ExhaustiveContextFreeDerivation
+  {G : ContextFreeGrammar α nt}
+  (u : Word (G.V ⊕ G.Z)) (v : Word (G.V ⊕ G.Z)) where
   derivation : @ContextFreeDerivation α nt G u v
   exhaustive : derivation.exhaustiveCondition
   startsIn1 : derivation.startsIn1Condition
   -- nonZero: isn't necessary: exhaustive means .leaf constructor can be used.
   deriving DecidableEq
 
+/--Theorem: Children (i.e. next steps) of exhaustive CFDs are exhaustive.-/
 theorem ContextFreeDerivation.exhaustive_imp_child_exhaustive
   {G : ContextFreeGrammar α nt} {u : Word (G.V ⊕ G.Z) } {v : Word (G.V ⊕ G.Z)}
   (cfd : @ContextFreeDerivation α nt G u v)
@@ -221,69 +237,38 @@ theorem ContextFreeDerivation.exhaustive_imp_child_exhaustive
       rw [h_constructor, exhaustiveCondition] at h_exhaustive
       exact h_exhaustive
 
--- TODO make this use collectDerivationTreeNodes
-def ContextFreeDerivation.toDerivationTree
-  {G : ContextFreeGrammar α nt} {u : Word (G.V ⊕ G.Z) } {v : Word (G.V ⊕ G.Z)}
-  (cfd : @ContextFreeDerivation α nt G u v)
-  (h_exhaustive : cfd.exhaustiveCondition)
-  (h_starts_in_1 : cfd.startsIn1Condition) :
-  DerivationTree G :=
-    match h_constructor : cfd with
-    | same h_same => sorry
-    | @step _ _ _ _ u' _ dstep derivation sound => by
-      let var := dstep.prod.val.lhs
-      let var_as_word : (Word (G.V ⊕ G.Z)) := Word.mk [Sum.inl var]
-      have h_dstep_sound := dstep.sound
-      simp at h_dstep_sound
-      have h_dstep_sound₂ : u = dstep.pre * (Word.mk [@Sum.inl G.V G.Z dstep.prod.val.lhs]) * dstep.suf := by exact h_dstep_sound
-      rw [startsIn1Condition] at h_starts_in_1
-      rw [h_dstep_sound₂] at h_starts_in_1
-      rw [Word.length_mul_eq_add, Word.length_mul_eq_add] at h_starts_in_1
-      have h_var_len : (Word.mk ([@Sum.inl G.V G.Z dstep.prod.val.lhs])).len = 1 := by tauto
-      rw [h_var_len] at h_starts_in_1
-      have h_pre_suff_len_0 : Word.len dstep.pre + Word.len dstep.suf = 0 := by
-        simp
-        rw [Nat.add_comm (Word.len dstep.pre), Nat.add_assoc] at h_starts_in_1
-        have h_rw_helper₁ : ∀ a : ℕ, (1 + a = 1) ↔ (a = 0) := by simp
-        apply Iff.mp (h_rw_helper₁ (Word.len dstep.pre + Word.len dstep.suf)) at h_starts_in_1
-        apply Nat.add_eq_zero.mp at h_starts_in_1
-        rw [Word.eps_len_0.symm,Word.eps_len_0.symm]
-        exact h_starts_in_1
-      have h_pre_is_eps : dstep.pre = ε := by
-        apply Nat.add_eq_zero.mp at h_pre_suff_len_0
-        apply (Word.eps_len_0.mp h_pre_suff_len_0.left)
-      have h_suf_is_eps : dstep.suf = ε := by
-        apply Nat.add_eq_zero.mp at h_pre_suff_len_0
-        apply (Word.eps_len_0.mp h_pre_suff_len_0.right)
-      simp [h_pre_is_eps, h_suf_is_eps] at h_dstep_sound₂
-      have u_is_var_as_word : u = var_as_word := by simp [h_dstep_sound₂, var_as_word, var]
-      let collectFollowVars := dstep.prod.val.rhs.collectVars --respects left to right
-
-      let children : NEPreDerivationTreeList G := sorry
-      let rule : G.productions := dstep.prod
-      let h_rule_lhs : rule.1.lhs = var := by simp
-      let h_rule_rhs : rule.1.rhs = NEPreDerivationTreeList.levelWord children := sorry
-      let childrenValid : children.treeValid := sorry
-      exact DerivationTree.inner var children rule h_rule_lhs h_rule_rhs childrenValid
-#check Nat.lt_succ_of_le
-
-theorem ContextFreeDerivation.toDerivationTree_respects_result
-  {G : ContextFreeGrammar α nt} {u : Word (G.V ⊕ G.Z) } {v : Word (G.V ⊕ G.Z)}
-  (cfd : @ContextFreeDerivation α nt G u v) :
-  ∀ p₁ p₂, DerivationTree.result (cfd.toDerivationTree p₁ p₂) = v.VZtoZ p₁ := by
-    sorry
-
-theorem ContextFreeDerivation.toDerivationTree_respects_start
-  {G : ContextFreeGrammar α nt} {u : Word (G.V ⊕ G.Z) } {v : Word (G.V ⊕ G.Z)}
-  [DecidableEq G.V]
-  (cfd : @ContextFreeDerivation α nt G u v) (startSymbol : G.V) (h_u_is_startSymbol : u = [Sum.inl startSymbol]):
-  ∀ p₁ p₂, ∀ p₃ : (cfd.toDerivationTree p₁ p₂).isTotal, DerivationTree.startingSymbol p₃ = startSymbol := by
-    sorry
-
 /--Collect the DerivationTree Nodes. Each node in the list
   corresponds to exactly one variable in u and each variable in
   u has a returned DerivationTree node. Cannot be called for 0-step
-  derivations.-/
+  derivations.
+
+  Note: This function is too long and doesn't work. If I were to write this function
+  again, I would define a new data structure that is returned by this function with
+  the following attributes:
+
+    - It stores a word. This word corresponds to u or u', i.e.
+      the origin of the derivation. In each recursive call we are given an
+      instance of this structure that matches u' and return an instance
+      of this structure that matches u
+
+    - It stores a list of DerivationTrees. These derivation trees are
+      sub-trees of the final derivation tree. The structure stores those derivation
+      trees that correspond to the variables in its word attribute (see above).
+
+    - Each derivation tree from the above list must be associated to exactly one index
+      location in the word. Maybe store this association somehow.
+
+    - It stores a corresponding context-free derivation step: if v is the stored
+      word, then it stores the derivation step u =>¹ v (single step)
+
+    - It stores some kind of validity proof: For each variable in the stored word there is
+      a corresponding derivation tree.
+
+    Now, whenever we perform a recursive step, we need to update the structure
+    accordingly. The word is updated. derivation tree elements are removed and added
+    the association is updated: left / right shift of indexes depending on
+    how the word length has changed and if we were to the right or left.
+    Update the validity proofs / follow them from original correctness.-/
 def ContextFreeDerivation.collectDerivationTreeNodes
   {G : ContextFreeGrammar α nt} {u : Word (G.V ⊕ G.Z) } {v : Word (G.V ⊕ G.Z)}
   (cfd : @ContextFreeDerivation α nt G u v)
@@ -294,7 +279,6 @@ def ContextFreeDerivation.collectDerivationTreeNodes
     | @step _ _ _ _ u' _ dstep (derivation : ContextFreeDerivation G u' v) sound => by
       let rightSide := dstep.prod.val.rhs
       -- This returns all the nodes corresponding to the variables within the next derivations
-
       let allChildren : List (DerivationTree G × { x // x ∈ Finset.range (Word.len u') }) :=
         match h_constructor : derivation with
         | same h_same => []
@@ -709,6 +693,36 @@ def ContextFreeDerivation.collectDerivationTreeNodes
         let returnList := returnList ++ returnRight
         exact returnList
 
+
+/--Return a derivation tree version of this CFD-/
+def ContextFreeDerivation.toDerivationTree
+  {G : ContextFreeGrammar α nt} {u : Word (G.V ⊕ G.Z) } {v : Word (G.V ⊕ G.Z)}
+  (cfd : @ContextFreeDerivation α nt G u v)
+  (h_exhaustive : cfd.exhaustiveCondition)
+  (h_starts_in_1 : cfd.startsIn1Condition) :
+  DerivationTree G :=
+    match h_constructor : cfd with
+    | same h_same => sorry
+    | @step _ _ _ _ u' _ dstep derivation sound => by
+      exact ((ContextFreeDerivation.collectDerivationTreeNodes cfd h_exhaustive sorry)[0]'sorry).fst
+
+/--Theorem: The toDerivation function provides derivation trees, whose
+  results correspond to the CFDs result.-/
+theorem ContextFreeDerivation.toDerivationTree_respects_result
+  {G : ContextFreeGrammar α nt} {u : Word (G.V ⊕ G.Z) } {v : Word (G.V ⊕ G.Z)}
+  (cfd : @ContextFreeDerivation α nt G u v) :
+  ∀ p₁ p₂, DerivationTree.result (cfd.toDerivationTree p₁ p₂) = v.VZtoZ p₁ := by
+    sorry
+
+/--Theorem: The toDerivation function provides derivation trees, which
+  start in the same symbol the CFD started in.-/
+theorem ContextFreeDerivation.toDerivationTree_respects_start
+  {G : ContextFreeGrammar α nt} {u : Word (G.V ⊕ G.Z) } {v : Word (G.V ⊕ G.Z)}
+  [DecidableEq G.V]
+  (cfd : @ContextFreeDerivation α nt G u v) (startSymbol : G.V) (h_u_is_startSymbol : u = [Sum.inl startSymbol]):
+  ∀ p₁ p₂, ∀ p₃ : (cfd.toDerivationTree p₁ p₂).isTotal, DerivationTree.startingSymbol p₃ = startSymbol := by
+    sorry
+
 /--Theorem: It is possible to augment a prefix-word`w`to the left side of in- and output of a
   valid derivation. We recieve a valid derivation.-/
 theorem ContextFreeDerivation.augment_left {u v w: Word _} (d: ContextFreeDerivation G u v) :
@@ -818,12 +832,16 @@ def ContextFreeDerivation.concat
       simp [Grammar.DerivationStep.result] at sound₁
       rw [← sound₁]
 
+/--Convert an exhaustive CFD into a derivation tree-/
 def ExhaustiveContextFreeDerivation.toDerivationTree
   {G : ContextFreeGrammar α nt} {u : Word (G.V ⊕ G.Z) } {v : Word (G.V ⊕ G.Z)}
   (ecfd : @ExhaustiveContextFreeDerivation α nt G u v) :
   DerivationTree G :=
     ecfd.derivation.toDerivationTree ecfd.exhaustive ecfd.startsIn1
 
+/-
+--I originally considered building the CFD by collecting the production rules
+--of the DT. This only works if we assume left- or right-first derivation.
 def ExhaustiveContextFreeDerivation.fromProdRuleList
   {G : ContextFreeGrammar α nt}
   (startWord : Word (G.V ⊕ G.Z))
@@ -831,7 +849,17 @@ def ExhaustiveContextFreeDerivation.fromProdRuleList
   (prodRules : List G.productions) :
   ExhaustiveContextFreeDerivation startWord endWord :=
     sorry
+-/
 
+/--Construct an exhaustive CFD from a derivation tree. (The exhaustiveness is given
+  us for free due to it being a DT.) This function cannot succeed: I wrote
+  CFD.concat for this, but cannot use it due to the result of a CFD being encoded
+  in the type. This makes it impossible to concat a number of CFDs where the
+  number is unknown at compile time (the number depends on the number of children
+  of a derivation tree). Do not attempt to code this function before refactoring
+  derivations (definetly context-free, possibly generic and regular also): Move
+  the result word to an attribute or add a wrapper type.
+-/
 def DerivationTree.toExhaustiveContextFreeDerivation
   {G : ContextFreeGrammar α nt}
   [DecidableEq G.V]
@@ -874,6 +902,8 @@ def DerivationTree.toExhaustiveContextFreeDerivation
             }
     | .inner v c r =>
       let children := DT.children
+      -- The below is not possible due to the resulting list having to contain
+      -- elements with multiple different types: ECFD a b vs ECFD c d
       --let children_derivations : List _ :=
       -- List.map.{u, v} {α : Type u} {β : Type v} (f : α → β) (a✝ : List α) : List β
         --@List.map (DerivationTree G) (ExhaustiveContextFreeDerivation _ _) (fun child => child.toExhaustiveContextFreeDerivation) children
@@ -903,15 +933,5 @@ def DerivationTree.toExhaustiveContextFreeDerivation
           ,
         exhaustive := sorry,
         startsIn1 := sorry}
-
-
--- Some advanced tac tics to try out at some point:
--- rcases
---    matchexpression die gleichzeitig die Teile benennt
--- obtain
--- z.B. obtain ⟨ Q, uniqueness⟩ := M
---    aus etwas komplexem zwei sachen rausholen
--- rintro
---    intro iwas
 
 end ContextFreeGrammar

@@ -1,39 +1,40 @@
 import FormalSystems.Chomsky.Grammar
 import Mathlib.Data.Finset.Functor
 import Mathlib.Tactic.Tauto
-import FormalSystems.Chomsky.ContextFree.ContextFreeGrammar
-import FormalSystems.Chomsky.ContextFree.ContextFreeProductions
 
+import FormalSystems.Chomsky.ContextFree.ContextFreeGrammar
+--================================================================================
+-- File: PreDerivationTree
+/-  Containts PreDerivationTree and NEPreDerivationTreeList definitions.
+    They are required to pre-build the trees, enforce the existence of children
+    at child nodes.
+-/
+--================================================================================
 
 namespace ContextFreeGrammar
 
---=============================================================
--- Section: PreDerivationTree and NEPreDerivationTreeList
---=============================================================
-
---Note: Need to name all type parameters explicitly for coercion to work!
-
---variable {CFDS : (@ContextFreeDerivationStep α nt G u)}
---#check ((↑CFDS) : @Grammar.DerivationStep α nt GenericProduction _ (↑G) u).result
-
---Idea: Split everything up into many sub-tasks
 mutual
 /--Basic structure of a context-free derivation tree without validity-constraints. Values returned by all sub-defined functions are only
-  ordered correctly if ordered correctly during definition.-/
+  ordered correctly if ordered correctly during definition.
+
+  TODO: The leaves have either one or zero symbols associated with them.
+  This is done using the WithOne type (basically the same as Option). It might be better to instead add
+  a third constructor for leaves that are the result of production rules
+  that go to ε.-/
 inductive PreDerivationTree (G : ContextFreeGrammar α nt)
   | leaf (terminal : WithOne G.Z) : PreDerivationTree G
   | inner (var : G.V) (children : NEPreDerivationTreeList G) (prodRule : (G.productions)) : PreDerivationTree G
---                                                  → (children_non_empty : 0 < List.length (↑children)) -- children is recursively bound => doesn't work
--- We cannot ensure a non-empty children list with parameter as above or subclass (because it is the recursive argument)
--- Thus we define this inductive structure in parallel to ensure non-emptiness
-/--Ensure that we have a non-empty list of children with this structure.-/
+-- Originally I wanted a parameter: (children_non_empty : 0 < List.length (↑children))
+-- But: children is recursively bound => doesn't work
+-- To still ensure non-emptiness of children we use the below mutual structure
+/--Ensure that we have a non-empty list of children with this structure. Is basically
+  a list of PreDerivationTree G elements.-/
 inductive NEPreDerivationTreeList (G : ContextFreeGrammar α nt)
   | single (PDT : PreDerivationTree G) : NEPreDerivationTreeList G
   | cons (PDT : PreDerivationTree G) (NEPDTL : NEPreDerivationTreeList G) : NEPreDerivationTreeList G
 end
 
 mutual
-
 /--Define the equality determinating relation.-/
 def PreDerivationTree.decEq {G : ContextFreeGrammar α nt} [eq₁ : DecidableEq α] [eq₂ : DecidableEq nt] : (PDT₁ PDT₂ : PreDerivationTree G) → Decidable (Eq PDT₁ PDT₂)
 | .leaf terminal₁ , .leaf terminal₂ =>
@@ -113,6 +114,7 @@ end
 
 /--Equality is decidable for PDTs using the decEq function.-/
 instance [DecidableEq α] [DecidableEq nt] : DecidableEq (@PreDerivationTree α nt G) := PreDerivationTree.decEq
+
 /--Equality is decidable for NEPDTLs using the decEq function.-/
 instance [DecidableEq α] [DecidableEq nt] : DecidableEq (@NEPreDerivationTreeList α nt G) := NEPreDerivationTreeList.decEq
 
@@ -130,26 +132,31 @@ def NEPreDerivationTreeList.asList (NEPDTL : NEPreDerivationTreeList G) : List (
 /--Folds a function over a non-empty pre-derivation tree list from the left:
 `foldl f z NEPDT(a, b, c) = f (f (f z a) b) c`-/
 @[specialize]
-def NEPreDerivationTreeList.foldl {G : ContextFreeGrammar α nt} {α : Type u} (f : α → (PreDerivationTree G) → α) : (init : α) → (NEPreDerivationTreeList G) → α
+def NEPreDerivationTreeList.foldl
+  {G : ContextFreeGrammar α nt} {α : Type u}
+  (f : α → (PreDerivationTree G) → α) :
+  (init : α) → (NEPreDerivationTreeList G) → α
   | a, single PDT => f a PDT
   | a, cons PDT NEPDTL₂ => NEPreDerivationTreeList.foldl f (f a PDT) NEPDTL₂
 
 /--Theorem: The lists constructed with asList are never [].-/
-theorem NEPreDerivationTreeList.asList_never_nil (NEPDTL : NEPreDerivationTreeList G) : ¬ NEPDTL.asList = [] := by
+theorem NEPreDerivationTreeList.asList_never_nil (NEPDTL : NEPreDerivationTreeList G) :
+  ¬ NEPDTL.asList = [] := by
   apply Not.intro
   intro h
   cases NEPDTL
   repeat rw [NEPreDerivationTreeList.asList] at h; contradiction
 
 /--Theorem: The lists constructed with asList have non-zero length.-/
-theorem NEPreDerivationTreeList.asList_length (NEPDTL : NEPreDerivationTreeList G) : NEPDTL.asList.length > 0 := by
+theorem NEPreDerivationTreeList.asList_length (NEPDTL : NEPreDerivationTreeList G) :
+  NEPDTL.asList.length > 0 := by
   apply List.length_pos_of_ne_nil NEPDTL.asList_never_nil
 
 mutual
 /--Return a list of the context-free node's children. Only correct order if child nodes were assigned left-to-right.-/
 def NEPreDerivationTreeList.nodeList {G : ContextFreeGrammar α nt} (NEPDT : NEPreDerivationTreeList G) : List (PreDerivationTree G) := match (NEPDT : NEPreDerivationTreeList G) with
   | .single PDT => PDT.nodeList
-  | .cons PDT NEPDT₂ => PDT.nodeList ++ NEPDT₂.nodeList -- NEPreDerivationTreeList.foldl (fun prev tree => tree.nodeList ++ prev) [PDT] NEPDT
+  | .cons PDT NEPDT₂ => PDT.nodeList ++ NEPDT₂.nodeList
 /--Return a list of the context-free node's children. Only correct order if child nodes were assigned left-to-right.-/
 def PreDerivationTree.nodeList {G : ContextFreeGrammar α nt} (PDT : PreDerivationTree G) : List (PreDerivationTree G) := match (PDT : PreDerivationTree G) with
   | .leaf _ => [PDT]
@@ -249,6 +256,7 @@ end
 /--Collect the nodelists of PDTs one by one.-/
 def append_nodeLists (prev : List (PreDerivationTree G)) (next : PreDerivationTree G) : (List (PreDerivationTree G)) :=
   prev ++ next.nodeList
+
 /--Theorem: The append_nodeList function interacts with List.foldl in a specific way.-/
 @[simp]
 theorem append_nodeLists_cons (PDT : PreDerivationTree G) (list₁ list₂ : List (PreDerivationTree G)):
@@ -260,6 +268,7 @@ theorem append_nodeLists_cons (PDT : PreDerivationTree G) (list₁ list₂ : Lis
       rw [List.foldl_cons, List.foldl_cons]
       repeat rw [append_nodeLists]
       exact append_nodeLists_cons PDT (list₁ ++ PreDerivationTree.nodeList head) tail
+
 /--Theorem: The append_nodeList function interacts with List.foldl in a specific way.-/
 @[simp]
 theorem concat_nodeLists_cons (PDT_List : List (PreDerivationTree G)) (list₁ list₂ : List (PreDerivationTree G)):
@@ -426,8 +435,6 @@ def PreDerivationTree.treeValid {G : ContextFreeGrammar α nt} (PDT : PreDerivat
       children.levelWord = rule.1.rhs ∧
       /- 3 The children are valid. -/
       children.treeValid
-/- treeWord children = rule.rhs ∧ children.all (fun c => @decide (treeValid c) (Classical.propDecidable _))
-termination_by t => depth t -/
 /--A list of Derivation Trees is valid, if each of its children is valid.-/
 def NEPreDerivationTreeList.treeValid {G : ContextFreeGrammar α nt} (NEPDTL : NEPreDerivationTreeList G) : Prop :=
   match NEPDTL with
@@ -475,6 +482,7 @@ theorem NEPreDerivationTreeList.treeValid_implies_child_valid
 variable (PDT : PreDerivationTree G) (NEPDTL : NEPreDerivationTreeList G)
 
 mutual
+/--Decide the treeValid attribute.-/
 def NEPreDerivationTreeList.decideTreeValid {NEPDTL : NEPreDerivationTreeList G}
   --[decPDT : Decidable (PDT.treeValid)]
   [_h₁ : DecidableEq (G.V)] [_h₂ : DecidableEq (G.Z)]
@@ -489,12 +497,12 @@ def NEPreDerivationTreeList.decideTreeValid {NEPDTL : NEPreDerivationTreeList G}
           intro h_not
           absurd h_not.left
           exact h_isFalse)
-        | isTrue _ => by
+        | isTrue _ => (by
           rw [NEPreDerivationTreeList.treeValid]
           have _ : _ := NEPDTL₂.decideTreeValid
           have _ : _ := PDT₂.decideTreeValid
-          apply instDecidableAnd
-          --NEPDTL₂.decideTreeValid
+          apply instDecidableAnd)
+/--Decide the treeValid attribute.-/
 def PreDerivationTree.decideTreeValid {PDT : PreDerivationTree G}
   --[d_terminals : DecidableEq α] [d_vars : DecidableEq nt]
   [h₁ : DecidableEq (G.V)] [h₂ : DecidableEq (G.Z)]
@@ -544,10 +552,6 @@ def PreDerivationTree.decideTreeValid {PDT : PreDerivationTree G}
 
 end
 
---instance : DecidableEq {x // x ∈ G.V } := by
-  --sorry
---instance : DecidableEq {x // x ∈ G.Z } := by
-  --sorry
 instance [DecidableEq (G.V)] [DecidableEq (G.Z)] : Decidable (PDT.treeValid) := PDT.decideTreeValid
 instance [DecidableEq (G.V)] [DecidableEq (G.Z)] : Decidable (NEPDTL.treeValid) := NEPDTL.decideTreeValid
 
@@ -555,7 +559,7 @@ instance [DecidableEq (G.V)] [DecidableEq (G.Z)] : Decidable (NEPDTL.treeValid) 
 def PreDerivationTree.isFromStartingSymbolCondition {G : ContextFreeGrammar α nt} : (PDT : PreDerivationTree G) → Prop
 | .leaf _ => False
 | .inner var _ _ => var = G.start
-/--Does this tree begin in the starting symbol?-/
+/--Does this tree begin in the starting symbol? Returns a Bool-/
 def PreDerivationTree.isFromStartingSymbol {G : ContextFreeGrammar α nt} [ DecidableEq (G.V)] : (PDT : PreDerivationTree G) → Bool
 | .leaf _ => False
 | .inner var _ _ => @Decidable.by_cases (var = G.start) (Bool) _
@@ -590,7 +594,7 @@ def PreDerivationTree.induction_principle {G : ContextFreeGrammar α nt}
     ∀ PDT : PreDerivationTree G, ∀ NEPDTL₂ : NEPreDerivationTreeList G,
       prop PDT → prop₂ NEPDTL₂ → prop₂ (NEPreDerivationTreeList.cons PDT NEPDTL₂))
   : ∀ PDT : PreDerivationTree G, prop PDT
-  := @PreDerivationTree.rec α nt G prop prop₂
+  := @PreDerivationTree.rec α nt G prop prop₂ -- "simply" use the automatically generated recursor
     (fun terminal =>
       by apply ind_basis terminal)
     (fun var children prodRule =>
@@ -630,7 +634,7 @@ def NEPreDerivationTreeList.induction_principle {G : ContextFreeGrammar α nt}
     ∀ PDT : PreDerivationTree G, ∀ NEPDTL₂ : NEPreDerivationTreeList G,
       prop PDT → prop₂ NEPDTL₂ → prop₂ (NEPreDerivationTreeList.cons PDT NEPDTL₂))
   : ∀ NEPDTL : NEPreDerivationTreeList G, prop₂ NEPDTL
-  := @NEPreDerivationTreeList.rec α nt G prop prop₂
+  := @NEPreDerivationTreeList.rec α nt G prop prop₂ -- "simply" use the automatically generated recursor
     (fun terminal =>
       ind_basis terminal)
     (fun var children prodRule =>
