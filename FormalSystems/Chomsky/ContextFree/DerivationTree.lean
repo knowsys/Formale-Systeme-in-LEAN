@@ -669,6 +669,23 @@ def DerivationTree.collectLeaves
       ) [] DT.children.attach
   termination_by (DT.depth, 0)
 
+/--Collect those derivation tree nodes that are leaves within this derivation tree, except ε.-/
+def DerivationTree.collectLeaves'
+  {G : ContextFreeGrammar α nt}
+  (DT : DerivationTree G) :
+  List (DerivationTree G) := match DT.tree with
+  | .leaf (.some _) =>
+    [DT]
+  | .leaf (none) =>
+    []
+  | .inner _ _ _ =>
+    List.foldl (fun prev (child : {x // x ∈ DT.children}) =>
+      have _ : depth child.1 < depth DT := by
+        exact child_less_depth DT child.1 child.2
+      prev ++ child.1.collectLeaves
+      ) [] DT.children.attach
+  --termination_by (DT.depth, 0)
+
 -- This was the first attempt at defining a derivation tree.
 -- This type of attempt is not possible, due to the props being different
 -- props depending on the other parameters -> the type of the parameter
