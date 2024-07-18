@@ -179,23 +179,87 @@ theorem CNF_derivation_lengths {α nt : Type} :
   (∀ derivation : (ContextFreeGrammar.ContextFreeDerivation cfgCNF.val (Word.mk [Sum.inl cfgCNF.val.start]) word.ZtoVZ),
   (2 * word.len) - 1 = derivation.length)) := by sorry
 
+/--Sub-tree relationship.
+
+  TODO: This is relatively new and not tested yet.
+    Should equality be allowed?
+    Perhaps this is more useful for an induction principle?-/
+def ContextFreeGrammar.DerivationTree.subTree (sub : DerivationTree G) (super : DerivationTree G) : Prop :=
+  sub = super ∨
+  ∃ sub₂ : {x : DerivationTree G // x ∈ super.children},
+    have _ : sub₂.1.depth < super.depth := ContextFreeGrammar.child_less_depth super sub₂.1 sub₂.prop
+    sub.subTree sub₂.1
+  termination_by (super.depth, 0)
+
+/--Direct sub-tree relationship.
+
+  TODO: This is relatively new and not tested yet.
+    Perhaps this is more useful for an induction principle?-/
+def ContextFreeGrammar.DerivationTree.isChild (sub : DerivationTree G) (super : DerivationTree G) : Prop :=
+  ∃ sub₂ : {x : DerivationTree G // x ∈ super.children},
+    sub = sub₂.1
+
+/--A Path is just a list of nodes.-/
+def DerivationTreePath
+  { cfg : ContextFreeGrammar α nt }
+  ( dt : ContextFreeGrammar.DerivationTree cfg) :=
+  List (ContextFreeGrammar.DerivationTree cfg)
+
+/--Words are lists and can thus be coerced.-/
+instance
+  {cfg : ContextFreeGrammar α nt}
+  {dt : ContextFreeGrammar.DerivationTree cfg}
+  (_ : DerivationTreePath dt)
+  : CoeOut (DerivationTreePath dt) (List (ContextFreeGrammar.DerivationTree cfg)) where
+  coe path := path
+
+/--A temporary example of how to define a valid DerivationTree Path. WIP.-/
+structure ValidDerivationTreePath
+  { cfg : ContextFreeGrammar α nt }
+  ( dt : ContextFreeGrammar.DerivationTree cfg) where
+  /--The path-/
+  path : DerivationTreePath dt
+  /--Every node alongth the path is a child of the next-/
+  valid : ∀ i : Fin (List.length path - 1),
+          --ContextFreeGrammar.DerivationTree.subTree
+          ContextFreeGrammar.DerivationTree.isChild
+            (List.get path ⟨i, Nat.lt_of_lt_pred i.2 ⟩ )
+            (List.get path ⟨i+1, Nat.lt_sub_iff_add_lt.mp i.2 ⟩ )
+
 /--Theorem: A context-free derivation tree has a number of leaves equal to
   the length of the result word.-/
 theorem derivation_result_is_leaf_count :
   ∀ dt : ContextFreeGrammar.DerivationTree G,
-  Word.len dt.result = List.length dt.collectLeaves := by
+  Word.len dt.result = List.length dt.collectLeaves' := by
   sorry
 
 /--Theorem: A path in a context-free derivation tree in chomsky normal-form
-  has a length of at least log2 of the number of leaves in said tree. .-/
+  has a length of at least log2 of the number of leaves in said tree.
+  TODO: A Derivation is not a path! Rewrite accordingly.-/
 theorem derivation_path_length :
   ∀ n : ℕ, ∀ cfg_CNF : ContextFreeGrammarCNF,
   ∀ dt : (ContextFreeGrammar.DerivationTree cfg_CNF.1),
-  dt.collectLeaves.length = n
+  dt.collectLeaves'.length = n
   →
   ∃ path : ContextFreeGrammar.ExhaustiveContextFreeDerivation [Sum.inl cfg_CNF.1.start] (@Word.ZtoVZ α nt _ _ cfg_CNF.1 dt.result),
   path.derivation.length ≥ Nat.log2 n := by
   sorry
+
+/--Theorem: Any path of sufficient length must contain a variable multiple
+  times. (Schubfachprinzip)
+  TODO: A Derivation is not a path! Rewrite accordingly.-/
+theorem derivation_len_over_V_imp_double_var
+  {α nt : Type} :
+  ∀ cfg_CNF : @ContextFreeGrammarCNF α nt, ∀ u v,
+  ∀ deriv : ContextFreeGrammar.ContextFreeDerivation cfg_CNF.1 u v,
+  deriv.length ≥ cfg_CNF.1.V.card
+  →
+  ∃ var : cfg_CNF.val.V,
+    ∃ u' u'',
+    ∃ deriv₁ : ContextFreeGrammar.ContextFreeDerivation cfg_CNF.1 u u',
+    ∃ deriv₂ : ContextFreeGrammar.ContextFreeDerivation cfg_CNF.1 u' u'',
+    ∃ deriv₃ : ContextFreeGrammar.ContextFreeDerivation cfg_CNF.1 u'' v,
+    Sum.inl var ∈ u' ∧ Sum.inl var ∈ u'' := by sorry
 
 /--An attempt at proving the pumping lemma for context-free languages.-/
 def PumpingLemma :
@@ -258,9 +322,9 @@ def PumpingLemma :
           apply z₂_mem
           case f =>
           intro h_exists_deriv_z₂
-          -- Die Ableitung von z₂ in cfg_CNF
+          -- Die Ableitung von z₂ in cfg_CNF (Ableitungspfad)
           let default_deriv_z₂ := h_exists_deriv_z₂.default
-          let proof_exhaustive : ContextFreeGrammar.ContextFreeDerivation.exhaustiveCondition default_deriv_z₂ := (by
+          have proof_exhaustive : ContextFreeGrammar.ContextFreeDerivation.exhaustiveCondition default_deriv_z₂ := (by
             unfold ContextFreeGrammar.ContextFreeDerivation.exhaustiveCondition
             intro symbol symbol_mem
             simp at symbol_mem
@@ -269,11 +333,13 @@ def PumpingLemma :
             case intro symbol₂ symbol₂_mem =>
             rw [symbol₂_mem.right.symm]
             tauto)
+          -- Der zugehörige Ableitungsbaum
           let default_derivTree_z₂ := (default_deriv_z₂.toDerivationTree (proof_exhaustive) (by tauto))
-          let defaultDerivTree_z₂_respects_result :=
+          -- mit Lemmas zu seiner Korrektheit
+          have defaultDerivTree_z₂_respects_result :=
             ContextFreeGrammar.ContextFreeDerivation.toDerivationTree_respects_result default_deriv_z₂ proof_exhaustive (by tauto)
           let _ : DecidableEq { x // x ∈ cfg_CNF.val.V } := sorry
-          let defaultDerivTree_z₂_respects_start :=
+          have defaultDerivTree_z₂_respects_start :=
             ContextFreeGrammar.ContextFreeDerivation.toDerivationTree_respects_start default_deriv_z₂ cfg_CNF.val.start rfl (by tauto) (by tauto) (by sorry)
 
           -- Word.len (v * x) ≥ 1, da die Ursprungsvariable A,
@@ -286,12 +352,16 @@ def PumpingLemma :
           -- 1) Ableitungsbaum für z hat Word.len z Blätter
           have lemma_deriv_leaf_count := derivation_result_is_leaf_count (default_derivTree_z₂)
 
+          -- TODO: Note, that a derivation is not a path!
+          -- Fix this!
+
           -- 2) Ein Binärbaum mit Word.len z Blättern muss Pfade der Länge
           -- ≥ log₂ Word.len z enthalten
           have lemma_deriv_log := @derivation_path_length α nt₂ z₂.len cfg_CNF default_derivTree_z₂ (by rw [defaultDerivTree_z₂_respects_result, Word.VZtoZ_len, Word.len_cancel_inr] at lemma_deriv_leaf_count; exact lemma_deriv_leaf_count.symm)
 
           -- 3) Jeder Pfad der Länge ≥ Z.card muss mindestens eine Variable doppelt
           -- enthalten
+          have lemma_multiple_var := @derivation_len_over_V_imp_double_var α nt₂ cfg_CNF [Sum.inl cfg_CNF.1.start] (Sum.inr <$> z₂) default_deriv_z₂
 
           -- Konsequenz: Wenn Word.len z ≥ 2^Z.card dann gibt es einen Pfad, in dem
           -- eine Variable doppelt vorkommt
