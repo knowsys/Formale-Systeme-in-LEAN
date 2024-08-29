@@ -1,6 +1,5 @@
 import FormalSystems.Chomsky.Grammar
 import Mathlib.Data.Finset.Functor
-import Mathlib.Tactic.Tauto
 
 import FormalSystems.Chomsky.ContextFree.ContextFreeProductions
 
@@ -13,8 +12,6 @@ import FormalSystems.Chomsky.ContextFree.ContextFreeProductions
 
 /--Define Context Free Grammars to have context free production rules.-/
 def ContextFreeGrammar (α nt: Type) := @Grammar α nt (ContextFreeProduction) _
-
-variable { CFProd: Finset α → Finset nt → Type } [Production.ContextFree α nt CFProd]
 
 /--Define Context Free Grammars to be Grammars.-/
 instance : Coe (ContextFreeGrammar α nt) (@Grammar α nt GenericProduction _) where
@@ -63,13 +60,13 @@ theorem ContextFreeDerivationStep_has_pre_1_suf_word_as_u (step : ContextFreeDer
       exact step.sound
 
 /--Define a coercion of context free derivation steps into generic derivation steps.-/
-instance : Coe (@ContextFreeDerivationStep α nt G u) (@Grammar.DerivationStep α nt GenericProduction _ (↑G) u) where
+instance : Coe (@ContextFreeDerivationStep α nt G u) (@Grammar.DerivationStep α nt GenericProduction _ G u) where
   coe cfDerivationStep := { cfDerivationStep with
     prod :=
     {
       val := ContextFreeProduction.toProduction cfDerivationStep.prod.val
       property := by simp
-    } : @Grammar.DerivationStep α nt GenericProduction _ (↑G : Grammar GenericProduction) u
+    } : @Grammar.DerivationStep α nt GenericProduction _ G u
   }
 
 --Taken directly from Grammar version
@@ -161,7 +158,7 @@ theorem ContextFreeDerivationStep.len_result_composition (step : ContextFreeDeri
   simp [sound, ContextFreeDerivationStep.result, Grammar.DerivationStep.result, Word.length_mul_eq_add]
   rfl
 
-variable [i: Production.ContextFree α nt P] { G: Grammar P}
+variable [i: Production.ContextFree α nt P] {G: Grammar P}
 
 /--Theorem: Derivation steps in context free grammars that start in the string
   lhs, with lhs = a :: xs, where a is a terminal symbol,

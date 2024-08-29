@@ -1,6 +1,5 @@
 import FormalSystems.Chomsky.Grammar
 import Mathlib.Data.Finset.Functor
-import Mathlib.Tactic.Tauto
 
 import FormalSystems.Chomsky.ContextFree.ContextFreeGrammar
 --================================================================================
@@ -66,7 +65,7 @@ def PreDerivationTree.decEq {G : ContextFreeGrammar α nt} [eq₁ : DecidableEq 
     intro h_not
     contradiction)
 | .inner var₁ children₁ prodRule₁, .inner var₂ children₂ prodRule₂ =>
-  match (prodRule₁.val.decEq prodRule₂.val) with
+  match (decEq prodRule₁.val prodRule₂.val) with
     | isFalse h_isFalse => isFalse (by simp; intro _ _ ; rw [Subtype.val_inj] at h_isFalse; exact h_isFalse)
     | isTrue h_isTrue_prodRule =>
       match (children₁.decEq children₂) with

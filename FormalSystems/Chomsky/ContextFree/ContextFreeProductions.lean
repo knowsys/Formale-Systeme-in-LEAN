@@ -15,40 +15,7 @@ structure ContextFreeProduction (Z: Finset α) (V: Finset nt) where
   lhs: V
   /--Right-hand side: Any string.-/
   rhs: Word (V ⊕ Z)
-
-/--Define the equality determinating relation.-/
-def ContextFreeProduction.decEq {Z: Finset α} {V: Finset nt} [DecidableEq α] [DecidableEq nt] : (CFP₁ CFP₂ : ContextFreeProduction Z V) → Decidable (Eq CFP₁ CFP₂) :=
-  fun (CFP₁ : (ContextFreeProduction Z V)) (CFP₂ : (ContextFreeProduction Z V)) =>
-  by
-    by_cases CFP₁.lhs = CFP₂.lhs
-    case pos h_pos₁ =>
-      by_cases CFP₁.rhs = CFP₂.rhs
-      case pos h_pos₂ =>
-        exact isTrue (by
-          have h_CFP₂ : CFP₂ = (ContextFreeProduction.mk CFP₁.lhs CFP₁.rhs) :=
-            by rw [h_pos₁, h_pos₂]
-          rw [h_CFP₂])
-      case neg h_neg₂ =>
-        exact isFalse (by
-          have h_CFP₁ : CFP₁ = (ContextFreeProduction.mk CFP₁.lhs CFP₁.rhs) := by simp
-          have h_CFP₂ : CFP₂ = (ContextFreeProduction.mk CFP₂.lhs CFP₂.rhs) := by simp
-          rw [h_CFP₁,h_CFP₂]
-          simp
-          intro _
-          exact h_neg₂
-        )
-    case neg h_neg₁ =>
-      exact isFalse (by
-        have h_CFP₁ : CFP₁ = (ContextFreeProduction.mk CFP₁.lhs CFP₁.rhs) := by simp
-        have h_CFP₂ : CFP₂ = (ContextFreeProduction.mk CFP₂.lhs CFP₂.rhs) := by simp
-        rw [h_CFP₁,h_CFP₂]
-        simp
-        intro h_lhs
-        contradiction)
-
-
-/--Equality is decidable for PDTs using the decEq function.-/
-instance [a : DecidableEq α] [b : DecidableEq nt] : DecidableEq (@ContextFreeProduction α nt Z V) := @ContextFreeProduction.decEq α nt Z V a b
+deriving DecidableEq
 
 /--Shorthand for goes to ε productions.-/
 def ContextFreeProduction.isEps (cfp : (ContextFreeProduction Z V)) : Prop :=

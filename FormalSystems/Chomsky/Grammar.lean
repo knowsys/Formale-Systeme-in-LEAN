@@ -278,6 +278,8 @@ inductive Derivation (G: Grammar Prod) : Word (G.V ⊕ G.Z) → Word (G.V ⊕ G.
   (sound: step.result = u') :
   Derivation G u v
 
+#check Derivation
+
 /--The closure of derivations. Has attributes start and result.-/
 class DerivationCls (G: Grammar Prod) (t: Type) where
   start: Word (G.V ⊕ G.Z)
