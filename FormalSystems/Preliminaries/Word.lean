@@ -126,95 +126,22 @@ theorem Word.eps_eq_nil : (ε : Word α) = ([] : Word _) := by rfl
 /--Theorem: Concatenating ε doesn't change the word.-/
 @[simp] theorem Word.eps_mul : ε * w = w := by simp; rfl
 
-/--Theorem: Appending ε doesn't change the word.-/
-@[simp] theorem Word.eps_append : List.append w ε = w := by simp [Word.eps_eq_nil, List.append_nil]
-
-/--Theorem: Appending ε doesn't change the word.-/
-@[simp] theorem Word.append_eps : List.append ε w = w := by simp [Word.eps_eq_nil, List.append_nil]
-
-/--Theorem: For words, appending and multiplying are equivalent operations.-/
-theorem Word.append_eq_mul {w v : Word α}: List.append w v = w * v := by
-  induction w
-  case nil =>
-    simp ; rw [← Word.epsilon, Word.eps_eq_nil]
-  case cons head tail h_ih =>
-    rw [List.append, h_ih]; rfl
-
-/--Theorem: For words, appending and multiplying are equivalent operations.-/
-theorem Word.mul_eq_append {w v : Word α}: w * v = List.append w v := by exact Word.append_eq_mul
-
 /--Theorem: The concatenation of two words is ε if and only if both words are ε.-/
 theorem Word.mul_eq_eps { w v : Word α } : w * v = ε ↔ w = ε ∧ v = ε :=
   List.append_eq_nil
 
-/--Return the length of a word.
-    TODO: Note, that all usage of Word.len could probably
-    have been done with List.length, since coercion between
-    the two types is trivial. This would have saved us from
-    proving all the theorems below, as they have mostly
-    been proven for List.length. Maybe replace this definition
-    with List.length in the future.-/
-def Word.len: (w:Word α) → Nat
-  | [] => 0
-  | (_::xs) => 1 + Word.len (xs)
+/--Return the length of a word. -/
+def Word.len (w: Word α) : Nat := List.length w
 
 /--Theorem: A word has length 0 if and only if it is ε.-/
-@[simp]
 theorem Word.eps_len_0 : Word.len w = 0 ↔ w = ε := by
-  rw [Word.eps_eq_nil]
-  apply Iff.intro
-  case mp =>
-    intro h_len_0
-    cases w
-    case nil =>
-      rfl
-    case cons _ _ =>
-      rw [Word.len] at h_len_0
-      rw [Nat.add_eq_zero] at h_len_0
-      absurd h_len_0.left
-      simp
-  case mpr =>
-    intro h_nil
-    simp [h_nil, Word.len]
-
-/--Theorem: A word has length 0 if and only if it is [].-/
-@[simp]
-theorem Word.nil_len_0 : Word.len w = 0 ↔ w = [] := by
-  simp [Word.eps_eq_nil]
+  rw [Word.len, Word.eps_eq_nil, List.length_eq_zero]
 
 /--Theorem: The addition of the lengths of two words is the length of their product.-/
 theorem Word.length_mul_eq_add { w v : Word α } : Word.len (w * v) = Word.len w + Word.len v := by
-  induction w
-  case nil =>
-    simp [Word.len, ← Word.eps_eq_nil]
-  case cons head tail ind_hyp =>
-    rw [Word.mul_eq_append]
-    have h_rw : List.append (head :: tail) v = head :: (List.append tail v) := by simp
-    rw [h_rw, Word.len, Word.len]
-    rw [Word.mul_eq_append] at ind_hyp
-    rw [ind_hyp, add_assoc]
-
-/--Theorem: Word construction respects list a :: xs construction as expected.-/
-@[simp]
-theorem Word.mk_cons {word : Word α} : (∃ (head : α) (tail : List α), word = Word.mk (head :: tail))
-  →
-  (∃ (head : α) (tail : List α), word = mk (head :: tail) ∧ Word.mk (head :: tail) = Word.mk [head] * Word.mk tail) := by
-  tauto
-
-/--Theorem: Word.len and List.length align.-/
-@[simp]
-theorem Word.mk_from_list_len {list : List α} : Word.len (Word.mk list) = list.length := by
-  induction list
-  case nil =>
-    simp [Word.len]
-  case cons head tail ind_hyp =>
-    have h_mk_cons : Word.mk (head :: tail) = Word.mk [head] * Word.mk tail := by tauto
-    rw [h_mk_cons, Word.length_mul_eq_add, List.length, ind_hyp]
-    have h_1 : len (Word.mk [head]) = 1 := by tauto
-    rw [h_1, add_comm]
-
-/--Theorem: The addition of the lengths of two words is the length of their product.-/
-theorem Word.length_add_eq_mul { w v : Word α } : Word.len w + Word.len v = Word.len (w * v) := by exact (@Word.length_mul_eq_add _ w v).symm
+  unfold Word.len
+  unfold_projs
+  simp
 
 /--Return the proposition, that all elements of a specific word are in a
   specific set.-/
@@ -243,83 +170,10 @@ instance : GetElem (Word α) ℕ α (λw i ↦ i < w.length) where
   ∀ (u v : Word _), f <$> (u * v) = (f <$> u) * (f <$> v) :=
   List.map_append f
 
-/--Theorem: If a symbol is an element of a word tail, it is also an element of
-  head :: tail.-/
-theorem Word.mem_imp_cons (elem head : α) (tail : Word α) : elem ∈ tail → elem ∈ head :: tail := by
-  tauto
-
-/--Theorem: A symbol is in a word if it is either its head or in its tail.-/
-@[simp]
-theorem Word.mem_cons_iff_or (elem head : α) (tail : Word α) : elem ∈ head :: tail ↔ elem = head ∨ elem ∈ tail := by
-  simp
-
 /--Theorem: A symbol is in the concatenation of two words if and only if it is in one of the words.-/
 theorem Word.mem_mul_iff_or (a b : Word α) (elem : α) : elem ∈ a * b ↔ elem ∈ a ∨ elem ∈ b := by
-  apply Iff.intro
-  case mp =>
-    intro h_left
-    induction a
-    case nil =>
-      rw [eps_eq_nil.symm, eps_mul] at h_left
-      apply Or.inr
-      exact h_left
-    case cons head tail ind_hyp =>
-      by_cases h_eq : elem = head
-      case pos =>
-        apply Or.inl
-        rw [h_eq]
-        tauto
-      case neg =>
-        rw [mem_cons_iff_or, or_iff_right h_eq]
-        rw [Word.mul_eq_append] at h_left
-        simp [List.cons_append head tail b] at h_left
-        rw [Word.mem_cons_iff_or] at h_left
-        rw [or_iff_right h_eq] at h_left
-        apply ind_hyp at h_left
-        exact h_left
-  case mpr =>
-    intro h_right
-    cases h_right
-    case inl h_inl =>
-      induction a
-      case nil =>
-        rw [List.mem_nil_iff elem] at h_inl
-        contradiction
-      case cons head tail ind_hyp =>
-        rw [mem_cons_iff_or] at h_inl
-        cases h_inl
-        case inl h_inl =>
-          rw [Word.mul_eq_append]
-          simp [List.cons_append]
-          rw [mem_cons_iff_or]
-          apply Or.inl
-          exact h_inl
-        case inr h_inr =>
-          apply ind_hyp at h_inr
-          rw [Word.mul_eq_append]
-          simp [List.cons_append]
-          rw [mem_cons_iff_or]
-          apply Or.inr
-          exact h_inr
-    case inr h_inr =>
-      induction a
-      case nil =>
-        rw [eps_eq_nil.symm, eps_mul]
-        exact h_inr
-      case cons head tail ind_hyp =>
-        rw [mul_eq_append]
-        simp [List.cons_append]
-        rw [mem_cons_iff_or]
-        apply Or.inr
-        exact ind_hyp
-
-/--Theorem: The List.length and the Word.len functions behave the same for all words.-/
-theorem Word.list_length_eq_word_len (word : Word α) : List.length word = Word.len word := by
-  induction word
-  case nil =>
-    simp [Word.len]
-  case cons _ _ ind_hyp =>
-    simp [List.length_cons, Word.len, ind_hyp, Nat.succ_eq_add_one, add_comm]
+  unfold_projs
+  exact List.mem_append
 
 /--Construct a longer word from a list of words.-/
 def Word.concatListOfWords (list : List (Word X)) : Word X :=
@@ -327,16 +181,6 @@ def Word.concatListOfWords (list : List (Word X)) : Word X :=
 
 --#eval (Word.concatListOfWords [Word.mk ['a'], Word.mk ['b'], Word.mk ['e']])
 --#eval Word.mk ['a'] * Word.mk ['d'] * Word.mk ['D','d']
-
-/--Construct the word `w = B[0]A[0]B[1]A[1]...A[N]B[N+1]`.
-
-  Requires As length to be one less than Bs length and B to be non-empty.-/
-def Word.concat2ListsOfWordsAlternating (A : List (Word X)) (B : List (Word X)) (proof_length : A.length + 1 = B.length) (proof_B_nonempty : B.length > 0): (Word X) :=
-  have _ : List.length B - 1 < List.length B := by exact Nat.pred_lt_self proof_B_nonempty
-  Fin.foldr A.length (fun n w =>
-  have _ : n < B.length := by rw [← proof_length] ; exact lt_trans n.isLt (Nat.lt_succ_self A.length)
-  B[n] * A[n] * w)
-  B[B.length-1]
 
 -- This section illustrates how we can define and use alphabets.
 

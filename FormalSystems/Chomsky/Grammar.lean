@@ -172,10 +172,8 @@ def DerivationStep.augment_right (step: DerivationStep G u) (w: Word (G.V ⊕ G.
     pre := step.pre,
     suf := step.suf * w,
     sound := by
-      simp [mul_assoc]
-      have t := step.sound
-      simp [← mul_assoc] at t
       simp [← mul_assoc]
+      have t := step.sound
       exact t
   }
 
@@ -254,7 +252,7 @@ theorem DerivationStep.len_u_composition (step: DerivationStep G u) :
     step.pre.len + Word.len (Production.lhs step.prod.val) + step.suf.len := by
   have sound : _ := step.sound
   simp at sound
-  simp [Word.length_add_eq_mul, sound]
+  simp [Word.length_mul_eq_add, sound]
 
 /--Inductive definition of derivations u (G)⇒* v in Grammars.
 
@@ -363,47 +361,6 @@ theorem trans {u v w: Word _} (d1: G.Derivation u v) (d2: G.Derivation v w) : G.
   | same h => exact h ▸ d2
   | step l _ sound ih => exact step l (ih d2) sound
 
-/--Theorem: Two generic derivations are equal if and only if their left- and right-hand side are the same
-  and each step taken is the same.-/
-@[simp] theorem eq_iff_same_steps_and_same_result (deriv₁ deriv₂ : G.Derivation v w) :
-  deriv₁ = deriv₂ ↔
-    (deriv₁ = same (h_equals₁ : v=w)) ∧ (deriv₂ = same (h_equals₂ : v=w)) ∨
-    ∃step', ∃ u, ∃ prevDeriv : (G.Derivation u w), ∃sound₁, ∃sound₂, (deriv₁ = step step' prevDeriv (sound₁ : (step'.result = u))) ∧ (deriv₂ = step step' prevDeriv (sound₂ : (step'.result = u))) := by
-  apply Iff.intro
-  case mp =>
-    intro h_derivs_equal  -- assume deriv₁ = deriv₂
-    cases h_deriv₁ : deriv₁          -- which constructor was used?
-    case same =>          -- 0-step derivation
-      apply Or.intro_left
-      apply And.intro; rfl
-      rw [← h_derivs_equal, h_deriv₁]
-    case step prod' u'' step' deriv_result' deriv' : _ =>          -- step derivation
-      apply Or.intro_right
-      exists step'
-      exists u''
-      exists deriv'
-      exists deriv_result'; exists deriv_result'
-      apply And.intro; rfl; rw [← h_derivs_equal, h_deriv₁]
-  case mpr =>
-    intro h_same_steps_and_same_result
-    cases h_same_steps_and_same_result
-    case inl h_left =>
-      rw [h_left.left, h_left.right]
-    case inr h_right =>
-    -- TODO: rewrite this with algorithmic type expression, I knew you could
-    -- probably in chapter inductive proofs
-      apply Exists.elim h_right; intro step
-      intro h_right'
-      apply Exists.elim h_right'; intro u
-      intro h_right''
-      apply Exists.elim h_right''; intro prevDeriv
-      intro h_right'''
-      apply Exists.elim h_right'''; intro sound₁
-      intro h_right''''
-      apply Exists.elim h_right''''; intro sound₂
-      intro h_right'''''
-      rw [h_right'''''.right, h_right'''''.left]
-
 end Derivation
 
 /--The derivation relation is a preorder. Return said preorder as induced by the grammer of the derivation relation.
@@ -467,18 +424,20 @@ def ExampleGrammar.lang: Language ({ 'b', 'z' } : Finset _) :=
 
 end Grammar
 
+namespace Word
+
 variable { Prod : Finset α → Finset nt → Type } [Production α nt Prod]
 
 /--Convert this word to a V or Z word.-/
-def Word.VtoVZ {G : Grammar Prod} (word : Word G.V) : Word (G.V ⊕ G.Z) :=
+def VtoVZ {G : Grammar Prod} (word : Word G.V) : Word (G.V ⊕ G.Z) :=
   List.map (fun var : { x // x ∈ G.V } => Sum.inl var) word
 
 /--Convert this word to a V or Z word.-/
-def Word.ZtoVZ {G : Grammar Prod} (word : Word G.Z) : Word (G.V ⊕ G.Z) :=
+def ZtoVZ {G : Grammar Prod} (word : Word G.Z) : Word (G.V ⊕ G.Z) :=
   List.map (fun terminal : { x // x ∈ G.Z } => Sum.inr terminal) word
 
 /--Convert this word to a Z word. Precondition requires all the word's symbols to be in Z (this aligns with ContextFreeDerivation.exhaustive).-/
-def Word.VZtoZ {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) (h_all_Z : ∀ symbol ∈ word, Sum.isRight symbol): Word (G.Z) :=
+def VZtoZ {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) (h_all_Z : ∀ symbol ∈ word, Sum.isRight symbol): Word (G.Z) :=
   @List.map
     { x : (G.V ⊕ G.Z) // x ∈ word }
     G.Z
@@ -490,7 +449,7 @@ def Word.VZtoZ {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) (h_all_Z : ∀ sym
     (@List.attach (G.V ⊕ G.Z) word) -- add Membership-Prop information
 
 /--Convert this word to a V word. Precondition requires all the word's symbols to be in V.-/
-def Word.VZtoV {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) (h_all_V : ∀ symbol ∈ word, Sum.isLeft symbol): Word (G.V) :=
+def VZtoV {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) (h_all_V : ∀ symbol ∈ word, Sum.isLeft symbol): Word (G.V) :=
   @List.map
       { x : (G.V ⊕ G.Z) // x ∈ word }
       G.V
@@ -502,74 +461,23 @@ def Word.VZtoV {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) (h_all_V : ∀ sym
   (@List.attach (G.V ⊕ G.Z) word)
 
 /--Theorem: Word type conversion doesn't affect word length.-/
-theorem Word.VZtoV_len {G : Grammar Prod}
+theorem VZtoV_len {G : Grammar Prod}
   (word : Word (G.V ⊕ G.Z))
   (h_all_V : ∀ symbol ∈ word, Sum.isLeft symbol) :
-  Word.len (word.VZtoV h_all_V) = Word.len word := by
-    induction word
-    case nil =>
-      simp [VZtoV]
-      rfl
-    case cons head tail ind_hyp =>
-      nth_rewrite 1 [Word.len]
-      have h_all_V₂ : ∀ symbol ∈ tail, Sum.isLeft symbol = true := by
-        exact And.right (List.forall_mem_cons.mp h_all_V)
-      rw [← ind_hyp h_all_V₂]
-      rw [VZtoV]
-      rw [← Word.list_length_eq_word_len]
-      simp [ind_hyp, ← Word.list_length_eq_word_len, Nat.succ_eq_add_one, Nat.add_comm]
-
-/--Theorem: Word type conversion doesn't affect word length.-/
-theorem Word.VZtoZ_len {G : Grammar Prod}
-  (word : Word (G.V ⊕ G.Z))
-  (h_all_Z : ∀ symbol ∈ word, Sum.isRight symbol) :
-  Word.len (word.VZtoZ h_all_Z) = Word.len word := by
-    induction word
-    case nil =>
-      simp [VZtoZ]
-      rfl
-    case cons head tail ind_hyp =>
-      nth_rewrite 1 [Word.len]
-      have h_all_Z₂ : ∀ symbol ∈ tail, Sum.isRight symbol = true := by
-        exact And.right (List.forall_mem_cons.mp h_all_Z)
-      rw [← ind_hyp h_all_Z₂]
-      rw [VZtoZ]
-      rw [← Word.list_length_eq_word_len]
-      simp [ind_hyp, ← Word.list_length_eq_word_len, Nat.succ_eq_add_one, Nat.add_comm]
+  (word.VZtoV h_all_V).len = word.len := by
+    rw [VZtoV]
+    unfold len
+    simp
 
 /--Theorem: Mapping Sum.inr to a word does not change its length.-/
-theorem Word.len_cancel_inr
+theorem len_cancel_inr
   {G : Grammar Prod}
   (word : Word (G.Z)) :
-  Word.len ((@Sum.inr G.V G.Z <$> word)) = word.len := by
-    induction word
-    case nil =>
-      tauto
-    case cons head tail ind_hyp =>
-      simp [Word.len]
-      exact ind_hyp
-
-/--Theorem: Word.VZtoZ type conversion does not change its length.-/
-theorem Word.VZtoZ_cancel_inr {G : Grammar Prod}
-  (word : Word (G.Z)) (h_all_Z : ∀ symbol ∈ (@Sum.inr G.V G.Z <$> word), Sum.isRight symbol) :
-  (Word.VZtoZ (@Sum.inr G.V G.Z <$> word) h_all_Z) = word := by
-    induction word
-    case nil =>
-      tauto
-    case cons a word₂ ind_hyp =>
-      have h_all_Z₂ : ∀ symbol ∈ Sum.inr <$> word₂, Sum.isRight symbol = true := by tauto
-      have asny := ind_hyp h_all_Z₂
-      have asfdy := asny.symm
-      /-
-      simp [VZtoZ, List.map]
-      have bs : word₂ = (↑((VZtoZ (Sum.inr <$> word₂) h_all_Z₂) : List _) : List _) := by tauto
-      -- Cannot currently rewrite using the above, because word₂ has type List ...
-      -- while the right side of the equation has type Word ...
-      -/
-      sorry
+  ((@Sum.inr G.V G.Z <$> word)).len = word.len := by
+    simp [len]
 
 /--Collect the variables in this word.-/
-def Word.collectVars {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : List G.V :=
+def collectVars {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : List G.V :=
   List.foldl
   (fun before : (List G.V) =>
       fun symbol =>
@@ -579,21 +487,11 @@ def Word.collectVars {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : List G.V :
   [] word
 
 /--Count the variables in this word.-/
-def Word.countVars {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : ℕ :=
+def countVars {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : ℕ :=
   word.collectVars.length
 
-/- /--Collect the variables in this word and their indexes.-/
-def Word.collectVarsWithIndexes {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : List (G.V × ℕ) :=
-  List.foldl
-  (fun before : (List (G.V × ℕ)) =>
-      fun symbol =>
-        match (symbol : (G.V ⊕ G.Z)) with
-        | Sum.inl var => before ++ [⟨var, ???⟩]
-        | Sum.inr _ => before)
-  [] word -/
-
 /--Collect the terminals in this word.-/
-def Word.collectTerminals {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : List G.Z :=
+def collectTerminals {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : List G.Z :=
   List.foldl
   (fun before : (List G.Z) =>
       fun symbol =>
@@ -603,22 +501,20 @@ def Word.collectTerminals {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : List 
   [] word
 
 /--Count the terminals in this word.-/
-def Word.countTerminals {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : ℕ :=
+def countTerminals {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : ℕ :=
   word.collectTerminals.length
 
 /--Return wether a word is all Z (terminal symbols) as a Bool.-/
-def Word.isAllZ {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : Bool :=
+def isAllZ {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : Bool :=
   match word with
-  | .nil =>
-    True
+  | .nil => True
   | .cons symbol word₂ =>
     @Decidable.by_cases (Sum.isRight symbol) _ _
-    (fun _ =>
-      Word.isAllZ (word₂ : Word (G.V ⊕ G.Z)))
+    (fun _ => isAllZ (word₂ : Word (G.V ⊕ G.Z)))
     (fun _ => False)
 
 /--Decide wether a word is all Z (terminal symbols).-/
-def Word.decideIsAllZ {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : Decidable (∀ symbol ∈ word, Sum.isRight symbol) :=
+def decideIsAllZ {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : Decidable (∀ symbol ∈ word, Sum.isRight symbol) :=
   match h_constructor : word with
   | .nil =>
     isTrue (by tauto)
@@ -652,12 +548,12 @@ def Word.decideIsAllZ {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : Decidable
       tauto))
 
 /--Return wether a word is all V (non-terminal symbols) as a Bool.-/
-def Word.isAllV {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : Bool :=
+def isAllV {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : Bool :=
   match word with
-  | .nil =>
-    True
+  | .nil => True
   | .cons symbol word₂ =>
     @Decidable.by_cases (Sum.isLeft symbol) _ _
-    (fun _ =>
-      Word.isAllZ (word₂ : Word (G.V ⊕ G.Z)))
+    (fun _ => isAllV (word₂ : Word (G.V ⊕ G.Z)))
     (fun _ => False)
+end Word
+

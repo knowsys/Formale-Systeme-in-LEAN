@@ -132,8 +132,7 @@ theorem ContextFreeDerivationStep.augment_right_result (step: ContextFreeDerivat
 theorem ContextFreeDerivationStep.len_u_composition (step: ContextFreeDerivationStep G u) : u.len = step.pre.len + (Word.mk [@Sum.inl G.V G.Z step.prod.val.lhs]).len + step.suf.len := by
   have sound : _ := step.sound
   simp at sound
-  simp [Word.length_add_eq_mul, sound]
-  rw [Word.length_mul_eq_add, Word.length_mul_eq_add]
+  simp [Word.length_mul_eq_add, sound]
   rfl
 
 /--Theorem: If the right side isn't empty, then length of lhs is less or equal to the rhs of a production rule.-/
@@ -141,7 +140,7 @@ theorem ContextFreeProduction.oneElem
   (prod : ContextFreeProduction Z V)
   (h_rhs_non_empty : 1 ≤ prod.rhs.len)
   : (Word.mk [@Sum.inl V Z prod.lhs]).len ≤ prod.rhs.len := by
-  simp [Word.mk_from_list_len, List.length]
+  simp [Word.len, Word.mk]
   exact h_rhs_non_empty
 
 /--Theorem: If the right side isn't empty, then the length of the word weakly increases along derivation steps.-/
@@ -149,8 +148,9 @@ theorem ContextFreeDerivationStep.sizeMonotoneIncreasing
   (step: ContextFreeDerivationStep G u)
   (h_rhs_non_empty : 1 ≤ step.prod.val.rhs.len)
   : u.len ≤ step.result.len := by
-  rw [ContextFreeDerivationStep.result, step.len_u_composition]
-  simp [Word.length_mul_eq_add, Grammar.DerivationStep.result, Word.mk_from_list_len, List.length]
+  rw [ContextFreeDerivationStep.result, step.len_u_composition, Grammar.DerivationStep.result]
+  simp [Word.length_mul_eq_add]
+  apply ContextFreeProduction.oneElem
   exact h_rhs_non_empty
 
 /-Theorem: The origin for a derivation steps length is the addition of the lengths of the prefix, variable and sufix.-/
@@ -158,7 +158,7 @@ theorem ContextFreeDerivationStep.len_result_composition (step : ContextFreeDeri
   : step.result.len = step.pre.len + step.prod.val.rhs.len + step.suf.len := by
   have sound : _ := step.sound
   simp at sound
-  simp [Word.length_add_eq_mul, sound, ContextFreeDerivationStep.result, Grammar.DerivationStep.result]
+  simp [sound, ContextFreeDerivationStep.result, Grammar.DerivationStep.result, Word.length_mul_eq_add]
   rfl
 
 variable [i: Production.ContextFree α nt P] { G: Grammar P}
@@ -301,3 +301,4 @@ theorem Grammar.Derivation.cancelLeft_len
   | .step _ _ _ =>
     simp [Grammar.Derivation.len]
     apply cancelLeft_len
+
