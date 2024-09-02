@@ -33,6 +33,7 @@ inductive NEPreDerivationTreeList (G : ContextFreeGrammar α nt)
   | cons (PDT : PreDerivationTree G) (NEPDTL : NEPreDerivationTreeList G) : NEPreDerivationTreeList G
 end
 
+-- TODO: maybe this can be derived somehow instead of implementing this by hand?
 mutual
 /--Define the equality determinating relation.-/
 def PreDerivationTree.decEq {G : ContextFreeGrammar α nt} [eq₁ : DecidableEq α] [eq₂ : DecidableEq nt] : (PDT₁ PDT₂ : PreDerivationTree G) → Decidable (Eq PDT₁ PDT₂)
@@ -123,41 +124,43 @@ macro_rules
   | `(DT[$x])    => `(NEPreDerivationTreeList.single $x)
   | `(DT[ $x₁, $xs,*]) => `(NEPreDerivationTreeList.cons $x₁ DT[$xs,*])
 
-/--Convert to a List (PreDerivationTree G). Only correct order if child nodes were assigned left-to-right.-/
-def NEPreDerivationTreeList.asList (NEPDTL : NEPreDerivationTreeList G) : List (PreDerivationTree G) := match NEPDTL with
-  | single PDT => [PDT]
-  | cons (PDT) (NEPDTL₂) => PDT :: NEPDTL₂.asList
+namespace NEPreDerivationTreeList
+  /--Convert to a List (PreDerivationTree G). Only correct order if child nodes were assigned left-to-right.-/
+  def asList (NEPDTL : NEPreDerivationTreeList G) : List (PreDerivationTree G) := match NEPDTL with
+    | single PDT => [PDT]
+    | cons (PDT) (NEPDTL₂) => PDT :: NEPDTL₂.asList
 
-/--Folds a function over a non-empty pre-derivation tree list from the left:
-`foldl f z NEPDT(a, b, c) = f (f (f z a) b) c`-/
-@[specialize]
-def NEPreDerivationTreeList.foldl
-  {G : ContextFreeGrammar α nt} {α : Type u}
-  (f : α → (PreDerivationTree G) → α) :
-  (init : α) → (NEPreDerivationTreeList G) → α
-  | a, single PDT => f a PDT
-  | a, cons PDT NEPDTL₂ => NEPreDerivationTreeList.foldl f (f a PDT) NEPDTL₂
+  /--Folds a function over a non-empty pre-derivation tree list from the left:
+  `foldl f z NEPDT(a, b, c) = f (f (f z a) b) c`-/
+  @[specialize]
+  def foldl
+    (f : α → (PreDerivationTree G) → α) :
+    (init : α) → (NEPreDerivationTreeList G) → α
+    | a, single PDT => f a PDT
+    | a, cons PDT NEPDTL₂ => NEPreDerivationTreeList.foldl f (f a PDT) NEPDTL₂
 
-/--Theorem: The lists constructed with asList are never [].-/
-theorem NEPreDerivationTreeList.asList_never_nil (NEPDTL : NEPreDerivationTreeList G) :
-  ¬ NEPDTL.asList = [] := by
-  apply Not.intro
-  intro h
-  cases NEPDTL
-  repeat rw [NEPreDerivationTreeList.asList] at h; contradiction
+  /--Theorem: The lists constructed with asList are never [].-/
+  theorem asList_never_nil (NEPDTL : NEPreDerivationTreeList G) :
+    ¬ NEPDTL.asList = [] := by
+    apply Not.intro
+    intro h
+    cases NEPDTL
+    repeat rw [NEPreDerivationTreeList.asList] at h; contradiction
 
-/--Theorem: The lists constructed with asList have non-zero length.-/
-theorem NEPreDerivationTreeList.asList_length (NEPDTL : NEPreDerivationTreeList G) :
-  NEPDTL.asList.length > 0 := by
-  apply List.length_pos_of_ne_nil NEPDTL.asList_never_nil
+  /--Theorem: The lists constructed with asList have non-zero length.-/
+  theorem asList_length (NEPDTL : NEPreDerivationTreeList G) :
+    NEPDTL.asList.length > 0 := by
+    apply List.length_pos_of_ne_nil NEPDTL.asList_never_nil
+end NEPreDerivationTreeList
 
 mutual
 /--Return a list of the context-free node's children. Only correct order if child nodes were assigned left-to-right.-/
-def NEPreDerivationTreeList.nodeList {G : ContextFreeGrammar α nt} (NEPDT : NEPreDerivationTreeList G) : List (PreDerivationTree G) := match (NEPDT : NEPreDerivationTreeList G) with
+def NEPreDerivationTreeList.nodeList (NEPDT : NEPreDerivationTreeList G) : List (PreDerivationTree G) := match (NEPDT : NEPreDerivationTreeList G) with
   | .single PDT => PDT.nodeList
   | .cons PDT NEPDT₂ => PDT.nodeList ++ NEPDT₂.nodeList
+
 /--Return a list of the context-free node's children. Only correct order if child nodes were assigned left-to-right.-/
-def PreDerivationTree.nodeList {G : ContextFreeGrammar α nt} (PDT : PreDerivationTree G) : List (PreDerivationTree G) := match (PDT : PreDerivationTree G) with
+def PreDerivationTree.nodeList (PDT : PreDerivationTree G) : List (PreDerivationTree G) := match (PDT : PreDerivationTree G) with
   | .leaf _ => [PDT]
   | .inner _ children _ => PDT :: children.nodeList
 end
@@ -165,7 +168,7 @@ end
 mutual
 /--Theorem: The list of nodes returned with nodeList is never empty.-/
 theorem NEPreDerivationTreeList.nodeList_never_nil
-  {G : ContextFreeGrammar α nt} (NEPDT : NEPreDerivationTreeList G) :
+  (NEPDT : NEPreDerivationTreeList G) :
   ¬ NEPDT.nodeList = [] := by
     intro h_not
     cases NEPDT
@@ -180,7 +183,7 @@ theorem NEPreDerivationTreeList.nodeList_never_nil
       contradiction
 /--Theorem: The list of nodes returned with nodeList is never empty.-/
 theorem PreDerivationTree.nodeList_never_nil
-  {G : ContextFreeGrammar α nt} (PDT : PreDerivationTree G) :
+  (PDT : PreDerivationTree G) :
   ¬ PDT.nodeList = [] := by
     intro h_not
     cases PDT
@@ -194,24 +197,24 @@ theorem PreDerivationTree.nodeList_never_nil
 end
 
 /--Return a (possibly empty) list of this nodes children. Only correct order if child nodes were assigned left-to-right.-/
-def PreDerivationTree.children {G : ContextFreeGrammar α nt} : (PDT : (PreDerivationTree G)) → List (PreDerivationTree G)
+def PreDerivationTree.children : PreDerivationTree G → List (PreDerivationTree G)
   | leaf _ => []
   | inner _ children _ => children.asList
 
 mutual
 /--Get the list of used production rules. Only correct order if child nodes were assigned left-to-right.-/
-def PreDerivationTree.prodRuleList {G : ContextFreeGrammar α nt} : (PreDerivationTree G) → List (G.productions)
+def PreDerivationTree.prodRuleList : PreDerivationTree G → List (G.productions)
   | .leaf _ => []
   | .inner _ children prodRule => prodRule :: children.prodRuleList
 /--Get the list of used production rules. Only correct order if child nodes were assigned left-to-right.-/
-def NEPreDerivationTreeList.prodRuleList {G : ContextFreeGrammar α nt} : (NEPDT : (NEPreDerivationTreeList G)) → List (G.productions)
+def NEPreDerivationTreeList.prodRuleList : NEPreDerivationTreeList G → List (G.productions)
   | .single PDT => PDT.prodRuleList
-  | .cons PDT NEPDT₂ => PDT.prodRuleList ++ NEPDT₂.prodRuleList
+  | .cons PDT NEPDT => PDT.prodRuleList ++ NEPDT.prodRuleList
 end
 
 mutual
 /--The final result-word defined by the children of a context-free tree-node. Only correct order if child nodes were assigned left-to-right.-/
-def PreDerivationTree.result {G : ContextFreeGrammar α nt} : (PDT : PreDerivationTree G) → Word (G.Z)
+def PreDerivationTree.result : PreDerivationTree G → Word (G.Z)
   | .leaf terminal =>
     match terminal with
     | none =>
@@ -220,14 +223,14 @@ def PreDerivationTree.result {G : ContextFreeGrammar α nt} : (PDT : PreDerivati
       Word.mk [terminalSymbol]
   | .inner _ children _ => children.result
 /--The final result-word defined by the children of a context-free tree-node. Only correct order if child nodes were assigned left-to-right.-/
-def NEPreDerivationTreeList.result {G : ContextFreeGrammar α nt} : (NEPDT : NEPreDerivationTreeList G) → Word (G.Z)
+def NEPreDerivationTreeList.result : NEPreDerivationTreeList G → Word (G.Z)
   | .single PDT => PDT.result
-  | .cons PDT NEPDT₂ => Word.concatListOfWords [PDT.result , NEPDT₂.result]
+  | .cons PDT NEPDT => Word.concatListOfWords [PDT.result, NEPDT.result]
 end
 
 mutual
 /--The intermediate level word defined by the children of a context-free tree-node. Only correct order if child nodes were assigned left-to-right.-/
-def PreDerivationTree.levelWord {G : ContextFreeGrammar α nt} : (PDT : PreDerivationTree G) → Word (G.V ⊕ G.Z)
+def PreDerivationTree.levelWord : PreDerivationTree G → Word (G.V ⊕ G.Z)
   | .leaf terminal =>
     match terminal with
     | none =>
@@ -236,20 +239,20 @@ def PreDerivationTree.levelWord {G : ContextFreeGrammar α nt} : (PDT : PreDeriv
       Word.mk [Sum.inr terminalSymbol]
   | .inner var _ _ => Word.mk [(Sum.inl var)]
 /--The final result-word defined by the children of a context-free tree-node. Only correct order if child nodes were assigned left-to-right.-/
-def NEPreDerivationTreeList.levelWord {G : ContextFreeGrammar α nt} : (NEPDT : NEPreDerivationTreeList G) → Word (G.V ⊕ G.Z)
+def NEPreDerivationTreeList.levelWord : NEPreDerivationTreeList G → Word (G.V ⊕ G.Z)
   | .single PDT => PDT.levelWord
-  | .cons PDT NEPDT₂ => Word.concatListOfWords [PDT.levelWord , NEPDT₂.levelWord]
+  | .cons PDT NEPDT => Word.concatListOfWords [PDT.levelWord , NEPDT.levelWord]
 end
 
 mutual
 /--Define the depth of a context-free derivation-tree.-/
-def PreDerivationTree.depth {G : ContextFreeGrammar α nt} : (PDT : PreDerivationTree G) -> Nat
+def PreDerivationTree.depth : PreDerivationTree G -> Nat
   | .leaf _ => 0
   | .inner _ children _ => children.depth + 1
 /--Define the depth of a context-free derivation-tree.-/
-def NEPreDerivationTreeList.depth {G : ContextFreeGrammar α nt} : (NEPDT : NEPreDerivationTreeList G) -> Nat
+def NEPreDerivationTreeList.depth : NEPreDerivationTreeList G -> Nat
   | .single PDT => PDT.depth
-  | .cons PDT NEPDT₂ => Nat.max PDT.depth NEPDT₂.depth
+  | .cons PDT NEPDT => Nat.max PDT.depth NEPDT.depth
 end
 
 /--Collect the nodelists of PDTs one by one.-/
@@ -287,7 +290,7 @@ theorem concat_nodeLists_cons (PDT_List : List (PreDerivationTree G)) (list₁ l
 mutual
 /--Theorem: The PreDerivationTree.nodeList function appends all of a nodes children and itself into a large list.-/
 theorem PreDerivationTree.nodeList_eq_concat_children_nodeList
-  {G : ContextFreeGrammar α nt} (PDT : PreDerivationTree G) :
+  (PDT : PreDerivationTree G) :
   PDT.nodeList = [PDT] ∨
   PDT.nodeList = List.foldl append_nodeLists [PDT] PDT.children := by
     cases PDT
@@ -306,7 +309,7 @@ theorem PreDerivationTree.nodeList_eq_concat_children_nodeList
 
 /--Theorem: The NEPreDerivationTreeList.nodeList function appends all of a the included nodes and their children into a large list.-/
 theorem NEPreDerivationTreeList.nodeList_eq_concat_children_nodeList
-  {G : ContextFreeGrammar α nt} (NEPDT : NEPreDerivationTreeList G) :
+  (NEPDT : NEPreDerivationTreeList G) :
   NEPDT.nodeList = List.foldl append_nodeLists [] NEPDT.asList := by
   cases NEPDT
   case single PDT =>
@@ -339,7 +342,7 @@ end
 
 /--Theorem: Given a NEPreDerivationTreeList, its members have less nodes than the whole list.-/
 theorem NEPreDerivationTreeList.children_have_leq_nodes
-  {G : ContextFreeGrammar α nt} (NEPDT : NEPreDerivationTreeList G) :
+  (NEPDT : NEPreDerivationTreeList G) :
   ∀ child ∈ NEPDT.asList, NEPDT.nodeList.length >= child.nodeList.length := by
   intro child h_membership
   cases NEPDT with
@@ -391,7 +394,7 @@ theorem NEPreDerivationTreeList.children_have_leq_nodes
 
 /--Theorem: The total number on nodes in a context-free (sub-)tree decreases the further we go down in a tree.-/
 theorem PreDerivationTree.children_have_leq_nodes
-  {G : ContextFreeGrammar α nt} (PDT : PreDerivationTree G) :
+  (PDT : PreDerivationTree G) :
   (∃ w, PDT = PreDerivationTree.leaf w) ∨
   (∃ var children rule, PDT =  PreDerivationTree.inner var children rule
     ∧ ∀ child ∈ children.asList,
@@ -424,7 +427,7 @@ mutual
 - The children match the production rules result.
 
 - The children are tree-valid.-/
-def PreDerivationTree.treeValid {G : ContextFreeGrammar α nt} (PDT : PreDerivationTree G) : Prop :=
+def PreDerivationTree.treeValid (PDT : PreDerivationTree G) : Prop :=
   match PDT with
   | .leaf _ => True
   | .inner var children rule =>
@@ -435,7 +438,7 @@ def PreDerivationTree.treeValid {G : ContextFreeGrammar α nt} (PDT : PreDerivat
       /- 3 The children are valid. -/
       children.treeValid
 /--A list of Derivation Trees is valid, if each of its children is valid.-/
-def NEPreDerivationTreeList.treeValid {G : ContextFreeGrammar α nt} (NEPDTL : NEPreDerivationTreeList G) : Prop :=
+def NEPreDerivationTreeList.treeValid (NEPDTL : NEPreDerivationTreeList G) : Prop :=
   match NEPDTL with
   | .single PDT => PDT.treeValid
   | .cons PDT NEPDTL₂ => PDT.treeValid ∧ NEPDTL₂.treeValid
@@ -443,7 +446,7 @@ end
 
 /--Theorem: If a list of tree nodes are valid, then so is any of its members.-/
 theorem NEPreDerivationTreeList.treeValid_implies_child_valid
-  {G : ContextFreeGrammar α nt} {NEPDTL : NEPreDerivationTreeList G} {child : PreDerivationTree G}
+  (NEPDTL : NEPreDerivationTreeList G) (child : PreDerivationTree G)
   (h_treeValid : NEPDTL.treeValid) (h_mem : child ∈ NEPDTL.asList) : (child.treeValid) := by
     -- Case distinction over the list
     cases h_constructor : NEPDTL
@@ -476,13 +479,13 @@ theorem NEPreDerivationTreeList.treeValid_implies_child_valid
       -- Case tail
       case inr h_right =>
         -- Recursive call to the theorem
-        exact NEPreDerivationTreeList.treeValid_implies_child_valid h_treeValid.right h_right
+        exact NEPreDerivationTreeList.treeValid_implies_child_valid NEPDTL₂ child h_treeValid.right h_right
 
 variable (PDT : PreDerivationTree G) (NEPDTL : NEPreDerivationTreeList G)
 
 mutual
 /--Decide the treeValid attribute.-/
-def NEPreDerivationTreeList.decideTreeValid {NEPDTL : NEPreDerivationTreeList G}
+def NEPreDerivationTreeList.decideTreeValid (NEPDTL : NEPreDerivationTreeList G)
   --[decPDT : Decidable (PDT.treeValid)]
   [_h₁ : DecidableEq (G.V)] [_h₂ : DecidableEq (G.Z)]
   : Decidable (NEPDTL.treeValid) :=
@@ -502,7 +505,7 @@ def NEPreDerivationTreeList.decideTreeValid {NEPDTL : NEPreDerivationTreeList G}
           have _ : _ := PDT₂.decideTreeValid
           apply instDecidableAnd)
 /--Decide the treeValid attribute.-/
-def PreDerivationTree.decideTreeValid {PDT : PreDerivationTree G}
+def PreDerivationTree.decideTreeValid (PDT : PreDerivationTree G)
   --[d_terminals : DecidableEq α] [d_vars : DecidableEq nt]
   [h₁ : DecidableEq (G.V)] [h₂ : DecidableEq (G.Z)]
   -- [h_eqlhs : Decidable (NEPreDerivationTreeList.treeValid)]
@@ -559,11 +562,11 @@ def PreDerivationTree.isFromStartingSymbolCondition {G : ContextFreeGrammar α n
 | .leaf _ => False
 | .inner var _ _ => var = G.start
 /--Does this tree begin in the starting symbol? Returns a Bool-/
-def PreDerivationTree.isFromStartingSymbol {G : ContextFreeGrammar α nt} [ DecidableEq (G.V)] : (PDT : PreDerivationTree G) → Bool
+def PreDerivationTree.isFromStartingSymbol {G : ContextFreeGrammar α nt} [DecidableEq (G.V)] : (PDT : PreDerivationTree G) → Bool
 | .leaf _ => False
-| .inner var _ _ => @Decidable.by_cases (var = G.start) (Bool) _
-  (fun _ => True)
-  (fun _ => False)
+| .inner var _ _ => Decidable.decide (var = G.start)
+
+-- TODO: find out if this is usable or if the induction principle needs to be defined differently; I'm not sure if we even need this here since we already have a mutual inductive type underneath
 
 -- Induction Principles for PreDerivationTrees and NEPreDerivationTreeLists
 mutual
