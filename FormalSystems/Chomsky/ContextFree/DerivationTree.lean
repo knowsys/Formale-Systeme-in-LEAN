@@ -18,7 +18,7 @@ namespace ContextFreeGrammar
 structure DerivationTree (G : ContextFreeGrammar α nt) where
   tree : PreDerivationTree G
   valid : tree.treeValid
-  deriving DecidableEq
+deriving DecidableEq
 
 /--Construct a context-free derivation-tree leaf from a terminal symbol. Note that
   the terminal symbol is an Option type: Use`.leaf (.some ts)`for regular terminal symbols
@@ -59,15 +59,15 @@ def DerivationTree.inner {G : ContextFreeGrammar α nt}
 /--Construct a derivation tree child from the a proof of validity of
   the list of children and the child's membership in this list.-/
 def DerivationTree.fromChild
-  {G : ContextFreeGrammar α nt} {children : NEPreDerivationTreeList G} {child : PreDerivationTree G}
+  {G : ContextFreeGrammar α nt} (children : NEPreDerivationTreeList G) (child : PreDerivationTree G)
   (childrenValid : children.treeValid) (h_child_mem : child ∈ children.asList) : DerivationTree G :=
   match child with
   | .leaf terminal => DerivationTree.leaf terminal
   | .inner var child_children rule =>
     DerivationTree.inner var child_children rule
-      ((NEPreDerivationTreeList.treeValid_implies_child_valid childrenValid h_child_mem).left.symm)
-      ((NEPreDerivationTreeList.treeValid_implies_child_valid childrenValid h_child_mem).right.left.symm)
-      ((NEPreDerivationTreeList.treeValid_implies_child_valid childrenValid h_child_mem).right.right)
+      ((NEPreDerivationTreeList.treeValid_implies_child_valid _ _ childrenValid h_child_mem).left.symm)
+      ((NEPreDerivationTreeList.treeValid_implies_child_valid _ _ childrenValid h_child_mem).right.left.symm)
+      ((NEPreDerivationTreeList.treeValid_implies_child_valid _ _ childrenValid h_child_mem).right.right)
 
 /--An internal function that fetches children.treeValid for inner DT-nodes.-/
 def DerivationTree._getChildrenValid
@@ -80,11 +80,10 @@ def DerivationTree._getChildrenValid
 /--List of child nodes. Is a list of DTs.-/
 def DerivationTree.children {G : ContextFreeGrammar α nt} (DT : DerivationTree G) : List (DerivationTree G) :=
     match h_constructor : DT.tree with
-    | .leaf _ =>
-      []
+    | .leaf _ => []
     | .inner _ c _ =>
-      List.map (λ child : {x // x ∈ c.asList} =>
-        @DerivationTree.fromChild α nt G c child (DT._getChildrenValid c h_constructor) child.prop) c.asList.attach
+      c.asList.attach.map (λ child : {x // x ∈ c.asList} =>
+        DerivationTree.fromChild c child (DT._getChildrenValid c h_constructor) child.prop)
 
 /--Theorem: All elements returned by the`DerivationTree.children`function called on`.inner`DTs
   have`.tree`attributes in such a way, that the attributes are elements of the children list used in the`.inner`constructor.-/
@@ -162,7 +161,7 @@ def DerivationTree.induction_principle {G : ContextFreeGrammar α nt}
     (rule : G.productions) (h_rule_lhs : rule.1.lhs = v)
     (h_rule_rhs : rule.1.rhs = children.levelWord) (childrenValid : children.treeValid),
     /- from induction hypothesis (prop valid for all children)-/
-    (ind_hyp : ∀ child : {child : PreDerivationTree G // child ∈ children.asList}, prop (DerivationTree.fromChild childrenValid (child.2)))
+    (ind_hyp : ∀ child : {child : PreDerivationTree G // child ∈ children.asList}, prop (DerivationTree.fromChild _ _ childrenValid (child.2)))
     →
     /- we can prove the prop for this "next" DT-/
     prop (DerivationTree.inner v children rule h_rule_lhs h_rule_rhs childrenValid))
@@ -197,7 +196,7 @@ def DerivationTree.induction_principle {G : ContextFreeGrammar α nt}
                 (h_rule_lhs : rule.1.lhs = v) (h_rule_rhs : rule.1.rhs = NEPreDerivationTreeList.levelWord children)
                 (childrenValid : NEPreDerivationTreeList.treeValid children),
               (∀ child : {child : PreDerivationTree G // child ∈ children.asList},
-                  prop (fromChild childrenValid child.2)) →
+                  prop (fromChild _ _ childrenValid child.2)) →
                 prop (inner v children rule h_rule_lhs h_rule_rhs childrenValid)) →
               /-If all these are given we can prove the property for all DTs.-/
               prop {tree := PDT, valid := h_PDT_valid}
@@ -216,11 +215,11 @@ def DerivationTree.induction_principle {G : ContextFreeGrammar α nt}
                 (h_rule_lhs : rule.1.lhs = v) (h_rule_rhs : rule.1.rhs = NEPreDerivationTreeList.levelWord children)
                 (childrenValid : NEPreDerivationTreeList.treeValid children),
               (∀ child : {child : PreDerivationTree G // child ∈ children.asList},
-                  prop (fromChild childrenValid child.2)) →
+                  prop (fromChild _ _ childrenValid child.2)) →
                 prop (inner v children rule h_rule_lhs h_rule_rhs childrenValid)) →
               /-If all these are given we can prove that the induction step using fromChild is legit.-/
               ∀ child : {child : PreDerivationTree G //  child ∈ NEPreDerivationTreeList.asList NEPDTL},
-                  prop (fromChild h_NEPDTL_valid child.2)
+                  prop (fromChild _ _ h_NEPDTL_valid child.2)
           /-We now use structural induction on PDTs to prove propHelper for all DTs.-/
           have property_PDTs : _ := @PreDerivationTree.induction_principle α nt G propHelper propHelper₂
           /- For this we need to prove the base case for propHelper...-/
@@ -252,9 +251,9 @@ def DerivationTree.induction_principle {G : ContextFreeGrammar α nt}
             rw [← h_refl] at h_mem₂
             /-Get PDT validity from it being in [PDT]-/
             have h_PDT_valid : PDT.treeValid :=
-              NEPreDerivationTreeList.treeValid_implies_child_valid h_NEPDTL_valid h_mem₂
+              NEPreDerivationTreeList.treeValid_implies_child_valid _ _ h_NEPDTL_valid h_mem₂
             /-Show that our goal is equivalent to proving prop for the PDT-based DerivationTree-/
-            have h_refl₂ : (fromChild h_NEPDTL_valid h_mem) = { tree := PDT, valid := h_PDT_valid } := by
+            have h_refl₂ : (fromChild _ _ h_NEPDTL_valid h_mem) = { tree := PDT, valid := h_PDT_valid } := by
               simp [fromChild]
               match h_cons : child.1, h_mem with
               | PreDerivationTree.leaf tw, t =>
@@ -283,7 +282,7 @@ def DerivationTree.induction_principle {G : ContextFreeGrammar α nt}
             case childrenValid =>
               exact h_valid_goal.right.right
             /-Prove that generalisation was successfull.-/
-            case a : ∀ (child : { child // child ∈ NEPreDerivationTreeList.asList children_step }), prop (fromChild _ _) =>
+            case a : ∀ (child : { child // child ∈ NEPreDerivationTreeList.asList children_step }), prop (fromChild _ _ _ _) =>
               have h_children_step_valid : children_step.treeValid := h_valid_goal.right.right
               intro child_step
               /-From the induction hypothesis.-/
@@ -477,19 +476,17 @@ def ExampleDT : DerivationTree ExampleGrammar :=
 
 /--A context-free derivation tree is total or complete if and only if it begins from
   the starting symbol of its grammar.-/
-def DerivationTree.isTotalCondition {G : ContextFreeGrammar α nt} (DT : DerivationTree G) : (Prop) :=
-  DT.tree.isFromStartingSymbolCondition
+def DerivationTree.isTotalCondition (DT : DerivationTree G) : Prop := DT.tree.isFromStartingSymbolCondition
 
 /--A context-free derivation tree is total or complete if and only if it begins from
   the starting symbol of its grammar.-/
-def DerivationTree.isCompleteCondition {G : ContextFreeGrammar α nt} (DT : DerivationTree G) : (Prop) := DT.isTotalCondition
+def DerivationTree.isCompleteCondition (DT : DerivationTree G) : Prop := DT.isTotalCondition
 
 /--Return whether this derivation tree is total (Bool).-/
-def DerivationTree.isTotal {G : ContextFreeGrammar α nt} [DecidableEq (G.V)] (DT : DerivationTree G) : (Bool) :=
-  DT.tree.isFromStartingSymbol
+def DerivationTree.isTotal {G : ContextFreeGrammar α nt} [DecidableEq (G.V)] (DT : DerivationTree G) : Bool := DT.tree.isFromStartingSymbol
 
 /--Return whether this derivation tree is complete (=total) (Bool).-/
-def DerivationTree.isComplete {G : ContextFreeGrammar α nt} [DecidableEq (G.V)] (DT : DerivationTree G) : (Bool) := DT.isTotal
+def DerivationTree.isComplete {G : ContextFreeGrammar α nt} [DecidableEq (G.V)] (DT : DerivationTree G) : Bool := DT.isTotal
 
 /--Theorem: A total derivation tree is never a leaf, but an inner node.-/
 theorem DerivationTree.total_trees_not_leaves {G : ContextFreeGrammar α nt} [DecidableEq (G.V)] (DT : DerivationTree G)
@@ -536,23 +533,18 @@ theorem DerivationTree.total_trees_not_leaves₂ {G : ContextFreeGrammar α nt} 
 def DerivationTree.startingSymbol {G : ContextFreeGrammar α nt} [DecidableEq (G.V)] {DT : DerivationTree G} (_ : DT.isTotal) : G.V := G.start
 
 /--The variable from which we begin deriving if we are a tree, or the terminal word if we are a leaf.-/
-def DerivationTree.fromAny
-  {G : ContextFreeGrammar α nt} (DT : DerivationTree G)
-  : Word (G.V ⊕ G.Z) :=
+def DerivationTree.fromAny (DT : DerivationTree G) : Word (G.V ⊕ G.Z) :=
   match DT.tree with
   | PreDerivationTree.leaf tw => match tw with
-    | none =>
-      ε
-    | some ts =>
-      [Sum.inr ts]
+    | none => ε
+    | some ts => [Sum.inr ts]
   | PreDerivationTree.inner v _ _ => [Sum.inl v]
 
 /--Return the variable from which we begin deriving or none if we are a leaf.-/
-def DerivationTree.fromOptionVar
-  {G : ContextFreeGrammar α nt} (DT : DerivationTree G)
-  : Option (G.V) := match DT.tree with
-| PreDerivationTree.leaf _ => none
-| PreDerivationTree.inner v _ _ => v
+def DerivationTree.fromOptionVar (DT : DerivationTree G) : Option (G.V) := 
+  match DT.tree with
+  | PreDerivationTree.leaf _ => none
+  | PreDerivationTree.inner v _ _ => v
 
 /--Return the variable from which we begin deriving if the tree is total.-/
 def DerivationTree.fromVar
@@ -575,22 +567,18 @@ def DerivationTree.fromVar
   exact Option.get var h_neverBot
 
 /--Return the resulting word of the derivation tree.-/
-def DerivationTree.result {G : ContextFreeGrammar α nt} (DT : DerivationTree G) : Word G.Z :=
-  DT.tree.result
+def DerivationTree.result (DT : DerivationTree G) : Word G.Z := DT.tree.result
 
 /-- u ≺(G)⇒* v -notation for context-free tree-based derivations. Is the proposition that there
   exists a derivation (∃) from u to v in G. If this is a hypothesis, you can eliminate it with`cases h_derivTree`.-/
 notation:40 var:40 " ≺(" G:40 ")⇒⁺ " word:41 => (∃ dt : (DerivationTree G), DerivationTree.isTotalCondition dt ∧ ContextFreeGrammar.start G = var ∧ DerivationTree.result dt = word)
 
 /--Derivation tree depth.-/
-def DerivationTree.depth {G : ContextFreeGrammar α nt} (DT : DerivationTree G) : (ℕ) :=
+def DerivationTree.depth (DT : DerivationTree G) : Nat :=
   DT.tree.depth
 
 /--Collect the productions that were used in the derivation tree.-/
-def DerivationTree.collectProdRules
-  {G : ContextFreeGrammar α nt}
-  (DT : DerivationTree G) :
-  List (G.productions) := DT.tree.prodRuleList
+def DerivationTree.collectProdRules (DT : DerivationTree G) : List (G.productions) := DT.tree.prodRuleList
 
 -- This proof seems impossible with the current tools.
 -- theorem children_func_returns_fromChilds
@@ -655,12 +643,9 @@ theorem child_less_depth :
       sorry
 
 /--Collect those derivation tree nodes that are leaves within this derivation tree.-/
-def DerivationTree.collectLeaves
-  {G : ContextFreeGrammar α nt}
-  (DT : DerivationTree G) :
-  List (DerivationTree G) := match DT.tree with
-  | .leaf _ =>
-    [DT]
+def DerivationTree.collectLeaves (DT : DerivationTree G) : List (DerivationTree G) := 
+  match DT.tree with
+  | .leaf _ => [DT]
   | .inner _ _ _ =>
     List.foldl (fun prev (child : {x // x ∈ DT.children}) =>
       have _ : depth child.1 < depth DT := by
@@ -670,14 +655,10 @@ def DerivationTree.collectLeaves
   termination_by (DT.depth, 0)
 
 /--Collect those derivation tree nodes that are leaves within this derivation tree, except ε.-/
-def DerivationTree.collectLeaves'
-  {G : ContextFreeGrammar α nt}
-  (DT : DerivationTree G) :
-  List (DerivationTree G) := match DT.tree with
-  | .leaf (.some _) =>
-    [DT]
-  | .leaf (none) =>
-    []
+def DerivationTree.collectLeaves' (DT : DerivationTree G) : List (DerivationTree G) :=
+  match DT.tree with
+  | .leaf (.none) => []
+  | .leaf (.some _) => [DT]
   | .inner _ _ _ =>
     List.foldl (fun prev (child : {x // x ∈ DT.children}) =>
       have _ : depth child.1 < depth DT := by

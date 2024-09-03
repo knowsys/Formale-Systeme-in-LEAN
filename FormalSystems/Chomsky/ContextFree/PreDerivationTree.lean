@@ -17,11 +17,11 @@ mutual
   ordered correctly if ordered correctly during definition.
 
   TODO: The leaves have either one or zero symbols associated with them.
-  This is done using the WithOne type (basically the same as Option). It might be better to instead add
+  This is done using the Option type. It might be better to instead add
   a third constructor for leaves that are the result of production rules
   that go to ε.-/
 inductive PreDerivationTree (G : ContextFreeGrammar α nt)
-  | leaf (terminal : WithOne G.Z) : PreDerivationTree G
+  | leaf (terminal : Option G.Z) : PreDerivationTree G
   | inner (var : G.V) (children : NEPreDerivationTreeList G) (prodRule : (G.productions)) : PreDerivationTree G
 -- Originally I wanted a parameter: (children_non_empty : 0 < List.length (↑children))
 -- But: children is recursively bound => doesn't work
@@ -53,7 +53,6 @@ def PreDerivationTree.decEq {G : ContextFreeGrammar α nt} [eq₁ : DecidableEq 
           intro h_not
           simp at h_not
           rw [Subtype.val_inj] at h_isFalse
-          rw [Option.some_inj] at h_not
           contradiction)
 | .leaf terminal₁ , .inner _ _ _ =>
   isFalse (by
@@ -288,6 +287,7 @@ theorem concat_nodeLists_cons (PDT_List : List (PreDerivationTree G)) (list₁ l
       exact concat_nodeLists_cons PDT_List (list₁ ++ PreDerivationTree.nodeList head) tail
 
 mutual
+
 /--Theorem: The PreDerivationTree.nodeList function appends all of a nodes children and itself into a large list.-/
 theorem PreDerivationTree.nodeList_eq_concat_children_nodeList
   (PDT : PreDerivationTree G) :
@@ -296,6 +296,7 @@ theorem PreDerivationTree.nodeList_eq_concat_children_nodeList
     cases PDT
     case leaf w =>
       apply Or.inl
+      unfold PreDerivationTree.nodeList
       rfl
     case inner var children rule =>
       apply Or.inr
