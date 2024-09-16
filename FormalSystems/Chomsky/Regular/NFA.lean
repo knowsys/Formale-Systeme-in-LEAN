@@ -2,29 +2,60 @@ import FormalSystems.Chomsky.Regular.RegularGrammar
 
 import Mathlib.Data.Finset.Option
 
+/--Structure: Define Nondeterministic Finite Automatas. Requires an Alphabet and Set of States. The structure includes:
+
+- Z - An alphabet (a finite set of symbols),
+
+- Q - A set of states,
+
+- δ - A transition relation: takes a state and symbol and returns a set of states,
+
+- Q₀  - A starting state (from Q),
+
+- F - A final/terminal state (from Q).-/
 structure NFA (α qs: Type) where
+  /--An alphabet (a finite set of symbols)-/
   Z: Finset α
+  /--A set of states-/
   Q: Finset qs
+  /--A transition relation: takes a state and symbol and returns a set of states-/
   δ: (Q × Z) → Finset Q
+  /--A starting state (from Q)-/
   Q₀: Finset Q
+  /--A final/terminal state (from Q)-/
   F: Finset Q
 
 namespace NFA
 
+/--Define a run of an NFA M from a starting state for an input word.
+  Is an inductive definition:
+
+  - `final`- either the word w is`ε`and we are done, or
+
+  - `step`- Given a previous state q₁, a proof that q₂ is the state resulting from q₁ thanks to δ,
+    a run r from q₂ to w and a proof that w' is a ∘ w, we have a run from q₁ to w.-/
 inductive Run (M: NFA α qs) : M.Q → Word M.Z → Type
+  /--The run with zero steps reads the empty word.-/
   | final (q: M.Q) (h: w = ε) : M.Run q w
+  /--Given a previous state q₁, a proof that q₂ is the state resulting from q₁ thanks to δ,
+    a run r from q₂ to w and a proof that w' is a ∘ w, we have a run in M from q₁ to w'.-/
   | step (q₁: M.Q) (_: q₂ ∈ M.δ (q₁, a)) (r: M.Run q₂ w) (h: w' = a :: w) : M.Run q₁ w'
 
 variable {M: NFA α qs}
 
+/--The final state of a run. Is calculated using the inductive definition.-/
 def Run.last: (r: M.Run q w) → M.Q
   | final q _ => q
   | step _ _ r _ => r.last
 
+/--The length of a run. Is calculated using the inductive definition.-/
 def Run.len: (r: M.Run q w) → Nat
   | final _ _ => 0
   | step _ _ r _ => Nat.succ r.len
 
+/--The generated language of an NFA is defined as those words whose runs (starting in
+  a starting state) end in a final state. Requires existance of an initial state and of such a run.
+  (Reminder: a language is defined by a set inclusion criterium with input word w.)-/
 def AcceptedLanguage (M: NFA α qs) : Language M.Z :=
   fun w => ∃q₀ ∈ M.Q₀, ∃run: M.Run q₀ w, run.last ∈ M.F
  
@@ -33,6 +64,7 @@ end NFA
 variable { Z: Finset α } [DecidableEq α]
 variable { V: Finset nt } [DecidableEq nt]
 
+/---/
 def RegularProduction.nextState (a: Z) (current: V):
   RegularProduction Z V → Option (V ⊕ ({ "qₐ" }: Finset _))
   | RegularProduction.eps _ => .none
