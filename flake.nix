@@ -1,5 +1,5 @@
 {
-  description = "Ruleset Classifier";
+  description = "FormalSystems lean implementation";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
   inputs.flake-utils.url = "github:numtide/flake-utils";
