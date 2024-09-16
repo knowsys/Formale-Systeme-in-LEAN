@@ -19,16 +19,3 @@ jobs:
       - name: build project
         run: lake build
 
-  build-with-nix:
-    runs-on: ubuntu-latest
-    if: ${{ false }} # nix is currently broken, see #18
-    steps:
-      - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v7
-      - uses: DeterminateSystems/magic-nix-cache-action@v2
-      - uses: cachix/cachix-action@v12
-        with:
-          name: lean4
-          skipPush: true
-      - run: nix build
-
