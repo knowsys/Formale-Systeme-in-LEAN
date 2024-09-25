@@ -225,7 +225,6 @@ variable [i: Production.ContextFree α nt P] { G: Grammar P}
 
   xs (G)=> w.tail .-/
 def Grammar.DerivationStep.cancelLeft
-  { xs: Word (G.V ⊕ G.Z) } { a: G.Z }
   (d: G.DerivationStep lhs) (h_lhs: lhs = (.inr a :: xs)):
   -- Proof of existence and construction method for a specific set
   { d': G.DerivationStep xs // d'.result = d.result.tail } where
@@ -252,30 +251,32 @@ def Grammar.DerivationStep.cancelLeft
 /--Given a derivation a::xs (G)=>* w,
   construct a derivation xs (G)=>* w-/
 def Grammar.Derivation.cancelLeft
-  { w: Word G.Z } { xs: Word (G.V ⊕ G.Z) } { a: G.Z }
   (d: G.Derivation lhs rhs) (h_lhs: lhs = (.inr a :: xs)) (h_rhs: rhs = (.inr <$> w)):
-  G.Derivation xs (.inr <$> w.tail) := by
+  G.Derivation xs (.inr <$> w.tail) :=
   match d with
   | .same h =>
-    apply Grammar.Derivation.same
-    rw [<- h, h_lhs] at h_rhs
-    cases w
-    contradiction
-    simp at h_rhs
-    rw [List.cons_eq_cons] at h_rhs
-    simp [h_rhs.2]
-  | .step s d r =>
+    Grammar.Derivation.same (by
+      cases w with
+      | nil => rw [h_lhs, h_rhs] at h; contradiction
+      | cons _ _ =>
+        rw [h_lhs, h_rhs] at h
+        simp at h
+        simp
+        rw [List.cons_eq_cons] at h
+        exact h.right
+    )
+  | .step s d' r =>
     let ⟨s', r'⟩ := Grammar.DerivationStep.cancelLeft s h_lhs
-    rw [r] at r'
-    apply Grammar.Derivation.step (u' := s'.result)
-    swap; rfl
-    apply (Grammar.Derivation.cancelLeft d)
-    rw [r', <-r]
-    simp [Grammar.DerivationStep.result, HMul.hMul, Mul.mul]
-    rw [ContextFreeGrammar.derivation_step_prefix s _]
-    simp; rfl; pick_goal 3
-    exact h_lhs
-    assumption
+    let d'' : G.Derivation s.result.tail (Sum.inr <$> w.tail) := d'.cancelLeft (by
+      simp [← r]
+      unfold DerivationStep.result
+      simp [HMul.hMul, Mul.mul]
+      rw [ContextFreeGrammar.derivation_step_prefix s _]
+      rfl
+      pick_goal 3
+      exact h_lhs
+    ) h_rhs
+    Grammar.Derivation.step s' d'' r'
 
 /--Theorem: Looking only at the xs in a derivation a::xs (G)=>* w
   when the xs are constructed using the "same"-constructor yields
