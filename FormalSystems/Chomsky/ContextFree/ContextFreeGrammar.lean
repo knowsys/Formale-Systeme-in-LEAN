@@ -273,7 +273,7 @@ def Grammar.Derivation.cancelLeft
       simp [HMul.hMul, Mul.mul]
       rw [ContextFreeGrammar.derivation_step_prefix s _]
       rfl
-      pick_goal 3
+      pick_goal 2
       exact h_lhs
     ) h_rhs
     Grammar.Derivation.step s' d'' r'

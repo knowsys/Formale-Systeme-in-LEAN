@@ -2,7 +2,6 @@ import Mathlib.Data.Finset.Card
 import Mathlib.Data.Fintype.Basic
 import Mathlib.Data.Set.Lattice
 import Mathlib.Data.Set.Finite
-import Mathlib.GroupTheory.Congruence
 import FormalSystems.Preliminaries.Language
 import FormalSystems.Chomsky.Regular.TotalDFA
 
@@ -129,7 +128,7 @@ theorem del_star_eq:
   ∀(w: Word M.Z), ∀v, M.del_star' (⟪w⟫, v) = ⟪w * v⟫ :=
   fun w v => Subtype.eq $ by
     induction v generalizing w
-    case nil => simp [<-Word.eps_eq_nil, Word.monoid.mul_one]; rfl
+    case nil => simp [<-Word.eps_eq_nil, Word.monoid.mul_one]; unfold TotalDFA.del_star'; rfl
     case cons _ _ ih =>
       simp [HMul.hMul, Mul.mul]
       simp [TotalDFA.del_star']
@@ -160,3 +159,4 @@ theorem canonicalAutomaton_accepted_language:
   apply Set.ext
   intro w
   rw [TotalDFA.in_language_iff_del_star_final, final_state_accepts_iff]
+

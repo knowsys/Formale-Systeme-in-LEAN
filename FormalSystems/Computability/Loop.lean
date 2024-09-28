@@ -28,28 +28,28 @@ def LoopProgram.len: LoopProgram → Nat
 | concat p₁ p₂ => p₁.len + p₂.len + 1
 | loop n p => p.len + n.index + 1
 
-def LoopProgramState := Lean.AssocList Variable Nat 
+def LoopProgramState := Lean.AssocList Variable Nat
 
 namespace LoopProgramState
   def get (s: LoopProgramState) (v: Variable): Nat := (s.find? v).getD 0
 
-  def put (s: LoopProgramState) (v: Variable) (n: Nat): LoopProgramState := 
+  def put (s: LoopProgramState) (v: Variable) (n: Nat): LoopProgramState :=
     if s.contains v then s.replace v n else s.insert v n
 end LoopProgramState
 
 def LoopProgram.run: LoopProgram -> LoopProgramState -> LoopProgramState
-| add x y n => fun s => 
+| add x y n => fun s =>
   let new_val := s.get y + n
   s.put x new_val
 | sub x y n => fun s =>
   let new_val := s.get y - n
   s.put x new_val
-| concat p q => fun s => 
+| concat p q => fun s =>
   q.run (p.run s)
-| loop x p => fun s => 
+| loop x p => fun s =>
   Nat.iterate p.run (s.get x) s
 
-def LoopProgram.toFunction (p: LoopProgram) (input: Nat): Nat := 
+def LoopProgram.toFunction (p: LoopProgram) (input: Nat): Nat :=
   let x0 : Variable := { index := 0 }
   let initialState : LoopProgramState := Lean.AssocList.cons x0 input Lean.AssocList.nil
   let result : LoopProgramState := p.run initialState
@@ -121,6 +121,7 @@ open LoopProgram
 theorem LoopProgram.ofLen_contains_extendLenOne_image
   (h₁: p ∈ ofLen n) (h₂: p' ∈ p.extendLenOne):
   p' ∈ ofLen (n + 1) := by
+  unfold ofLen
   apply Finset.mem_union_left
   apply Finset.mem_union_left
   apply Finset.mem_fold_union_iff.mpr
@@ -167,7 +168,7 @@ theorem LoopProgram.ofLen_complete:
     match h: p.len with
     | 0 => exact False.elim $ Nat.ne_of_gt p.len_gt_zero h
     | 1 =>
-      dsimp [ofLen, baseProgram]
+      unfold ofLen
       apply Finset.mem_union_right
       apply Finset.mem_image_of_mem
       exact lenOne_complete _ h
@@ -189,7 +190,7 @@ theorem LoopProgram.ofLen_complete:
     simp; apply Finset.mem_product.mpr
     exact ⟨ofLen_complete _, ofLen_complete _⟩
 
-def LoopProgram.diagonal (n: Nat): Nat := 
+def LoopProgram.diagonal (n: Nat): Nat :=
   Finset.fold max 0 (λ p => p.toFunction n) (LoopProgram.ofLen n) + 1
 
 theorem LoopProgram.diagonal_is_not_loop_computable:

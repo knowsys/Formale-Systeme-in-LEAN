@@ -64,10 +64,11 @@ def DerivationTree.fromChild
   match child with
   | .leaf terminal => DerivationTree.leaf terminal
   | .inner var child_children rule =>
+    have treeValid := NEPreDerivationTreeList.treeValid_implies_child_valid _ _ childrenValid h_child_mem
     DerivationTree.inner var child_children rule
-      ((NEPreDerivationTreeList.treeValid_implies_child_valid _ _ childrenValid h_child_mem).left.symm)
-      ((NEPreDerivationTreeList.treeValid_implies_child_valid _ _ childrenValid h_child_mem).right.left.symm)
-      ((NEPreDerivationTreeList.treeValid_implies_child_valid _ _ childrenValid h_child_mem).right.right)
+      (by unfold PreDerivationTree.treeValid at treeValid; rw [treeValid.left])
+      (by unfold PreDerivationTree.treeValid at treeValid; rw [treeValid.right.left])
+      (by unfold PreDerivationTree.treeValid at treeValid; exact treeValid.right.right)
 
 theorem DerivationTree.fromChildTreeIsChild : (DerivationTree.fromChild children child childrenValid h_child_mem).tree = child := by
   unfold fromChild
@@ -142,7 +143,7 @@ theorem DerivationTree.child_in_children_imp_child_tree_in_asList :
 
 theorem DerivationTree.recOn'
   {G : ContextFreeGrammar α nt}
-  {motive : DerivationTree G -> Sort u}
+  {motive : DerivationTree G -> Prop}
   (DT : DerivationTree G)
   (leaf : ∀ terminal, motive (DerivationTree.leaf terminal))
   (inner : ∀ v children rule h_rule_lhs h_rule_rhs childrenValid,
@@ -175,7 +176,7 @@ termination_by DT.tree.depth
 
 theorem DerivationTree.casesOn'
   {G : ContextFreeGrammar α nt}
-  {motive : DerivationTree G -> Sort u}
+  {motive : DerivationTree G -> Prop}
   (DT : DerivationTree G)
   (leaf : ∀ terminal, motive (DerivationTree.leaf terminal))
   (inner : ∀ v children rule h_rule_lhs h_rule_rhs childrenValid,
@@ -457,7 +458,6 @@ def EP.Vtoz : ExampleGrammar.productions := ⟨ EP[7], by decide ⟩
 theorem ExampleGrammar.productions_eq_ex_productions (p: ContextFreeProduction _ _):
   p ∈ ExampleGrammar.productions ↔ p ∈ EP := by
   simp [ExampleGrammar]
-  exact List.mem_toFinset
 
 /--We don't currently have a good way to denote the language-/
 def ExampleGrammar.lang: Language ({ 'x', 'y', 'z', '+', '*', '(', ')'} : Finset _) :=
@@ -519,8 +519,7 @@ def ExamplePreTreeRoot : PreDerivationTree ExampleGrammar :=
 /--Define the derivation tree itself. Note: Only the root is a derivation tree.
   Corresponds to ExamplePreTreeRoot.-/
 def ExampleDT : DerivationTree ExampleGrammar :=
-  DerivationTree.inner ⟨ 'S', by decide⟩ DT[ExamplePreTreei1_0] EP.StoM (by decide) (by decide) (by
-    decide) -- Decidable proofs allow this to be simple
+  DerivationTree.inner ⟨ 'S', by decide⟩ DT[ExamplePreTreei1_0] EP.StoM (by decide) (by decide) (by with_unfolding_all decide) -- Decidable proofs allow this to be simple
 
 --================================================================================
 /-  DerivationTree functions and useful theorems. -/

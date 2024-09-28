@@ -488,7 +488,6 @@ def ContextFreeDerivation.collectDerivationTreeNodes
                 case mp =>
                   intro h_nil
                   simp
-                  rw [not_or]
                   simp at h_nil
                   simp [afuncDef] at h_nil
                   by_cases index₁ = head.2

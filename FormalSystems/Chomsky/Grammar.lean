@@ -337,17 +337,15 @@ def augment_right_cons {u v: Word (G.V ⊕ G.Z)} (d: G.Derivation u v) :
   | same h => Derivation.same (by rw [h])
   | step s d sound => Derivation.step (s.augment_right w) d.augment_right_cons (by rw [← sound]; apply s.augment_right_result)
 
-/--Theorem: The derivation relation is transitive. This theorem can be used to return
+/--The derivation relation is transitive. This function can be used to return
   a transitive derivation.-/
-theorem trans {u v w: Word _} (d1: G.Derivation u v) (d2: G.Derivation v w) : G.Derivation u w := by
-  induction d1 with
-  | same h => exact h ▸ d2
-  | step l _ sound ih => exact step l (ih d2) sound
-
+def trans {u v w: Word _} (d1: G.Derivation u v) (d2: G.Derivation v w) : G.Derivation u w :=
+  match d1 with
+  | .same h => h ▸ d2
+  | .step l d1' sound => .step l (d1'.trans d2) sound
 end Derivation
 
 /--The derivation relation is a preorder. Return said preorder as induced by the grammer of the derivation relation.
-
   (A preorder is a reflexive, transitive relation ≤ with a < b defined in the obvious way.)-/
 instance DerivationRelation.preorder (G: Grammar Prod) : Preorder (Word (G.V ⊕ G.Z)) where
   le u v := u (G)⇒* v
