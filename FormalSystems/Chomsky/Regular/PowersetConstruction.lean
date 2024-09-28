@@ -17,20 +17,15 @@ variable [DecidableEq α] [DecidableEq qs] { M: NFA α qs }
 def DFA.fromNFA.RunFromRestricted { qs: _ }
   (r: (DFA.fromNFA M).Run q w)
   (h: q.val ⊆ qs.val):
-  (DFA.fromNFA M).Run qs w := by
-  cases r
-  apply NFA.Run.final
-  assumption
-  case step x _ =>
-    apply NFA.Run.step
-    dsimp [toNFA, fromNFA]; simp
-    rfl
-    apply RunFromRestricted
-    assumption
-    dsimp [toNFA, fromNFA] at x; simp at x
-    simp_rw [x]
-    apply Finset.fold_union_subs
-    repeat { assumption }
+  (DFA.fromNFA M).Run qs w :=
+  match r with
+  | .final _ h => .final qs h
+  | .step _ hq' r hw =>
+    .step
+      qs
+      (by unfold toNFA; unfold fromNFA; simp; rfl)
+      (RunFromRestricted r (by unfold toNFA at hq'; unfold fromNFA at hq'; simp at hq'; simp [hq']; apply Finset.fold_union_subs; exact h))
+      hw
 
 theorem DFA.fromNFA.RunFromRestricted_final
   (h: r.last ∈ (DFA.fromNFA M).F):
@@ -53,18 +48,15 @@ theorem DFA.fromNFA.RunFromRestricted_final
     assumption
 
 def DFA.fromNFA.NFARunToRun (r: M.Run q w):
-  (DFA.fromNFA M).Run ⟨{q}, Fintype.complete _⟩ w := by
-  cases r
-  apply NFA.Run.final
-  assumption
-  apply NFA.Run.step
-  dsimp [fromNFA, toNFA]; simp
-  rfl
-  apply RunFromRestricted
-  apply NFARunToRun
-  repeat { assumption }
-  simp
-  repeat { assumption }
+  (DFA.fromNFA M).Run ⟨{q}, Fintype.complete _⟩ w :=
+  match r with
+  | .final _ h => .final _ h
+  | .step _ hq' r hw =>
+    .step
+      _
+      (by unfold toNFA; unfold fromNFA; simp; rfl)
+      (RunFromRestricted (NFARunToRun r) (by simp; exact hq'))
+      hw
 
 theorem DFA.fromNFA.NFARunToRun_final_imp_final { r: M.Run q w} (h: r.last ∈ M.F):
   (NFARunToRun r).last ∈ (DFA.fromNFA M).F := by
