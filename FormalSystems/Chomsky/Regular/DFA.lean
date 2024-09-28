@@ -140,52 +140,52 @@ def toGrammar (M: DFA α qs) : RegularGrammar α qs where
 def final_state_to_derivation_step (state: M.Q) (_: state ∈ M.F): M.toGrammar.DerivationStep [.inl state] where
   pre := ε
   suf := ε
-  prod := by
-    constructor
-    dsimp [toGrammar]
-    simp
-    apply Or.inr
-    exists state, state.property
-
-  sound := by
-    rfl
+  prod := {
+    val := RegularProduction.eps state
+    property := by
+      unfold toGrammar
+      simp
+      apply Or.inr
+      assumption
+  }
+  sound := by rfl
 
 def state_transition_to_derivation_step (a: M.Z) (q₁ q₂: M.Q) (h: q₂ ∈ M.δ (q₁, a)) :
   M.toGrammar.DerivationStep [.inl q₁] where
   pre := ε
   suf := ε
-  prod := by
-    constructor
-    dsimp [toGrammar]; simp
-    apply Or.inl
-    exists q₁, q₁.2, a, a.2
-    simp [Fintype.complete, transitionToRule]
-    exists q₂, q₂.2
+  prod := {
+    val := RegularProduction.cons q₁ (a, q₂)
+    property := by
+      unfold toGrammar
+      simp
+      exists q₁, q₁.2, a, a.2
+      simp
+      constructor
+      . apply Fintype.complete
+      . simp [transitionToRule]
+        simp at h
+        exact h
+  }
   sound := by rfl
 
 def Run.toDerivation (run: M.Run start word) (hlast: run.last ∈ M.F):
-  M.toGrammar.Derivation [.inl start] (.inr <$> word) := by
+  M.toGrammar.Derivation [.inl start] (.inr <$> word) :=
   match run with
   | NFA.Run.final q hend =>
-    unfold NFA.Run.last at hlast
-    apply Grammar.Derivation.step
-    apply Grammar.Derivation.same
-    simp [hend]; rfl; swap
-    apply final_state_to_derivation_step
-    assumption
-    rfl
+    Grammar.Derivation.step
+      (M.final_state_to_derivation_step q hlast)
+      (Grammar.Derivation.same rfl)
+      (by simp [Grammar.DerivationStep.result, hend, final_state_to_derivation_step]; rfl)
+  | @NFA.Run.step _ _ _ q₂ a _ _ q qn run' h_w =>
+    let step := M.state_transition_to_derivation_step a q q₂ (by unfold toNFA at qn; simp at qn; rw [qn]; simp)
+    let d' := DFA.Run.toDerivation run' hlast
+    let augmented := @Grammar.Derivation.augment_left_cons _ _ _ _ M.toGrammar (Sum.inr { val := a.val, property := by unfold toGrammar; unfold toNFA at a; simp }) _ _ d'
 
-  | NFA.Run.step a qn run' h_w =>
-    unfold NFA.Run.last at hlast
-    have d' := DFA.Run.toDerivation run' hlast
-    apply Grammar.Derivation.step
-    rw [h_w]
-    apply (d'.augment_left_cons); swap
-    apply state_transition_to_derivation_step
-    simp [toNFA] at qn
-    rw [Option.mem_iff]
-    exact qn
-    rfl
+    @Grammar.Derivation.step _ _ _ _ M.toGrammar _ [(Sum.inr { val := a.val, property := by unfold toGrammar; unfold toNFA at a; simp }), Sum.inl q₂] _
+      (step)
+      (cast (by simp [h_w]) augmented)
+      (by rfl)
 
 theorem lang_subs_toGrammar_lang :
   M.AcceptedLanguage ⊆ M.toGrammar.GeneratedLanguage := by
@@ -203,20 +203,14 @@ theorem toGrammar_prod_imp_transition
 
 def Run.fromDerivation: (d: M.toGrammar.RegularDerivation start word) →
   M.Run start word
-  | .eps _ _ _ => by
-    apply NFA.Run.final
-    assumption
-  | .alpha _ h _ => by
-    -- cannot happen - no corresponding production
-    simp [toGrammar, transitionToRule] at h
-  | .step v v' h_v h_w d' => by
-    apply NFA.Run.step; pick_goal 3
-    assumption; pick_goal 3
-    exact v'
-    simp [toNFA]
-    apply toGrammar_prod_imp_transition
-    assumption
-    exact fromDerivation d'
+  | .eps _ _ h_w => NFA.Run.final _ h_w
+  | .alpha _ h _ => by simp [toGrammar, transitionToRule] at h -- contradiction
+  | .step v v' h_v h_w d' =>
+    NFA.Run.step
+      ({ val := v.val, property := by unfold toNFA; unfold toGrammar at v; simp })
+      (by apply toGrammar_prod_imp_transition at h_v; simp [toNFA]; exact h_v)
+      (fromDerivation d')
+      (h_w)
 
 theorem Run.fromDerivation_result {d: M.toGrammar.RegularDerivation s w}:
   (Run.fromDerivation M d).last ∈ M.F := by

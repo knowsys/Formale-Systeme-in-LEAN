@@ -305,56 +305,37 @@ def Derivation.len { u w: Word (G.V ⊕ G.Z) }: G.Derivation u w → Nat
 
 namespace Derivation
 
-/--Theorem: It is possible to augment a prefix-word`w`to the left side of in- and output of a
-  valid derivation. We recieve a valid derivation.-/
-theorem augment_left {u v w: Word _} (d: G.Derivation u v) :
-  G.Derivation (w * u) (w * v) := by
-  induction d with
-  | same h => apply same; simp [h]
-  | step s _ sound =>
-    apply step
-    . assumption
-    swap
-    . exact s.augment_left w
-    . rw [<- sound]; exact s.augment_left_result _
+/--Return a derivation where we have added a new prefix-word`w`to the left side of in- and output of a
+  valid derivation.-/
+def augment_left {u v w: Word _} (d: G.Derivation u v) :
+  G.Derivation (w * u) (w * v) :=
+  match d with
+  | same h => Derivation.same (by rw [h])
+  | step s d sound => Derivation.step (s.augment_left w) d.augment_left (by rw [← sound]; apply s.augment_left_result)
 
 /--Return a derivation where we have added a new prefix-symbol`w`to the left sides of in-
   and output of the input derivation.-/
 def augment_left_cons {u v: Word _} (d: G.Derivation u v) :
-  G.Derivation (w :: u) (w :: v) := by
+  G.Derivation (w :: u) (w :: v) :=
   match d with
-  | same h => apply same; simp [h]
-  | step s d' sound =>
-    apply step
-    . exact d'.augment_left_cons
-    swap
-    . exact s.augment_left [w]
-    . rw [<- sound]; exact s.augment_left_result _
+  | same h => Derivation.same (by rw [h])
+  | step s d sound => Derivation.step (s.augment_left [w]) d.augment_left_cons (by rw [← sound]; apply s.augment_left_result)
 
 /--Return a derivation where we have added a new prefix-word`w`to the right sides of in-
   and output of the input derivation.-/
-theorem augment_right {u v: Word (G.V ⊕ G.Z)} (d: G.Derivation u v) :
-  G.Derivation (u * w) (v * w) := by induction d with
-  | same h => apply same; simp [h]
-  | step s _ sound =>
-    apply step
-    .assumption
-    swap
-    . exact s.augment_right w
-    rw [<- sound]; exact s.augment_right_result _
+def augment_right {u v: Word (G.V ⊕ G.Z)} (d: G.Derivation u v) :
+  G.Derivation (u * w) (v * w) :=
+  match d with
+  | same h => Derivation.same (by rw [h])
+  | step s d sound => Derivation.step (s.augment_right w) d.augment_right (by rw [← sound]; apply s.augment_right_result)
 
 /--Return a derivation where we have added a new prefix-symbol`w`to the right sides of in-
   and output of the input derivation.-/
 def augment_right_cons {u v: Word (G.V ⊕ G.Z)} (d: G.Derivation u v) :
-  G.Derivation (u.append w) (v.append w) := by
+  G.Derivation (u.append w) (v.append w) :=
   match d with
-  | same h => apply same; simp [h]
-  | step s d' sound =>
-    apply step
-    . exact d'.augment_right_cons
-    swap
-    . exact s.augment_right w
-    . rw [<- sound]; exact s.augment_right_result _
+  | same h => Derivation.same (by rw [h])
+  | step s d sound => Derivation.step (s.augment_right w) d.augment_right_cons (by rw [← sound]; apply s.augment_right_result)
 
 /--Theorem: The derivation relation is transitive. This theorem can be used to return
   a transitive derivation.-/
@@ -443,24 +424,24 @@ def VZtoZ {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) (h_all_Z : ∀ symbol �
   @List.map
     { x : (G.V ⊕ G.Z) // x ∈ word }
     G.Z
-    (fun symbol : { x // x ∈ word } => by
+    (fun symbol : { x // x ∈ word } =>
       let symbol₃ : (G.V ⊕ G.Z) := ↑symbol
       have h_all_Z₂ := h_all_Z symbol₃ (symbol.2)
-      exact Sum.getRight symbol₃ h_all_Z₂
+      Sum.getRight symbol₃ h_all_Z₂
     )
     (@List.attach (G.V ⊕ G.Z) word) -- add Membership-Prop information
 
 /--Convert this word to a V word. Precondition requires all the word's symbols to be in V.-/
 def VZtoV {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) (h_all_V : ∀ symbol ∈ word, Sum.isLeft symbol): Word (G.V) :=
   @List.map
-      { x : (G.V ⊕ G.Z) // x ∈ word }
-      G.V
-    (fun symbol : { x // x ∈ word } => by
-    let symbol₃ : (G.V ⊕ G.Z) := ↑symbol
-    have h_all_V₂ := h_all_V symbol₃ (symbol.2)
-    exact Sum.getLeft symbol₃ h_all_V₂
-  )
-  (@List.attach (G.V ⊕ G.Z) word)
+    { x : (G.V ⊕ G.Z) // x ∈ word }
+    G.V
+    (fun symbol : { x // x ∈ word } =>
+      let symbol₃ : (G.V ⊕ G.Z) := ↑symbol
+      have h_all_V₂ := h_all_V symbol₃ (symbol.2)
+      Sum.getLeft symbol₃ h_all_V₂
+    )
+    (@List.attach (G.V ⊕ G.Z) word)
 
 /--Theorem: Word type conversion doesn't affect word length.-/
 theorem VZtoV_len {G : Grammar Prod}

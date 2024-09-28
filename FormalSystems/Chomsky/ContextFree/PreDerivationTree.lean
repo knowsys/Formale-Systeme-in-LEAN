@@ -254,6 +254,33 @@ def NEPreDerivationTreeList.depth : NEPreDerivationTreeList G -> Nat
   | .cons PDT NEPDT => Nat.max PDT.depth NEPDT.depth
 end
 
+theorem NEPreDerivationTreeList.elementDepthLeq (NEPDT : NEPreDerivationTreeList G) : ∀ child ∈ NEPDT.asList, child.depth ≤ NEPDT.depth := by
+  intro child h
+  cases NEPDT with
+  | single PDT => simp [asList] at h; rw [h]; simp [depth]
+  | cons head tail =>
+    conv => rhs; unfold depth
+    simp [asList] at h
+    simp
+    cases h with
+    | inl h =>
+      apply Or.inl
+      rw [h]
+    | inr h =>
+      apply Or.inr
+      apply NEPreDerivationTreeList.elementDepthLeq
+      exact h
+
+theorem PreDerivationTree.childDepthSmaller (PDT: PreDerivationTree G) : ∀ child ∈ PDT.children, child.depth < PDT.depth := by
+  intro child h
+  cases PDT with
+  | leaf _ => unfold children at h; simp at h
+  | inner _ children _ =>
+    conv => rhs; unfold depth
+    apply Nat.lt_succ_of_le
+    apply NEPreDerivationTreeList.elementDepthLeq
+    exact h
+
 /--Collect the nodelists of PDTs one by one.-/
 def append_nodeLists (prev : List (PreDerivationTree G)) (next : PreDerivationTree G) : (List (PreDerivationTree G)) :=
   prev ++ next.nodeList
@@ -569,88 +596,88 @@ def PreDerivationTree.isFromStartingSymbol {G : ContextFreeGrammar α nt} [Decid
 
 -- TODO: find out if this is usable or if the induction principle needs to be defined differently; I'm not sure if we even need this here since we already have a mutual inductive type underneath
 
--- Induction Principles for PreDerivationTrees and NEPreDerivationTreeLists
-mutual
-/--Doing an inductive proof over PDTs requires two to be proven properties.
-  One for PDTs, one for NEPTLs. Equally induction basis and step must be provided for both data structures.-/
-@[elab_as_elim]
-def PreDerivationTree.induction_principle {G : ContextFreeGrammar α nt}
-  /-Property over PDTs.-/
-  (prop : PreDerivationTree G → Prop)
-  /-Property over NEPDTLs.-/
-  (prop₂ : NEPreDerivationTreeList G → Prop)
-  /-Base case for PDTs.-/
-  (ind_basis : ∀ terminal : Option G.Z , prop (PreDerivationTree.leaf terminal))
-  /-Base case for NEPDTLs.-/
-  (ind_basis₂ :
-    ∀ PDT : PreDerivationTree G,
-      prop PDT → prop₂ (NEPreDerivationTreeList.single PDT))
-  /-Induction step for PDTs.-/
-  (ind_step :
-    ∀ (v : G.V) (children : NEPreDerivationTreeList G)
-    (rule : G.productions),
-    (ind_hyp : prop₂ children)
-    →
-    prop (PreDerivationTree.inner v children rule))
-  /-Induction step for NEPDTLs.-/
-  (ind_step₂ :
-    ∀ PDT : PreDerivationTree G, ∀ NEPDTL₂ : NEPreDerivationTreeList G,
-      prop PDT → prop₂ NEPDTL₂ → prop₂ (NEPreDerivationTreeList.cons PDT NEPDTL₂))
-  : ∀ PDT : PreDerivationTree G, prop PDT
-  := @PreDerivationTree.rec α nt G prop prop₂ -- "simply" use the automatically generated recursor
-    (fun terminal =>
-      by apply ind_basis terminal)
-    (fun var children prodRule =>
-      fun h₁ : prop₂ children =>
-        ind_step var children prodRule h₁)
-    (fun PDT =>
-      fun h₂ : prop PDT =>
-        ind_basis₂ PDT h₂)
-    (fun PDT =>
-      fun NEPDTL =>
-        fun h₁ : prop PDT =>
-          fun h₂ : prop₂ NEPDTL =>
-            ind_step₂ PDT NEPDTL h₁ h₂)
-/--Doing an inductive proof over NEPDTLs requires two to be proven properties.
-  One for PDTs, one for NEPTLs. Equally induction basis and step must be provided for both data structures.-/
-@[elab_as_elim]
-def NEPreDerivationTreeList.induction_principle {G : ContextFreeGrammar α nt}
-  /-Property over PDTs.-/
-  (prop : PreDerivationTree G → Prop)
-  /-Property over NEPDTLs.-/
-  (prop₂ : NEPreDerivationTreeList G → Prop)
-  /-Base case for PDTs.-/
-  (ind_basis : ∀ terminal : Option G.Z , prop (PreDerivationTree.leaf terminal))
-  /-Base case for NEPDTLs.-/
-  (ind_basis₂ :
-    ∀ PDT : PreDerivationTree G,
-      prop PDT → prop₂ (NEPreDerivationTreeList.single PDT))
-  /-Induction step for PDTs.-/
-  (ind_step :
-    ∀ (v : G.V) (children : NEPreDerivationTreeList G)
-    (rule : G.productions),
-    (ind_hyp : prop₂ children)
-    →
-    prop (PreDerivationTree.inner v children rule))
-  /-Induction step for NEPDTLs.-/
-  (ind_step₂ :
-    ∀ PDT : PreDerivationTree G, ∀ NEPDTL₂ : NEPreDerivationTreeList G,
-      prop PDT → prop₂ NEPDTL₂ → prop₂ (NEPreDerivationTreeList.cons PDT NEPDTL₂))
-  : ∀ NEPDTL : NEPreDerivationTreeList G, prop₂ NEPDTL
-  := @NEPreDerivationTreeList.rec α nt G prop prop₂ -- "simply" use the automatically generated recursor
-    (fun terminal =>
-      ind_basis terminal)
-    (fun var children prodRule =>
-      fun h₁ : prop₂ children =>
-        ind_step var children prodRule h₁)
-    (fun PDT =>
-      fun h₂ : prop PDT =>
-        ind_basis₂ PDT h₂)
-    (fun PDT =>
-      fun NEPDTL =>
-        fun h₁ : prop PDT =>
-          fun h₂ : prop₂ NEPDTL =>
-            ind_step₂ PDT NEPDTL h₁ h₂)
-end
+/- -- Induction Principles for PreDerivationTrees and NEPreDerivationTreeLists -/
+/- mutual -/
+/- /--Doing an inductive proof over PDTs requires two to be proven properties. -/
+/-   One for PDTs, one for NEPTLs. Equally induction basis and step must be provided for both data structures.-/ -/
+/- @[elab_as_elim] -/
+/- def PreDerivationTree.induction_principle {G : ContextFreeGrammar α nt} -/
+/-   /-Property over PDTs.-/ -/
+/-   (prop : PreDerivationTree G → Prop) -/
+/-   /-Property over NEPDTLs.-/ -/
+/-   (prop₂ : NEPreDerivationTreeList G → Prop) -/
+/-   /-Base case for PDTs.-/ -/
+/-   (ind_basis : ∀ terminal : Option G.Z , prop (PreDerivationTree.leaf terminal)) -/
+/-   /-Base case for NEPDTLs.-/ -/
+/-   (ind_basis₂ : -/
+/-     ∀ PDT : PreDerivationTree G, -/
+/-       prop PDT → prop₂ (NEPreDerivationTreeList.single PDT)) -/
+/-   /-Induction step for PDTs.-/ -/
+/-   (ind_step : -/
+/-     ∀ (v : G.V) (children : NEPreDerivationTreeList G) -/
+/-     (rule : G.productions), -/
+/-     (ind_hyp : prop₂ children) -/
+/-     → -/
+/-     prop (PreDerivationTree.inner v children rule)) -/
+/-   /-Induction step for NEPDTLs.-/ -/
+/-   (ind_step₂ : -/
+/-     ∀ PDT : PreDerivationTree G, ∀ NEPDTL₂ : NEPreDerivationTreeList G, -/
+/-       prop PDT → prop₂ NEPDTL₂ → prop₂ (NEPreDerivationTreeList.cons PDT NEPDTL₂)) -/
+/-   : ∀ PDT : PreDerivationTree G, prop PDT -/
+/-   := @PreDerivationTree.rec α nt G prop prop₂ -- "simply" use the automatically generated recursor -/
+/-     (fun terminal => -/
+/-       by apply ind_basis terminal) -/
+/-     (fun var children prodRule => -/
+/-       fun h₁ : prop₂ children => -/
+/-         ind_step var children prodRule h₁) -/
+/-     (fun PDT => -/
+/-       fun h₂ : prop PDT => -/
+/-         ind_basis₂ PDT h₂) -/
+/-     (fun PDT => -/
+/-       fun NEPDTL => -/
+/-         fun h₁ : prop PDT => -/
+/-           fun h₂ : prop₂ NEPDTL => -/
+/-             ind_step₂ PDT NEPDTL h₁ h₂) -/
+/- /--Doing an inductive proof over NEPDTLs requires two to be proven properties. -/
+/-   One for PDTs, one for NEPTLs. Equally induction basis and step must be provided for both data structures.-/ -/
+/- @[elab_as_elim] -/
+/- def NEPreDerivationTreeList.induction_principle {G : ContextFreeGrammar α nt} -/
+/-   /-Property over PDTs.-/ -/
+/-   (prop : PreDerivationTree G → Prop) -/
+/-   /-Property over NEPDTLs.-/ -/
+/-   (prop₂ : NEPreDerivationTreeList G → Prop) -/
+/-   /-Base case for PDTs.-/ -/
+/-   (ind_basis : ∀ terminal : Option G.Z , prop (PreDerivationTree.leaf terminal)) -/
+/-   /-Base case for NEPDTLs.-/ -/
+/-   (ind_basis₂ : -/
+/-     ∀ PDT : PreDerivationTree G, -/
+/-       prop PDT → prop₂ (NEPreDerivationTreeList.single PDT)) -/
+/-   /-Induction step for PDTs.-/ -/
+/-   (ind_step : -/
+/-     ∀ (v : G.V) (children : NEPreDerivationTreeList G) -/
+/-     (rule : G.productions), -/
+/-     (ind_hyp : prop₂ children) -/
+/-     → -/
+/-     prop (PreDerivationTree.inner v children rule)) -/
+/-   /-Induction step for NEPDTLs.-/ -/
+/-   (ind_step₂ : -/
+/-     ∀ PDT : PreDerivationTree G, ∀ NEPDTL₂ : NEPreDerivationTreeList G, -/
+/-       prop PDT → prop₂ NEPDTL₂ → prop₂ (NEPreDerivationTreeList.cons PDT NEPDTL₂)) -/
+/-   : ∀ NEPDTL : NEPreDerivationTreeList G, prop₂ NEPDTL -/
+/-   := @NEPreDerivationTreeList.rec α nt G prop prop₂ -- "simply" use the automatically generated recursor -/
+/-     (fun terminal => -/
+/-       ind_basis terminal) -/
+/-     (fun var children prodRule => -/
+/-       fun h₁ : prop₂ children => -/
+/-         ind_step var children prodRule h₁) -/
+/-     (fun PDT => -/
+/-       fun h₂ : prop PDT => -/
+/-         ind_basis₂ PDT h₂) -/
+/-     (fun PDT => -/
+/-       fun NEPDTL => -/
+/-         fun h₁ : prop PDT => -/
+/-           fun h₂ : prop₂ NEPDTL => -/
+/-             ind_step₂ PDT NEPDTL h₁ h₂) -/
+/- end -/
 
 end ContextFreeGrammar

@@ -58,7 +58,7 @@ def Run.len: (r: M.Run q w) → Nat
   (Reminder: a language is defined by a set inclusion criterium with input word w.)-/
 def AcceptedLanguage (M: NFA α qs) : Language M.Z :=
   fun w => ∃q₀ ∈ M.Q₀, ∃run: M.Run q₀ w, run.last ∈ M.F
- 
+
 end NFA
 
 variable { Z: Finset α } [DecidableEq α]
@@ -85,7 +85,7 @@ def RegularGrammar.toNFA (G: RegularGrammar α nt) : NFA α (G.V ⊕ ({ "qₐ" }
   δ := fun (q, a) =>
     match q.val with
     | .inr _ => {}
-    | .inl q => Finset.eraseNone $ 
+    | .inl q => Finset.eraseNone $
         G.productions.image ((Fintype.wrap <$> .) ∘ RegularProduction.nextState a q)
 
 variable (G: RegularGrammar α nt)
@@ -98,38 +98,62 @@ def Run.toDerivation
   (run: G.toNFA.Run q w)
   (h_q: q.val = .inl q')
   (hlast: run.last ∈ G.toNFA.F):
-  G.RegularDerivation q' w := by
+  G.RegularDerivation q' w :=
   match hrun:run with
-  | final _ h =>
-    apply RegularDerivation.eps; swap
-    . assumption
-    . simp [last, toNFA] at hlast
-      cases hlast
-      case inl h =>
-        have := congrArg Subtype.val h
-        simp [h_q] at this
-      case inr h =>
-        have ⟨p, ⟨_, _⟩, hp_q⟩ := h
-        have hp_q := congrArg Subtype.val hp_q
-        simp [h_q, Fintype.wrap] at hp_q
-        rw [<- hp_q, <- RegularProduction.eq_eps_from_isEps]
-        assumption
-        assumption
+  | .final _ h =>
+    RegularDerivation.eps
+      q'
+      (by
+        simp [last, toNFA] at hlast
+        cases hlast with
+        | inl h =>
+          have := congrArg Subtype.val h
+          simp [h_q] at this
+        | inr h =>
+          have ⟨p, ⟨_, _⟩, hp_q⟩ := h
+          have hp_q := congrArg Subtype.val hp_q
+          simp [h_q, Fintype.wrap] at hp_q
+          rw [<- hp_q, <- RegularProduction.eq_eps_from_isEps]
+          assumption
+          assumption)
+      h
 
-  | step (q₂:=q₂) _ h_q₂ r h =>
+  | .step (q₂:=q₂) (a:=a) _ h_q₂ r h =>
     match h_q₂':q₂.val with
+    -- derivation step of the form A -> a
+    | .inr q₂' =>
+      RegularDerivation.alpha (a:=a)
+        q'
+        (by
+          dsimp [toNFA] at h_q₂
+          simp_rw [h_q] at h_q₂
+          simp [RegularProduction.nextState] at h_q₂
+          have ⟨prod, _, h_prod⟩ := h_q₂
+          cases h_prod with
+          | inl h =>
+            have ⟨_, _, _, c⟩ := h
+            have := congrArg Subtype.val c
+            simp [Fintype.wrap, h_q₂'] at this
+          | inr h =>
+            have ⟨_, _, inner, _⟩ := h
+            cases prod <;> simp [ite_eq_iff] at inner
+            rw [<- inner.1.1, <- inner.1.2]
+            assumption
+        )
+        (by
+          cases r
+          case step h _ => simp [toNFA, h_q₂'] at h
+          rw [h, List.cons_eq_cons]
+          constructor; rfl
+          assumption
+        )
     -- derivation step of the form A -> aB
     | .inl q₂' =>
-      apply RegularDerivation.step; pick_goal 3
-      -- recursively define derivation
-      . apply toDerivation; pick_goal 4
-        exact r; assumption
-        unfold last at hlast; assumption
-
-      case h_w => assumption
-
-      -- prove that there is a corresponding production rule
-      . dsimp [toNFA] at h_q₂
+      RegularDerivation.step (a:=a)
+      q'
+      q₂'
+      (by
+        dsimp [toNFA] at h_q₂
         simp_rw [h_q] at h_q₂
         simp [RegularProduction.nextState, h_q₂'] at h_q₂
         have ⟨prod, left, h_prod⟩ := h_q₂
@@ -147,56 +171,46 @@ def Run.toDerivation
             simp [Fintype.wrap, h_q₂'] at right
             rw [<-l, <-r₁, <-right, <-r₂, Prod.eta _]
             assumption
-
-    -- derivation step of the form A -> a
-    | .inr q₂' =>
-      apply RegularDerivation.alpha; swap
-      -- this is the last step
-      . cases r
-        case step h _ =>
-          simp [toNFA, h_q₂'] at h
-
-        rw [h, List.cons_eq_cons]
-        constructor; rfl
-        assumption
-
-      -- the step is backed by a production rule
-      . dsimp [toNFA] at h_q₂
-        simp_rw [h_q] at h_q₂
-        simp [RegularProduction.nextState] at h_q₂
-        have ⟨prod, _, h_prod⟩ := h_q₂
-        cases h_prod
-        case inl h =>
-          have ⟨_, _, _, c⟩ := h
-          have := congrArg Subtype.val c
-          simp [Fintype.wrap, h_q₂'] at this
-        case inr h =>
-          have ⟨_, _, inner, _⟩ := h
-          cases prod <;> simp [ite_eq_iff] at inner
-          rw [<- inner.1.1, <- inner.1.2]
-          assumption
+      )
+      h
+      (toDerivation r h_q₂' hlast)
 
 def Run.fromDerivation (d: G.RegularDerivation q w):
   G.toNFA.Run ⟨.inl q, Fintype.complete _⟩ w :=
   match d with
-  | .eps _ _ _ => final _ (by assumption)
-  | .alpha (a := a) _ _ _ => by
-    apply step; swap; apply final
-    rfl; swap; assumption
-    simp [toNFA]
-    exists RegularProduction.alpha q a
-    constructor; assumption
-    simp [RegularProduction.nextState]
-    rfl
-  | .step (a:=a) _ q' _ _ d' => by
-    apply step; swap
-    apply fromDerivation d'
-    swap; assumption
-    simp [toNFA]
-    exists RegularProduction.cons q (a, q')
-    constructor; assumption
-    simp [RegularProduction.nextState]
-    exists q', q'.prop
+  | .eps _ _ h_w => final _ h_w
+  | .alpha (a := a) _ _ _ =>
+    Run.step (a := a) (M := G.toNFA) (q₂ := { val := Sum.inr ⟨"qₐ", by simp⟩, property := by unfold toNFA; simp; apply Fintype.complete })
+      { val := Sum.inl q, property := by unfold toNFA; simp; apply Fintype.complete }
+      (by
+        unfold toNFA
+        simp
+        exists RegularProduction.alpha q a
+        constructor
+        . assumption
+        . apply Or.inr
+          exists "qₐ"
+          simp [RegularProduction.nextState]
+          rfl
+      )
+      (Run.final _ rfl)
+      (by assumption)
+  | .step (a:=a) _ q' _ _ d' =>
+    Run.step (a := a) (M := G.toNFA) (q₂ := { val := Sum.inl q', property := by unfold toNFA; simp; apply Fintype.complete })
+      { val := Sum.inl q, property := by unfold toNFA; simp; apply Fintype.complete }
+      (by
+        unfold toNFA
+        simp
+        exists RegularProduction.cons q (a, q')
+        constructor
+        . assumption
+        . apply Or.inl
+          exists q'
+          simp [RegularProduction.nextState]
+          rfl
+      )
+      (fromDerivation d')
+      (by assumption)
 
 theorem Run.fromDerivation_last_in_final:
   (fromDerivation G d).last ∈ G.toNFA.F := by
