@@ -1,9 +1,7 @@
 import FormalSystems.Chomsky.Regular.DFA
 import FormalSystems.Preliminaries.Fold
 
-variable [DecidableEq α] [DecidableEq qs]
-
-def DFA.fromNFA (M: NFA α qs): DFA α (Finset M.Q) where
+def DFA.fromNFA [DecidableEq qs] (M: NFA α qs): DFA α (Finset M.Q) where
   Z := M.Z
   Q := Finset.univ
   q₀ := ⟨ M.Q₀, Fintype.complete _ ⟩
@@ -12,7 +10,7 @@ def DFA.fromNFA (M: NFA α qs): DFA α (Finset M.Q) where
   δ := fun (q, a) => .some $
     ⟨ Finset.fold (β:=Finset M.Q) (· ∪ ·) ∅ (λq => M.δ (q, a)) q, by simp ⟩
 
-variable [DecidableEq α] [DecidableEq qs] { M: NFA α qs }
+variable [DecidableEq qs] { M: NFA α qs }
 
 def DFA.fromNFA.RunFromRestricted { qs: _ }
   (r: (DFA.fromNFA M).Run q w)
@@ -91,7 +89,7 @@ theorem NFA.lang_subs_DFA_fromNFA_lang:
 
 theorem DFA.fromNFA_run_imp_run
   { q₀: (DFA.fromNFA M).Q }
-  { r: (DFA.fromNFA M).Run q₀ w } (h: r.last ∈ (DFA.fromNFA M).F):
+  (r: (DFA.fromNFA M).Run q₀ w) (h: r.last ∈ (DFA.fromNFA M).F):
   ∃q ∈ q₀.val, ∃r': M.Run q w, r'.last ∈ M.F := by
   match r with
   | .final _ _ =>
@@ -103,21 +101,26 @@ theorem DFA.fromNFA_run_imp_run
     assumption
     dsimp [NFA.Run.last]
     assumption
-  | .step _ h_step _ _ =>
+  | .step _ h_step r h_w =>
+    have _termination : r.len < (NFA.Run.step q₀ h_step r h_w).len := by
+      conv => right; unfold NFA.Run.len
+      simp
+
     dsimp [NFA.Run.last] at h
     dsimp [fromNFA, toNFA] at h_step; simp at h_step
-    have ⟨_, h_q₂, r', hr'⟩ := fromNFA_run_imp_run h
+    have ⟨_, h_q₂, r', hr'⟩ := fromNFA_run_imp_run r h
     rw [h_step, Finset.mem_fold_union_iff] at h_q₂
     have ⟨x, _, _⟩ := h_q₂
     exists x; constructor; assumption
     apply Exists.intro; swap
     apply NFA.Run.step
     repeat { assumption }
+termination_by r.len
 
 theorem NFA.DFA_fromNFA_lang_subs_lang:
   (DFA.fromNFA M).AcceptedLanguage ⊆ M.AcceptedLanguage := by
-  intro w ⟨_, hr⟩
-  have ⟨q, hq, r, _⟩ := DFA.fromNFA_run_imp_run hr
+  intro w ⟨r, hr⟩
+  have ⟨q, hq, r, _⟩ := DFA.fromNFA_run_imp_run r hr
   exists q
   dsimp [DFA.fromNFA] at hq
   constructor; assumption
@@ -128,3 +131,4 @@ theorem NFA.fromNFA_lang_eq_lang:
   apply Set.ext; intros; constructor
   apply DFA_fromNFA_lang_subs_lang
   apply lang_subs_DFA_fromNFA_lang
+

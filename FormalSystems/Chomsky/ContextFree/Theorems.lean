@@ -126,15 +126,14 @@ theorem eps_not_in_CNF_Grammar {α nt : Type} :
     --intro cfg h_contra
     intro cfg h_contra
     unfold ContextFreeGrammar.GeneratedLanguage at h_contra
-    cases h_contra
-    case intro default_CFGCNF
-    have monotone := deriv_length_monotone_CNF cfg _ _ (Exists.intro default_CFGCNF (by tauto))
-    nth_rewrite 2 [Word.eps_len_0.mpr] at monotone
-    have start_len_1 : Word.len [@Sum.inl cfg.1.V cfg.1.Z cfg.1.start] = 1 := by tauto
-    rw [start_len_1] at monotone
-    rw [Nat.le_zero_eq 1] at monotone
-    tauto
-    rfl
+    cases h_contra with | intro default_CFGCNF =>
+      have monotone := deriv_length_monotone_CNF cfg _ _ (Exists.intro default_CFGCNF (by tauto))
+      nth_rewrite 2 [Word.eps_len_0.mpr] at monotone
+      have start_len_1 : Word.len [@Sum.inl cfg.1.V cfg.1.Z cfg.1.start] = 1 := by tauto
+      rw [start_len_1] at monotone
+      rw [Nat.le_zero_eq 1] at monotone
+      tauto
+      rfl
 
 /--Return a corresponding context-free grammar in chomsky normal-form that accepts
   the same language.
@@ -206,7 +205,7 @@ def ContextFreeGrammar.DerivationTree.isChild (sub : DerivationTree G) (super : 
 /--A Path is just a list of nodes.-/
 def DerivationTreePath
   { cfg : ContextFreeGrammar α nt }
-  ( dt : ContextFreeGrammar.DerivationTree cfg) :=
+  ( _dt : ContextFreeGrammar.DerivationTree cfg) :=
   List (ContextFreeGrammar.DerivationTree cfg)
 
 /--Words are lists and can thus be coerced.-/
@@ -315,8 +314,7 @@ theorem PumpingLemma :
           simp [h_cfg_gen_is_lang.symm, h_cfg_CNF_gen_is_lang] at z_exists_deriv
           -- Man ist gezwungen z₂ vom Typ Word G.Z einzuführen
           apply coerceCFGLang_mem_imp_word_of_type z.val cfg_CNF.1 at z_exists_deriv
-          cases z_exists_deriv
-          case intro z₂ z₂_mem
+          cases z_exists_deriv with | intro z₂ z₂_mem =>
           -- Benenne z₂'s Eigenschaften sinnvoll
           have z_eq_z₂ := z₂_mem.right
           have z₂_mem := z₂_mem.left
@@ -361,7 +359,7 @@ theorem PumpingLemma :
 
           -- 2) Ein Binärbaum mit Word.len z Blättern muss Pfade der Länge
           -- ≥ log₂ Word.len z enthalten
-          have lemma_deriv_log := @derivation_path_length α nt₂ z₂.len cfg_CNF default_derivTree_z₂ (by 
+          have lemma_deriv_log := @derivation_path_length α nt₂ z₂.len cfg_CNF default_derivTree_z₂ (by
             rw [defaultDerivTree_z₂_respects_result] at lemma_deriv_leaf_count
             unfold Word.VZtoZ at lemma_deriv_leaf_count
             unfold Word.len at lemma_deriv_leaf_count
@@ -384,3 +382,4 @@ theorem PumpingLemma :
           --• Also kann der Baum unterhalb dieses Vorkommens maximal 2|V| = n Blätter haben
           --(dies sind die Symbole in vwx)
           sorry
+

@@ -79,7 +79,7 @@ theorem del_star_curried_isSome_iff_constrRun_isSome
     -- both are none
     . simp [del_star_curried, hq', Option.bind_eq_bind]
       unfold constrRun
-      rw [isNone_iff_eq_none, pbind_eq_none]
+      rw [pbind_eq_none]
       assumption; intros; assumption
     -- both are some
     . conv =>
@@ -93,20 +93,20 @@ theorem del_star_curried_isSome_iff_constrRun_isSome
           del_star_curried_isSome_iff_constrRun_isSome.mp h
         refine' .intro (.step _ _ r' rfl) ⟨q', hq', _⟩
         simp [toNFA]; assumption
-        simp [bind_eq_bind]; assumption
+        simp [bind_eq_some]; assumption
       -- isSome del_star <= isSome constrRun
       . intro ⟨r, q', HQ', h⟩
         simp [del_star_curried, bind_eq_bind, hq']
         apply del_star_curried_isSome_iff_constrRun_isSome.mpr
         rw [isSome_iff_exists]; simp [hq'] at HQ'; rw [HQ']
-        simp [bind_eq_bind] at h; have ⟨r', _, _⟩ := h
+        simp [bind_eq_some] at h; have ⟨r', _, _⟩ := h
         exists r'
 
 theorem del_star_isSome_iff_constrRun_isSome
   {M: DFA α qs} {w: Word M.Z} {q: M.Q}:
   Option.isSome (M.del_star (q, w)) ↔ Option.isSome (constrRun w q) := by
-  simp [del_star]
-  apply del_star_curried_isSome_iff_constrRun_isSome
+  unfold del_star
+  rw [del_star_curried_isSome_iff_constrRun_isSome]
 
 theorem in_language_iff_del_star_final
   {M: DFA α qs} {w: Word M.Z}:

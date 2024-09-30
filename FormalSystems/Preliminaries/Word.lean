@@ -14,9 +14,6 @@ import FormalSystems.Preliminaries.Alphabet
   Based on the Type List.-/
 def Word (α : Type u) := List α
 
-/--Word equality is decidable using the List equality.-/
-instance {α : Type u} [DecidableEq α] : DecidableEq (Word α) := List.hasDecEq
-
 /--Words are lists and can thus be coerced.-/
 instance (_ : Word α): Coe (Word α) (List α) where
   coe word := word
@@ -80,7 +77,6 @@ def Word.encode [inst: Alphabet α]: (w : Word α) → ℕ
     simp [encode, decode, Nat.fin_mod, FinDenumerable.decode_fin]
     simp [<- Nat.mod_add_mod, Nat.mod_eq_of_lt $ inst.encode_lt_card x]
     simp [Nat.add_div inst.card_pos, Nat.div_eq_of_lt $ inst.encode_lt_card x]
-    simp [Nat.mul_div_cancel (encode xs) inst.card_pos]
     rw [<- ite_not _]; simp [Nat.not_le_of_lt _, Nat.mod_lt _ inst.card_pos, ih]
 
 /--Theorem:`encode`is the left inverse operation of`decode`.-/
@@ -150,10 +146,10 @@ def Word.AllElementsOfWordInSet: (w: Word α) → (S: Set α) → Prop
   | _, _ => True
 
 /--Allow ∈ notation for words.-/
-instance : Membership α (Word α) := List.instMembershipList
+instance : Membership α (Word α) := List.instMembership
 
 /--Allow map to run over Words.-/
-instance : Functor Word := List.instFunctorList
+instance : Functor Word := List.instFunctor
 
 /--Equality is decidable for Words.-/
 instance [DecidableEq α] : DecidableEq (Word α) := List.hasDecEq

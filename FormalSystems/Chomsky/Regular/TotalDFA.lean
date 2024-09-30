@@ -22,10 +22,11 @@ theorem total_del_star_eq {M: TotalDFA α qs} {q: _} {w: _}:
   M.del_star (q, w) = some (M.del_star' (q, w)) := by
   simp [DFA.del_star]
   induction w generalizing q
-  case nil => rfl
+  case nil => unfold DFA.del_star_curried; unfold del_star'; rfl
   case cons _ _ ih =>
     unfold DFA.del_star_curried
-    rw [total_del_eq] 
+    unfold del_star'
+    rw [total_del_eq]
     apply ih
 
 theorem in_language_iff_del_star_final
@@ -64,6 +65,7 @@ theorem totalDFA_del_eq_del {q: _} {a: _}:
 theorem totalDFA_del_star_none:
   (M.toTotalDFA.del_star' (⟨none, Fintype.complete _⟩, w)).val = none := by
   induction' w with x xs ih
+  unfold TotalDFA.del_star'
   rfl
   simp [TotalDFA.del_star']
   have : M.toTotalDFA.δ' (⟨none, Fintype.complete _⟩, x) = ⟨none, Fintype.complete _⟩ := rfl
@@ -74,7 +76,7 @@ theorem totalDFA_del_star_eq {q: _} {w: _}:
   M.del_star (q, w) = M.toTotalDFA.del_star' (⟨some q, Fintype.complete _⟩, w) := by
   simp [DFA.del_star]
   induction w generalizing q
-  case nil => rfl
+  case nil => unfold TotalDFA.del_star'; rfl
   case cons _ xs ih =>
     simp [DFA.del_star_curried, Option.bind_eq_bind, TotalDFA.del_star']
     cases' hd: M.δ _ with q'
@@ -91,9 +93,6 @@ theorem totalDFA_del_star_eq {q: _} {w: _}:
       rw [<-this] at hd
       rw [Subtype.eq hd]
       apply ih
-
-theorem Subtype.eq_iff {p: α -> Prop} { x y: Subtype p }:
-  x = y ↔ x.val = y.val := ⟨fun h => by rw [h], Subtype.eq⟩
 
 theorem totalDFA_lang_eq:
   M.AcceptedLanguage = M.toTotalDFA.AcceptedLanguage := by
@@ -119,3 +118,4 @@ theorem totalDFA_lang_eq:
   constructor <;> intro ⟨x, l, r⟩ <;> exists x
   . simp [r, Option.mem_iff.mp l]; rfl
   . simp [l, r]; exact l.symm
+

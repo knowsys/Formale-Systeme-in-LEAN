@@ -12,12 +12,12 @@ import Mathlib.Data.Set.Countable
   Additionally require that all encodings return numbers less than a cardinality.
   Can get this proposition:`encode_lt_card`.-/
 class FinDenumerable (α : Type u) extends Fintype α, Encodable α where
-  encode_lt_card: ∀(a : α), encode a < card 
+  encode_lt_card: ∀(a : α), encode a < card
   -- the attribute that seperates FinDenumerable from just Fintype + Encodable?
 
 /--`FinDenumerable.enocde_fin a`returns
 an element of the canonical set with the same cardinality as`FinDenumerable`.-/
-def FinDenumerable.encode_fin [inst: FinDenumerable α] (a : α) : Fin inst.card := 
+def FinDenumerable.encode_fin [inst: FinDenumerable α] (a : α) : Fin inst.card :=
   ⟨ inst.encode a, inst.encode_lt_card a ⟩
   -- apply Fin.mk on: encoding as ℕ of a + proof that all encodings of a are < card of inst
 
@@ -48,14 +48,14 @@ def FinDenumerable.encode_fin_bijective [inst: FinDenumerable α] : Function.Bij
 
 /--Theorem: Every`n`in a finite set of the same cardinality as`inst` can be encoded
 into a number`a`that can be decoded back into`n`.-/
-theorem FinDenumerable.decode_partial_inv [inst: FinDenumerable α] (n : Fin inst.card): 
+theorem FinDenumerable.decode_partial_inv [inst: FinDenumerable α] (n : Fin inst.card):
   ∃a ∈ inst.decode n, inst.encode a = n := by
   have ⟨ a, pa, _ ⟩  := encode_fin_bijective.existsUnique n
   exists a; simp [Fin.ext_iff, encode_fin] at pa;
   simp [pa]; simp [<- pa]
 
 /--Theorem: Decoding an element`n`of a finite set gets you something.-/
-theorem FinDenumerable.decode_fin_is_some [inst: FinDenumerable α] (n : Fin inst.card): 
+theorem FinDenumerable.decode_fin_is_some [inst: FinDenumerable α] (n : Fin inst.card):
   (inst.decode n.1).isSome := by
   apply Option.isSome_iff_exists.2
   apply (decode_partial_inv n).imp
@@ -92,9 +92,9 @@ theorem FinDenumerable.decode_fin_inj [inst: FinDenumerable α] {n m : Fin inst.
   (h₁: a = FinDenumerable.decode_fin n)
   (h₂: b = FinDenumerable.decode_fin m) :
   a = b ↔ n = m := by
-  have ⟨ _, p₁ ⟩ := fin_preimage_exists n  
+  have ⟨ _, p₁ ⟩ := fin_preimage_exists n
   simp [FinDenumerable.decode_fin, <- p₁] at h₁
-  have ⟨ _, p₂ ⟩ := fin_preimage_exists m  
+  have ⟨ _, p₂ ⟩ := fin_preimage_exists m
   simp [FinDenumerable.decode_fin, <- p₂] at h₂
   rw [h₁, h₂, Fin.ext_iff, ← p₁, ← p₂]
   apply Iff.symm; apply Encodable.encode_inj
@@ -102,7 +102,7 @@ theorem FinDenumerable.decode_fin_inj [inst: FinDenumerable α] {n m : Fin inst.
 /--Theorem:`decode_fin`is injective.-/
 theorem FinDenumerable.decode_fin_injective [inst: FinDenumerable α] :
   Function.Injective (@FinDenumerable.decode_fin _ inst) :=
-  fun a b => (FinDenumerable.decode_fin_inj 
+  fun a b => (FinDenumerable.decode_fin_inj
     (@rfl α $ @decode_fin _ inst a)
     (@rfl α $ @decode_fin _ inst b)).1
 
@@ -122,15 +122,16 @@ theorem FinDenumerable.decodenk [inst: FinDenumerable α] :
   have ⟨ a, ph ⟩ := fin_preimage_exists n
   simp [<- ph]
 
-/--Theorem:`encode_fin`has a range of exactly the finite set with the cardinality of`inst`.-/
-theorem FinDenumerable.encode_fin_range [inst: FinDenumerable α] :
-  ↑(Set.range inst.encode_fin) ≃ Fin inst.card := by
-  rw [Function.Surjective.range_eq _]
-  exact Equiv.Set.univ (Fin (Fintype.card α))
-  exact encode_fin_bijective.surjective
+/--`encode_fin`has a range of exactly the finite set with the cardinality of`inst`.-/
+def FinDenumerable.encode_fin_range [inst: FinDenumerable α] :
+  ↑(Set.range inst.encode_fin) ≃ Fin inst.card :=
+    Equiv.trans
+      (Equiv.Set.ofEq (Function.Surjective.range_eq encode_fin_bijective.surjective))
+      (Equiv.Set.univ (Fin (Fintype.card α)))
 
-/--Theorem: The finite denumerable set based on type`α`has exactly the same
+/--The finite denumerable set based on type`α`has exactly the same
   size as`α`. (`α ≃ β`is the type of functions from`α → β`with a two-sided inverse.)-/
-theorem FinDenumerable.equiv_fin [inst: FinDenumerable α] : α ≃ Fin inst.card := by
-  have tmp := Equiv.ofLeftInverse encode_fin (fun _ => inst.decode_fin) (fun _ => encodek_fin_left_inverse)
-  apply Equiv.trans tmp encode_fin_range
+def FinDenumerable.equiv_fin [inst: FinDenumerable α] : α ≃ Fin inst.card :=
+  let tmp := Equiv.ofLeftInverse encode_fin (fun _ => inst.decode_fin) (fun _ => encodek_fin_left_inverse)
+  Equiv.trans tmp encode_fin_range
+

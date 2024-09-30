@@ -39,16 +39,16 @@ mutual
 def PreDerivationTree.decEq {G : ContextFreeGrammar α nt} [eq₁ : DecidableEq α] [eq₂ : DecidableEq nt] : (PDT₁ PDT₂ : PreDerivationTree G) → Decidable (Eq PDT₁ PDT₂)
 | .leaf terminal₁ , .leaf terminal₂ =>
   match terminal₁, terminal₂ with
-  | none, none =>
+  | .none, .none =>
     isTrue (by rfl)
-  | some terminalSymbol₁, none =>
+  | .some terminalSymbol₁, .none =>
     isFalse (by simp)
-  | none, some terminalSymbol₂ =>
+  | .none, .some terminalSymbol₂ =>
     isFalse (by simp)
-  | some terminalSymbol₁, some terminalSymbol₂ =>
+  | .some terminalSymbol₁, .some terminalSymbol₂ =>
     match (eq₁ terminalSymbol₁ terminalSymbol₂) with
-      | isTrue h_isTrue => isTrue (by rw [Subtype.val_inj] at h_isTrue; rw [h_isTrue])
-      | isFalse h_isFalse => isFalse (by
+      | .isTrue h_isTrue => isTrue (by rw [Subtype.val_inj] at h_isTrue; rw [h_isTrue])
+      | .isFalse h_isFalse => isFalse (by
           apply Not.intro
           intro h_not
           simp at h_not
@@ -66,28 +66,28 @@ def PreDerivationTree.decEq {G : ContextFreeGrammar α nt} [eq₁ : DecidableEq 
     contradiction)
 | .inner var₁ children₁ prodRule₁, .inner var₂ children₂ prodRule₂ =>
   match (decEq prodRule₁.val prodRule₂.val) with
-    | isFalse h_isFalse => isFalse (by simp; intro _ _ ; rw [Subtype.val_inj] at h_isFalse; exact h_isFalse)
-    | isTrue h_isTrue_prodRule =>
+    | .isFalse h_isFalse => isFalse (by simp; intro _ _ ; rw [Subtype.val_inj] at h_isFalse; exact h_isFalse)
+    | .isTrue h_isTrue_prodRule =>
       match (children₁.decEq children₂) with
-        | isFalse h_isFalse => isFalse (by simp; intro _ _; contradiction)
-        | isTrue h_isTrue_children =>
+        | .isFalse h_isFalse => isFalse (by simp; intro _ _; contradiction)
+        | .isTrue h_isTrue_children =>
           match (decEq var₁ var₂) with
-            | isFalse h_isFalse => isFalse (by
+            | .isFalse h_isFalse => isFalse (by
               intro h_not;
               --rw [h_isTrue_children, h_isTrue_prodRule] at h_not
               simp [h_isTrue_children, h_isTrue_prodRule, Subtype.val_inj] at h_not
               apply And.left at h_not
               rw [h_not] at h_isFalse
               contradiction)
-            | isTrue h_isTrue_var => isTrue (by
+            | .isTrue h_isTrue_var => isTrue (by
               rw [Subtype.val_inj] at h_isTrue_prodRule
               rw [h_isTrue_prodRule, h_isTrue_children, h_isTrue_var])
 
 /--Define the equality determinating relation.-/
 def NEPreDerivationTreeList.decEq {G : ContextFreeGrammar α nt} [DecidableEq α] [DecidableEq nt] : (NEPDT₁ NEPDT₂ : NEPreDerivationTreeList G) → Decidable (NEPDT₁ = NEPDT₂)
 | .single PDT₁ , .single PDT₂ => match (PDT₁.decEq PDT₂) with
-  | isTrue h_isTrue_PDT => isTrue (by rw [h_isTrue_PDT])
-  | isFalse h_isFalse_PDT => isFalse (by simp; exact h_isFalse_PDT)
+  | .isTrue h_isTrue_PDT => isTrue (by rw [h_isTrue_PDT])
+  | .isFalse h_isFalse_PDT => isFalse (by simp; exact h_isFalse_PDT)
 | .single _ , .cons _ _ => isFalse (by
     apply Not.intro
     intro h_not
@@ -98,16 +98,16 @@ def NEPreDerivationTreeList.decEq {G : ContextFreeGrammar α nt} [DecidableEq α
     contradiction)
 | .cons PDT₁ NEPDTL₃, .cons PDT₂ NEPDTL₄ =>
   match (PDT₁.decEq PDT₂) with
-    | isFalse h_isFalse_PDT => isFalse (by
+    | .isFalse h_isFalse_PDT => isFalse (by
       simp
       intro h_PDT_equal
       contradiction)
-    | isTrue h_isTrue_PDT =>
+    | .isTrue h_isTrue_PDT =>
       match (NEPDTL₃.decEq NEPDTL₄) with
-      | isFalse h_isFalse_NEPDTL => isFalse (by
+      | .isFalse h_isFalse_NEPDTL => isFalse (by
         simp; intro _
         exact h_isFalse_NEPDTL)
-      | isTrue h_isTrue_NEPDTL => isTrue (by rw [h_isTrue_PDT, h_isTrue_NEPDTL])
+      | .isTrue h_isTrue_NEPDTL => isTrue (by rw [h_isTrue_PDT, h_isTrue_NEPDTL])
 
 end
 
@@ -178,7 +178,7 @@ theorem NEPreDerivationTreeList.nodeList_never_nil
       contradiction
     case cons PDT NEPDT₂ =>
       rw [NEPreDerivationTreeList.nodeList] at h_not
-      have h_not_not : _ := List.append_ne_nil_of_left_ne_nil (PDT.nodeList) (NEPDT₂.nodeList) (PDT.nodeList_never_nil)
+      have h_not_not : _ := List.append_ne_nil_of_left_ne_nil (PDT.nodeList_never_nil) (NEPDT₂.nodeList)
       contradiction
 /--Theorem: The list of nodes returned with nodeList is never empty.-/
 theorem PreDerivationTree.nodeList_never_nil
@@ -232,9 +232,9 @@ mutual
 def PreDerivationTree.levelWord : PreDerivationTree G → Word (G.V ⊕ G.Z)
   | .leaf terminal =>
     match terminal with
-    | none =>
+    | .none =>
       ε
-    | some terminalSymbol =>
+    | .some terminalSymbol =>
       Word.mk [Sum.inr terminalSymbol]
   | .inner var _ _ => Word.mk [(Sum.inl var)]
 /--The final result-word defined by the children of a context-free tree-node. Only correct order if child nodes were assigned left-to-right.-/
@@ -440,7 +440,7 @@ theorem PreDerivationTree.children_have_leq_nodes
         apply And.intro
         rfl
         intro child h_child_mem
-        simp
+        simp [nodeList]
         apply Nat.le_succ_of_le -- We tell LEAN that the number is going to increase
         -- We simply use the NEPDTL theorem
         apply NEPreDerivationTreeList.children_have_leq_nodes
@@ -514,71 +514,38 @@ variable (PDT : PreDerivationTree G) (NEPDTL : NEPreDerivationTreeList G)
 mutual
 /--Decide the treeValid attribute.-/
 def NEPreDerivationTreeList.decideTreeValid (NEPDTL : NEPreDerivationTreeList G)
-  --[decPDT : Decidable (PDT.treeValid)]
   [_h₁ : DecidableEq (G.V)] [_h₂ : DecidableEq (G.Z)]
   : Decidable (NEPDTL.treeValid) :=
   match NEPDTL with
-    | .single PDT => by rw [NEPreDerivationTreeList.treeValid]; exact PDT.decideTreeValid
+    | .single PDT => match PDT.decideTreeValid with
+      | .isFalse _ => isFalse (by unfold NEPreDerivationTreeList.treeValid; assumption)
+      | .isTrue _ => isTrue (by unfold NEPreDerivationTreeList.treeValid; assumption)
     | .cons PDT₂ NEPDTL₂ =>
       match (PDT₂.decideTreeValid : (Decidable PDT₂.treeValid)) with
-        | isFalse h_isFalse => isFalse (by
+        | .isFalse h_isFalse => isFalse (by
           rw [NEPreDerivationTreeList.treeValid]
           apply Not.intro
           intro h_not
           absurd h_not.left
           exact h_isFalse)
-        | isTrue _ => (by
-          rw [NEPreDerivationTreeList.treeValid]
-          have _ : _ := NEPDTL₂.decideTreeValid
-          have _ : _ := PDT₂.decideTreeValid
-          apply instDecidableAnd)
+        | .isTrue _ => match PDT₂.decideTreeValid, NEPDTL₂.decideTreeValid with
+          | .isTrue _, .isTrue _ => isTrue (by unfold NEPreDerivationTreeList.treeValid; constructor <;> assumption)
+          | .isFalse _, _ => isFalse (by unfold NEPreDerivationTreeList.treeValid; simp; intros; contradiction)
+          | _, .isFalse _ => isFalse (by unfold NEPreDerivationTreeList.treeValid; simp; intros; assumption)
+
 /--Decide the treeValid attribute.-/
 def PreDerivationTree.decideTreeValid (PDT : PreDerivationTree G)
-  --[d_terminals : DecidableEq α] [d_vars : DecidableEq nt]
   [h₁ : DecidableEq (G.V)] [h₂ : DecidableEq (G.Z)]
-  -- [h_eqlhs : Decidable (NEPreDerivationTreeList.treeValid)]
-  --[Decidable NEPreDerivationTreeList.treeValid]
   : Decidable PDT.treeValid :=
   match PDT with
     | .leaf _ => isTrue (by rw [PreDerivationTree.treeValid]; simp)
-    | .inner var children rule =>
-        @Decidable.by_cases (var = rule.1.lhs) (Decidable (PreDerivationTree.treeValid (PreDerivationTree.inner var children rule))) _
-          (fun h_lhs : (var = rule.1.lhs) =>
-            @Decidable.by_cases (children.levelWord = rule.1.rhs) _ _
-              (fun h_rhs : (children.levelWord = rule.1.rhs) =>
-                  @Decidable.by_cases (children.treeValid) (Decidable (PreDerivationTree.treeValid (PreDerivationTree.inner var children rule))) children.decideTreeValid
-                  (fun h_children : (children.treeValid) =>
-                    isTrue (by
-                      rw [PreDerivationTree.treeValid]
-                      rw [h_lhs, h_rhs]
-                      simp
-                      exact h_children
-                    )
-                  )
-                  (fun h_children : ¬(children.treeValid) =>
-                    isFalse (by
-                      apply Not.intro; intro h_not
-                      rw [PreDerivationTree.treeValid] at h_not
-                      absurd h_not.right.right
-                      exact h_children
-              )))
-                (fun h_rhs : ¬(children.levelWord = rule.1.rhs) =>
-                isFalse (by
-                  apply Not.intro; intro h_not
-                  rw [PreDerivationTree.treeValid] at h_not
-                  absurd h_not.right.left
-                  exact h_rhs
-                )
-              )
-          ) (fun h_lhs : ¬(var = rule.1.lhs) =>
-            isFalse
-            (by
-              apply Not.intro; intro h_not
-              rw [PreDerivationTree.treeValid] at h_not
-              absurd h_not.left
-              exact h_lhs
-            )
-          )
+    | .inner var children rule => match decEq var rule.1.lhs with
+      | .isTrue h_lhs => match decEq children.levelWord rule.1.rhs with
+        | .isTrue h_rhs => match children.decideTreeValid with
+          | .isTrue h_children => isTrue (by unfold PreDerivationTree.treeValid; constructor; assumption; constructor <;> assumption)
+          | .isFalse h_children => isFalse (by unfold PreDerivationTree.treeValid; simp; intros; assumption)
+        | .isFalse h_rhs => isFalse (by unfold PreDerivationTree.treeValid; simp; intros; contradiction)
+      | .isFalse h_lhs => isFalse (by unfold PreDerivationTree.treeValid; simp; intros; contradiction)
 
 end
 
