@@ -1,4 +1,4 @@
-import FormalSystems.Preliminaries.FinDenumerable
+import FormaleSystemeInLean.Preliminaries.FinDenumerable
 
 /--Class: An alphabet is finite (`.elems`and all elements included in`.elems`),
   denumerable (`encode`and`decode`functions), all encodings (returned by`encode`)

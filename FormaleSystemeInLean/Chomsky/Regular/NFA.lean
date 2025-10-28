@@ -1,6 +1,7 @@
-import FormalSystems.Chomsky.Regular.RegularGrammar
+import FormaleSystemeInLean.Chomsky.Regular.RegularGrammar
 
 import Mathlib.Data.Finset.Option
+import Mathlib.Data.Fintype.Sum
 
 /--Structure: Define Nondeterministic Finite Automatas. Requires an Alphabet and Set of States. The structure includes:
 
@@ -135,9 +136,8 @@ def Run.toDerivation
             have := congrArg Subtype.val c
             simp [Fintype.wrap, h_q₂'] at this
           | inr h =>
-            have ⟨_, _, inner, _⟩ := h
-            cases prod <;> simp [ite_eq_iff] at inner
-            rw [<- inner.1.1, <- inner.1.2]
+            cases prod <;> simp [ite_eq_iff] at h
+            rw [<- h.1.1, <- h.1.2]
             assumption
         )
         (by
@@ -155,11 +155,11 @@ def Run.toDerivation
       (by
         dsimp [toNFA] at h_q₂
         simp_rw [h_q] at h_q₂
-        simp [RegularProduction.nextState, h_q₂'] at h_q₂
+        simp [RegularProduction.nextState] at h_q₂
         have ⟨prod, left, h_prod⟩ := h_q₂
         cases h_prod
         case inr h =>
-          have ⟨_, _, _, c⟩ := h
+          have ⟨_, c⟩ := h
           have := congrArg Subtype.val c
           simp [Fintype.wrap, h_q₂'] at this
         case inl h =>
@@ -189,7 +189,6 @@ def Run.fromDerivation (d: G.RegularDerivation q w):
         constructor
         . assumption
         . apply Or.inr
-          exists "qₐ"
           simp [RegularProduction.nextState]
           rfl
       )
@@ -216,12 +215,12 @@ theorem Run.fromDerivation_last_in_final:
   (fromDerivation G d).last ∈ G.toNFA.F := by
   match d with
   | .eps (v:=v) _ _ =>
-    simp [last, toNFA]
+    simp [fromDerivation, last, toNFA]
     exists .eps v
   | .alpha _ _ _ =>
     simp [last, fromDerivation, Fintype.wrap, toNFA]
   | .step _ _ _ _ _ =>
-    simp [last]
+    simp [fromDerivation, last]
     apply fromDerivation_last_in_final
 
 end NFA

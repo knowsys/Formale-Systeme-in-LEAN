@@ -80,7 +80,7 @@ def FinDenumerable.fin_preimage_exists [inst: FinDenumerable α] (n: Fin inst.ca
 
 /--Theorem:`decode`and`decode₂`return the same values.(`decode₂`is a failsafe version of`decode`.)-/
 theorem FinDenumerable.fin_decode_eq_decode₂ [inst: FinDenumerable α] (n : Fin inst.card) :
-  inst.decode n = inst.decode₂ n := by
+  inst.decode n = inst.decode₂ _ n := by
   rw [← Option.some_get (decode_fin_is_some n)]
   apply Eq.symm
   rw [Encodable.decode₂_is_partial_inv]
@@ -126,7 +126,7 @@ theorem FinDenumerable.decodenk [inst: FinDenumerable α] :
 def FinDenumerable.encode_fin_range [inst: FinDenumerable α] :
   ↑(Set.range inst.encode_fin) ≃ Fin inst.card :=
     Equiv.trans
-      (Equiv.Set.ofEq (Function.Surjective.range_eq encode_fin_bijective.surjective))
+      (Equiv.setCongr (Function.Surjective.range_eq encode_fin_bijective.surjective))
       (Equiv.Set.univ (Fin (Fintype.card α)))
 
 /--The finite denumerable set based on type`α`has exactly the same

@@ -1,7 +1,7 @@
 import Mathlib.Data.Finset.Basic
 import Mathlib.Algebra.Group.Defs
 
-import FormalSystems.Preliminaries.Language
+import FormaleSystemeInLean.Preliminaries.Language
 --================================================================================
 -- File: Grammar
 /-  Containts generic Production Rules, derivation steps, derivations
@@ -218,9 +218,9 @@ theorem DerivationStep.lhs_singleton (step: DerivationStep G [.inl v]) :
   match hpre:step.pre with
   | .cons _ _ =>
     have tmp := Eq.symm $ hpre ▸ step.sound
-    simp [mul_assoc, HMul.hMul, Mul.mul, List.cons_append] at tmp
+    simp [HMul.hMul, Mul.mul, List.cons_append] at tmp
     rw [List.cons_eq_cons] at tmp
-    simp_rw [List.append_eq_nil] at tmp
+    simp_rw [List.append_eq_nil_iff] at tmp
     have tmp := tmp.2.2.1
     have ⟨_, h⟩ := Production.lhs_contains_var step.prod.val
     rw [tmp] at h
@@ -277,8 +277,6 @@ inductive Derivation (G: Grammar Prod) : Word (G.V ⊕ G.Z) → Word (G.V ⊕ G.
   (_: Derivation G u' v)
   (sound: step.result = u') :
   Derivation G u v
-
-#check Derivation
 
 /--The closure of derivations. Has attributes start and result.-/
 class DerivationCls (G: Grammar Prod) (t: Type) where
@@ -448,7 +446,7 @@ theorem VZtoV_len {G : Grammar Prod}
   (word.VZtoV h_all_V).len = word.len := by
     rw [VZtoV]
     unfold len
-    simp
+    rw [List.length_map, List.length_attach]
 
 /--Theorem: Mapping Sum.inr to a word does not change its length.-/
 theorem len_cancel_inr
@@ -490,7 +488,7 @@ def isAllZ {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : Bool :=
   match word with
   | .nil => True
   | .cons symbol word₂ =>
-    @Decidable.by_cases (Sum.isRight symbol) _ _
+    @Decidable.byCases (Sum.isRight symbol) _ _
     (fun _ => isAllZ (word₂ : Word (G.V ⊕ G.Z)))
     (fun _ => False)
 
@@ -500,9 +498,9 @@ def decideIsAllZ {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : Decidable (∀
   | .nil =>
     isTrue (by tauto)
   | .cons symbol word₂ =>
-    @Decidable.by_cases (Sum.isRight symbol) _ _
+    @Decidable.byCases (Sum.isRight symbol) _ _
     (fun h_isTrue =>
-      @Decidable.by_cases (∀ symbol ∈ (word₂ : Word (G.V ⊕ G.Z)), Sum.isRight symbol) _ _
+      @Decidable.byCases (∀ symbol ∈ (word₂ : Word (G.V ⊕ G.Z)), Sum.isRight symbol) _ _
       (fun h_isTrue₂ =>
         isTrue (by
           intro anySymbol
@@ -533,7 +531,7 @@ def isAllV {G : Grammar Prod} (word : Word (G.V ⊕ G.Z)) : Bool :=
   match word with
   | .nil => True
   | .cons symbol word₂ =>
-    @Decidable.by_cases (Sum.isLeft symbol) _ _
+    @Decidable.byCases (Sum.isLeft symbol) _ _
     (fun _ => isAllV (word₂ : Word (G.V ⊕ G.Z)))
     (fun _ => False)
 end Word

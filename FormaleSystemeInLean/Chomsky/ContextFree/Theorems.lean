@@ -1,8 +1,8 @@
-import FormalSystems.Chomsky.Grammar
+import FormaleSystemeInLean.Chomsky.Grammar
 import Mathlib.Data.Finset.Functor
 import Mathlib.Tactic.Tauto
 
-import FormalSystems.Chomsky.ContextFree.ContextFreeDerivation
+import FormaleSystemeInLean.Chomsky.ContextFree.ContextFreeDerivation
 --================================================================================
 -- File: Theorems
 /-  Containts multiple theorems leading up to the Pumping Lemma for context-free
@@ -81,8 +81,7 @@ theorem deriv_length_monotone_CNF :
   ∀ (cfg : ContextFreeGrammarCNF α nt),
   ∀ u v, (∃ (_ : (ContextFreeGrammar.ContextFreeDerivation cfg.1 u v)), True) →
   u.len ≤ v.len := by
-    intro cfg
-    intro u v h_exists
+    intro cfg u v h_exists
     apply @Exists.elim _ _ (Word.len u ≤ Word.len v) h_exists
     intro deriv _
     induction deriv
@@ -93,8 +92,8 @@ theorem deriv_length_monotone_CNF :
         h_ind
           (Exists.intro deriv (by tauto))
       have h_step_len : Word.len u ≤ Word.len u' := by
-        simp [sound.symm, Grammar.DerivationStep.result]
-        simp [dstep.len_u_composition, Word.length_mul_eq_add]
+        simp [sound.symm]
+        simp [dstep.len_u_composition]
         have dstep_CNF := cfg.2 dstep.prod.1 dstep.prod.2
         cases rule_form : dstep_CNF
         case inl h_var_form =>
@@ -307,10 +306,8 @@ theorem PumpingLemma :
           exists 2^cfg_CNF.val.V.card
           -- Führe z sowie die Eigenschaften von z ein
           intro z
-          have z_mem := z.prop
-          simp at z_mem
           -- Benenne z's Eigenschaften sinnvoll
-          have z_exists_deriv := z_mem.left
+          have z_exists_deriv := z.prop.left
           simp [h_cfg_gen_is_lang.symm, h_cfg_CNF_gen_is_lang] at z_exists_deriv
           -- Man ist gezwungen z₂ vom Typ Word G.Z einzuführen
           apply coerceCFGLang_mem_imp_word_of_type z.val cfg_CNF.1 at z_exists_deriv
@@ -363,6 +360,7 @@ theorem PumpingLemma :
             rw [defaultDerivTree_z₂_respects_result] at lemma_deriv_leaf_count
             unfold Word.VZtoZ at lemma_deriv_leaf_count
             unfold Word.len at lemma_deriv_leaf_count
+            rw [List.length_map, List.length_attach] at lemma_deriv_leaf_count
             simp at lemma_deriv_leaf_count
             exact lemma_deriv_leaf_count.symm
           )

@@ -1,8 +1,9 @@
 import Mathlib.Data.Finite.Defs
 import Mathlib.Data.Finset.Fold
 import Mathlib.Data.Finset.Prod
+import Mathlib.Tactic.Cases
 
-import FormalSystems.Preliminaries.Fold
+import FormaleSystemeInLean.Preliminaries.Fold
 
 structure Variable where
   index: Nat
@@ -58,7 +59,7 @@ def LoopProgram.toFunction (p: LoopProgram) (input: Nat): Nat :=
 theorem LoopProgram.len_gt_zero:
   ∀ p: LoopProgram, p.len > 0 := by
   intro p
-  cases p <;> unfold len <;> simp_arith
+  cases p <;> unfold len <;> simp
 
 def LoopProgram.lenOne: Finset LoopProgram :=
   { add (Variable.mk 0) (Variable.mk 0) 0,
@@ -187,7 +188,7 @@ theorem LoopProgram.ofLen_complete:
     simp [len, ofLen]
     refine' .inr $ .inl (Finset.mem_fold_union_iff.mpr ⟨⟨a.len, _⟩, _⟩)
     rw [Finset.mem_range]; simp [len_gt_zero]
-    simp; apply Finset.mem_product.mpr
+    simp
     exact ⟨ofLen_complete _, ofLen_complete _⟩
 
 def LoopProgram.diagonal (n: Nat): Nat :=

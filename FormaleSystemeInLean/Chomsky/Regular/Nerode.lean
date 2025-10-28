@@ -1,9 +1,9 @@
 import Mathlib.Data.Finset.Card
 import Mathlib.Data.Fintype.Basic
 import Mathlib.Data.Set.Lattice
-import Mathlib.Data.Set.Finite
-import FormalSystems.Preliminaries.Language
-import FormalSystems.Chomsky.Regular.TotalDFA
+import Mathlib.Data.Finite.Defs
+import FormaleSystemeInLean.Preliminaries.Language
+import FormaleSystemeInLean.Chomsky.Regular.TotalDFA
 
 def MyhillNerodeRelation (L : Language α) (u v : Word α) : Prop :=
   ∀w, u * w ∈ L ↔ v * w ∈ L
@@ -38,8 +38,7 @@ local instance : HasEquiv (Word α) where
 
 theorem MyhillNerodeRelation.not_congruent_if (pre: u ≠ v):
   (∃w, Language.isSingleton ({u*w, v*w} ∩ L)) → ¬ u ≃(L) v := by
-  intro ⟨ w, singl, singl_inter, h ⟩
-  intro contra
+  intro ⟨ w, singl, singl_inter, h ⟩ contra
   have h2 := contra w
   cases singl_inter.left
   case inl e =>
@@ -128,7 +127,7 @@ theorem del_star_eq:
   ∀(w: Word M.Z), ∀v, M.del_star' (⟪w⟫, v) = ⟪w * v⟫ :=
   fun w v => Subtype.eq $ by
     induction v generalizing w
-    case nil => simp [<-Word.eps_eq_nil, Word.monoid.mul_one]; unfold TotalDFA.del_star'; rfl
+    case nil => simp [<-Word.eps_eq_nil]; unfold TotalDFA.del_star'; rfl
     case cons _ _ ih =>
       simp [HMul.hMul, Mul.mul]
       simp [TotalDFA.del_star']

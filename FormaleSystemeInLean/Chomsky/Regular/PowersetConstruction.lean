@@ -1,5 +1,7 @@
-import FormalSystems.Chomsky.Regular.DFA
-import FormalSystems.Preliminaries.Fold
+import FormaleSystemeInLean.Chomsky.Regular.DFA
+import FormaleSystemeInLean.Preliminaries.Fold
+
+import Mathlib.Data.Fintype.Powerset
 
 def DFA.fromNFA [DecidableEq qs] (M: NFA α qs): DFA α (Finset M.Q) where
   Z := M.Z
@@ -32,12 +34,12 @@ theorem DFA.fromNFA.RunFromRestricted_final
   . dsimp [NFA.Run.last, fromNFA] at h
     rw [Finset.mem_filter] at h
     dsimp [RunFromRestricted, NFA.Run.last, fromNFA]
-    apply Eq.subst (propext $ Finset.mem_filter.symm) (motive := id); simp
+    apply Eq.subst (propext $ Finset.mem_filter.symm) (motive := id)
     constructor
     rw [Finset.attach_eq_univ]; dsimp [Finset.univ]
     apply Fintype.complete
     have ⟨_, q, _, _⟩ := h
-    exists q; constructor; constructor
+    exists q; constructor
     apply Finset.mem_of_subset
     repeat { assumption }
   . dsimp [RunFromRestricted, NFA.Run.last]
@@ -60,11 +62,11 @@ theorem DFA.fromNFA.NFARunToRun_final_imp_final { r: M.Run q w} (h: r.last ∈ M
   (NFARunToRun r).last ∈ (DFA.fromNFA M).F := by
   cases r
   . dsimp [fromNFA]
-    apply Eq.subst (propext $ Finset.mem_filter.symm) (motive := id); simp
+    apply Eq.subst (propext $ Finset.mem_filter.symm) (motive := id)
     constructor
     dsimp [Finset.univ]
     apply Fintype.complete
-    exists q; simp
+    exists q;
     dsimp [NFA.Run.last] at h
     simp [NFARunToRun, NFA.Run.last]
     assumption

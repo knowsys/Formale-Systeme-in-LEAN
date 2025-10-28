@@ -1,7 +1,7 @@
-import FormalSystems.Chomsky.Grammar
+import FormaleSystemeInLean.Chomsky.Grammar
 import Mathlib.Data.Finset.Functor
 
-import FormalSystems.Chomsky.ContextFree.ContextFreeGrammar
+import FormaleSystemeInLean.Chomsky.ContextFree.ContextFreeGrammar
 --================================================================================
 -- File: PreDerivationTree
 /-  Containts PreDerivationTree and NEPreDerivationTreeList definitions.
@@ -74,8 +74,7 @@ def PreDerivationTree.decEq {G : ContextFreeGrammar α nt} [eq₁ : DecidableEq 
           match (decEq var₁ var₂) with
             | .isFalse h_isFalse => isFalse (by
               intro h_not;
-              --rw [h_isTrue_children, h_isTrue_prodRule] at h_not
-              simp [h_isTrue_children, h_isTrue_prodRule, Subtype.val_inj] at h_not
+              simp [h_isTrue_children,] at h_not
               apply And.left at h_not
               rw [h_not] at h_isFalse
               contradiction)
@@ -332,7 +331,6 @@ theorem PreDerivationTree.nodeList_eq_concat_children_nodeList
         NEPreDerivationTreeList.nodeList_eq_concat_children_nodeList]
       have h_list : NEPreDerivationTreeList.asList children = NEPreDerivationTreeList.asList children ++ [] := by simp
       rw [h_list]
-      repeat rw [List.foldl_append _ _ _ []]
       simp
 
 /--Theorem: The NEPreDerivationTreeList.nodeList function appends all of a the included nodes and their children into a large list.-/

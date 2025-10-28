@@ -1,4 +1,5 @@
-import FormalSystems.Chomsky.Regular.DFA
+import FormaleSystemeInLean.Chomsky.Regular.DFA
+
 import Mathlib.Data.Fintype.Option
 
 structure TotalDFA (α: Type) (qs: Type) extends DFA α qs where
@@ -78,7 +79,8 @@ theorem totalDFA_del_star_eq {q: _} {w: _}:
   induction w generalizing q
   case nil => unfold TotalDFA.del_star'; rfl
   case cons _ xs ih =>
-    simp [DFA.del_star_curried, Option.bind_eq_bind, TotalDFA.del_star']
+    unfold TotalDFA.del_star'
+    simp [DFA.del_star_curried, Option.bind_eq_bind]
     cases' hd: M.δ _ with q'
     . rw [totalDFA_del_eq_del] at hd
       let q' : M.toTotalDFA.Q := ⟨ none, Fintype.complete _ ⟩
@@ -86,7 +88,7 @@ theorem totalDFA_del_star_eq {q: _} {w: _}:
       rw [<-this] at hd
       simp [Subtype.eq hd]
       rw [totalDFA_del_star_none]
-    . rw [Option.some_bind]
+    . rw [Option.bind_some]
       rw [totalDFA_del_eq_del] at hd
       let q' : M.toTotalDFA.Q := ⟨ some q', Fintype.complete _ ⟩
       have : q'.val = some _ := rfl
@@ -104,18 +106,19 @@ theorem totalDFA_lang_eq:
   rw [w_cast, TotalDFA.in_language_iff_del_star_final]
   conv =>
     right; congr;
-    -- expand definition of toTotalDFA.q₀
-    right; simp [DFA.toTotalDFA]; rfl
     -- expand definition of toTotalDFA.F
-    simp [DFA.toTotalDFA]
+    . simp [DFA.toTotalDFA]
+    -- expand definition of toTotalDFA.q₀
+    . right; simp [DFA.toTotalDFA]
 
   rw [Finset.mem_map]
   conv =>
     right; congr; intro;
-    simp [Subtype.eq_iff, <-totalDFA_del_star_eq];
+    simp [Subtype.eq_iff];
+    rw [← totalDFA_del_star_eq]
     rw [And.comm];
 
   constructor <;> intro ⟨x, l, r⟩ <;> exists x
-  . simp [r, Option.mem_iff.mp l]; rfl
-  . simp [l, r]; exact l.symm
+  . simp [r, Option.mem_def.mp l]; rfl
+  . simp [r]; exact l.symm
 

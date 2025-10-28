@@ -1,0 +1,12 @@
+name = "FormaleSystemeInLean"
+version = "0.1.0"
+defaultTargets = ["FormaleSystemeInLean"]
+
+[[lean_lib]]
+name = "FormaleSystemeInLean"
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.24.0"
+

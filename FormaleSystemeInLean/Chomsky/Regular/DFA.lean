@@ -1,4 +1,6 @@
-import FormalSystems.Chomsky.Regular.NFA
+import FormaleSystemeInLean.Chomsky.Regular.NFA
+
+import Mathlib.Tactic.Cases
 
 structure DFA (α qs: Type) where
   Z: Finset α
@@ -47,8 +49,8 @@ theorem last_state_eq_del_star_curried
     rw [w_cast]
     unfold del_star_curried
     simp_rw [toNFA, Function.comp_apply] at incl
-    rw [Option.mem_toFinset, Option.mem_iff] at incl
-    rw [incl, Option.bind_eq_bind, Option.some_bind]
+    rw [Option.mem_toFinset, Option.mem_def] at incl
+    rw [incl, Option.bind_eq_bind, Option.bind_some]
     apply last_state_eq_del_star_curried
 
 theorem last_state_eq_del_star
@@ -84,22 +86,22 @@ theorem del_star_curried_isSome_iff_constrRun_isSome
     -- both are some
     . conv =>
         right; rw [isSome_iff_exists]; congr
-        intro; unfold constrRun; rw [pbind_eq_some]
+        intro; unfold constrRun; rw [pbind_eq_some_iff]
       constructor
       -- isSome del_star => isSome constrRun
       . intro h
-        rw [del_star_curried, bind_eq_bind, hq', some_bind] at h
+        rw [del_star_curried, bind_eq_bind, hq', bind_some] at h
         have ⟨r', hr'⟩ := Option.isSome_iff_exists.mp $
           del_star_curried_isSome_iff_constrRun_isSome.mp h
         refine' .intro (.step _ _ r' rfl) ⟨q', hq', _⟩
         simp [toNFA]; assumption
-        simp [bind_eq_some]; assumption
+        simp [bind_eq_some_iff]; assumption
       -- isSome del_star <= isSome constrRun
       . intro ⟨r, q', HQ', h⟩
         simp [del_star_curried, bind_eq_bind, hq']
         apply del_star_curried_isSome_iff_constrRun_isSome.mpr
         rw [isSome_iff_exists]; simp [hq'] at HQ'; rw [HQ']
-        simp [bind_eq_some] at h; have ⟨r', _, _⟩ := h
+        simp [bind_eq_some_iff] at h; have ⟨r', _, _⟩ := h
         exists r'
 
 theorem del_star_isSome_iff_constrRun_isSome
@@ -177,7 +179,7 @@ def Run.toDerivation (run: M.Run start word) (hlast: run.last ∈ M.F):
       (M.final_state_to_derivation_step q hlast)
       (Grammar.Derivation.same rfl)
       (by simp [Grammar.DerivationStep.result, hend, final_state_to_derivation_step]; rfl)
-  | @NFA.Run.step _ _ _ q₂ a _ _ q qn run' h_w =>
+  | @NFA.Run.step _ _ _ a q₂ _ _ q qn run' h_w =>
     let step := M.state_transition_to_derivation_step a q q₂ (by unfold toNFA at qn; simp at qn; rw [qn]; simp)
     let d' := DFA.Run.toDerivation run' hlast
     let augmented := @Grammar.Derivation.augment_left_cons _ _ _ _ M.toGrammar (Sum.inr { val := a.val, property := by unfold toGrammar; unfold toNFA at a; simp }) _ _ d'

@@ -1,7 +1,7 @@
 import Mathlib.Data.Finset.Basic
 import Mathlib.Data.Prod.Lex
 
-import FormalSystems.Chomsky.ContextFree.ContextFreeGrammar
+import FormaleSystemeInLean.Chomsky.ContextFree.ContextFreeGrammar
 --================================================================================
 -- File: RegularGrammar
 /-  Containts Regular production definition and regular derivation
@@ -230,13 +230,13 @@ mutual
         (by
           unfold DerivationStep.result at h_u
           simp [hp, RegularProduction.rhs_eq_deconstr_rhs,
-            Word.mk, <- Word.eps_eq_nil] at h_u
+            Word.mk] at h_u
           simp [<-h_u, pre, suf] at derivation
           cases derivation with
           | same h_same =>
             dsimp [RegularProduction.getRhs] at h_same
             simp [<-h_same, <-Word.eps_eq_nil] at h_w
-            rw [Word.eps_eq_nil, List.map_eq_nil] at h_w
+            rw [Word.eps_eq_nil, List.map_eq_nil_iff] at h_w
             exact h_w
           | step s' _ _ =>
             have contra := s'.sound.symm
@@ -269,15 +269,15 @@ mutual
             contradiction
             simp [List.map_cons] at h_w
             have ⟨h1, h2⟩ := List.cons_eq_cons.mp h_w
-            simp [Sum.inr_injective] at h1
-            simp [List.map_eq_nil, RegularProduction.getRhs] at h2
+            simp at h1
+            simp [List.map_eq_nil_iff, RegularProduction.getRhs] at h2
             rw [h1, h2]
           | step s' _ _ =>
             apply False.elim
             have contra := s'.sound.symm
             rw [RegularProduction.lhs_eq_production_lhs] at contra
             simp [HMul.hMul, Mul.mul, RegularProduction.getRhs] at contra
-            rw [List.append_eq_cons] at contra
+            rw [List.append_eq_cons_iff] at contra
             cases contra
             case inl h =>
               have ⟨_, h⟩ := h
@@ -314,8 +314,7 @@ mutual
         )
   termination_by (derivation.len, 1)
   decreasing_by
-    apply (Prod.Lex.lt_iff _ _).mpr
-    try { simp [Derivation.cancelLeft_len] }
+    simp [Prod.lex_def, Derivation.cancelLeft_len]
 end
 
 def RegularDerivation.toDerivation (d: G.RegularDerivation v w):

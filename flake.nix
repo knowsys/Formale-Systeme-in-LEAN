@@ -1,7 +1,7 @@
 {
-  description = "FormalSystems lean implementation";
+  description = "Formale Systeme Lean Implementation";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
   outputs = { self, nixpkgs, flake-utils }:

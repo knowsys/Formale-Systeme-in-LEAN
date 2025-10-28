@@ -1,8 +1,8 @@
-import FormalSystems.Chomsky.Grammar
+import FormaleSystemeInLean.Chomsky.Grammar
 import Mathlib.Data.Finset.Functor
 import Mathlib.Tactic.Tauto
 
-import FormalSystems.Chomsky.ContextFree.PreDerivationTree
+import FormaleSystemeInLean.Chomsky.ContextFree.PreDerivationTree
 
 namespace ContextFreeGrammar
 --================================================================================
@@ -102,7 +102,7 @@ theorem DerivationTree.child_in_children_imp_child_tree_in_asList :
     cases c
     case single PDT =>
       simp
-      simp [DerivationTree.children, DerivationTree.inner, NEPreDerivationTreeList.single] at h_child_mem
+      simp [DerivationTree.children] at h_child_mem
       cases h_child_mem
       case intro a_PDT h_child_mem =>
         cases h_child_mem
@@ -463,8 +463,6 @@ theorem ExampleGrammar.productions_eq_ex_productions (p: ContextFreeProduction _
 def ExampleGrammar.lang: Language ({ 'x', 'y', 'z', '+', '*', '(', ')'} : Finset _) :=
   sorry
 
-#check ExampleGrammar.GeneratedLanguage
-
 -- Construct an example tree, bottom up (i.e. we start with the leaves).
 -- l for leaf, i for inner, indexed seperately
 -- First number is depth of node, second is numbered from left to right on this depth
@@ -544,7 +542,7 @@ theorem DerivationTree.total_trees_not_leaves {G : ContextFreeGrammar α nt} [De
   (h_DT_total : DT.isTotal) :
   ∃ var children rule h_lhs h_rhs h_valid, DT = @DerivationTree.inner α nt G var children rule h_lhs h_rhs h_valid := by
   rw [DerivationTree.isTotal] at h_DT_total
-  rw [PreDerivationTree.isFromStartingSymbol] at h_DT_total
+  rw [PreDerivationTree.isFromStartingSymbol.eq_def] at h_DT_total
   cases h_constructor : DT
   --simp at h_DT_total
   case mk tree treeValid=>

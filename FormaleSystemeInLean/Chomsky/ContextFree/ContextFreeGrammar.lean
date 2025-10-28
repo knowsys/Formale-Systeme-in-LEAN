@@ -1,7 +1,7 @@
-import FormalSystems.Chomsky.Grammar
+import FormaleSystemeInLean.Chomsky.Grammar
 import Mathlib.Data.Finset.Functor
 
-import FormalSystems.Chomsky.ContextFree.ContextFreeProductions
+import FormaleSystemeInLean.Chomsky.ContextFree.ContextFreeProductions
 
 --================================================================================
 -- File: ContextFreeGrammar
@@ -95,7 +95,7 @@ def ContextFreeDerivationStep.augment_right (step: ContextFreeDerivationStep G u
     sound := by
       simp [mul_assoc]
       have t := step.sound
-      simp [← mul_assoc] at t
+      simp at t
       simp [← mul_assoc]
       exact t
   }
@@ -155,7 +155,7 @@ theorem ContextFreeDerivationStep.len_result_composition (step : ContextFreeDeri
   : step.result.len = step.pre.len + step.prod.val.rhs.len + step.suf.len := by
   have sound : _ := step.sound
   simp at sound
-  simp [sound, ContextFreeDerivationStep.result, Grammar.DerivationStep.result, Word.length_mul_eq_add]
+  simp [ContextFreeDerivationStep.result, Grammar.DerivationStep.result, Word.length_mul_eq_add]
   rfl
 
 variable [i: Production.ContextFree α nt P] {G: Grammar P}
@@ -295,8 +295,8 @@ theorem Grammar.Derivation.cancelLeft_len
   (d: G.Derivation lhs rhs):
   (Grammar.Derivation.cancelLeft d h_lhs h_rhs).len = d.len := by
   match d with
-  | .same _ => simp [Grammar.Derivation.len]
+  | .same _ => simp [Grammar.Derivation.cancelLeft, Grammar.Derivation.len]
   | .step _ _ _ =>
-    simp [Grammar.Derivation.len]
+    simp [Grammar.Derivation.cancelLeft, Grammar.Derivation.len]
     apply cancelLeft_len
 

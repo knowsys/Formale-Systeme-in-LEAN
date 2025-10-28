@@ -1,7 +1,7 @@
-import FormalSystems.Chomsky.Grammar
+import FormaleSystemeInLean.Chomsky.Grammar
 import Mathlib.Data.Finset.Functor
 
-import FormalSystems.Chomsky.ContextFree.DerivationTree
+import FormaleSystemeInLean.Chomsky.ContextFree.DerivationTree
 --================================================================================
 -- File: ContextFreeDerivation
 /-  Containts context-free derivation definition, some decidability theorems,
@@ -182,8 +182,7 @@ theorem ContextFreeDerivation.exhaustive_imp_child_exhaustive
       apply Or.inl
       tauto
     | @ContextFreeDerivation.step _ _ _ _ u' _ dstep derivation sound =>
-      intro u' step derivation sound
-      intro h_constructor
+      intro u' step derivation sound h_constructor
       rw [exhaustiveCondition]
       rw [h_constructor, exhaustiveCondition] at h_exhaustive
       exact h_exhaustive
@@ -250,7 +249,7 @@ def ContextFreeDerivation.collectDerivationTreeNodes
               apply not_exists_of_forall_not
               intro symbol
               have h_s_e : _ := h_exhaustive symbol
-              rw [Decidable.not_and_iff_or_not_not']
+              rw [Decidable.not_and_iff_not_or_not']
               by_cases symbol ∈ v
               case pos h_pos =>
                 apply h_s_e at h_pos
@@ -335,7 +334,7 @@ def ContextFreeDerivation.collectDerivationTreeNodes
                   simp at h_lt_u
                   apply lt_trans h_lt_u
                   apply Nat.lt_succ_self)⟩
-                Decidable.by_cases
+                Decidable.byCases
                 -- Those that have an index smaller than the number of symbols left of var
                 -- are at position before the variable area
                 (fun h_lt : (index₂ < leftOfVarCount₂) =>
@@ -343,7 +342,7 @@ def ContextFreeDerivation.collectDerivationTreeNodes
                     apply Finset.mem_range.mpr
                     have h_leq₂ : (index : ℕ) < leftOfVarCount₂ := h_lt
                     apply lt_trans h_leq₂
-                    simp [pre_len_less_u_len]⟩)])
+                    simp [leftOfVarCount₂, pre_len_less_u_len]⟩)])
                 (fun h_ge : (¬ index₂ < leftOfVarCount₂) =>
                   prev) ) (@List.nil (DerivationTree G × Finset.range u.len)) allChildren
         let returnList := returnList ++ returnLeft
@@ -360,7 +359,7 @@ def ContextFreeDerivation.collectDerivationTreeNodes
         let returnRight : List (DerivationTree G × Finset.range u.len) :=
           -- foldl f z [a, b, c] = f (f (f z a) b) c
           List.foldl (fun prev (DT , index) =>
-            Decidable.by_cases
+            Decidable.byCases
             -- Those that have an index to the right of Var
             -- need to be adjusted in their position by shiftBy
             (fun h_lt : (u'.len - rightOfVarCount < index) =>
@@ -400,7 +399,7 @@ def ContextFreeDerivation.collectDerivationTreeNodes
           have lhs_len : (Word.mk [@Sum.inl G.V G.Z dstep.prod.val.lhs]).len = 1 := by
             simp [Word.mk, Word.len]
           have rhs_comp : Word.len (dstep.prod.val.rhs) = 1 + (rhs_symbol_count-1) := by
-            simp [rhs_symbol_count, lhs_len]
+            simp [rhs_symbol_count]
             rw [add_comm, Nat.sub_add_cancel]
             exact h_rhs_non_empty
           rw [rhs_comp]
@@ -414,10 +413,10 @@ def ContextFreeDerivation.collectDerivationTreeNodes
           rw [h_u_vs_u'_len]
           simp
         have u_range_subset_u'_range : (Finset.range u.len) ⊆ (Finset.range u'.len) := by
-          apply Finset.range_subset.mpr
+          apply Finset.range_subset_range.mpr
           exact h_u_vs_u'_len₂
         let leftOfVarCount₂ : Finset.range u'.len := ⟨leftOfVarCount , (by
-          simp [Nat.lt_of_lt_of_le pre_len_less_u_len h_u_vs_u'_len₂] )⟩
+          simp [leftOfVarCount, Nat.lt_of_lt_of_le pre_len_less_u_len h_u_vs_u'_len₂] )⟩
 
         let fun_find_allChildren_with_index (index₁ : Finset.range (Word.len u')) (h_index_valid : ∃ location  ∈ allChildren, location.2 = index₁) : (DerivationTree G) :=
           let afunc : List (DerivationTree G × { x // x ∈ Finset.range (Word.len u') }) →
@@ -437,7 +436,7 @@ def ContextFreeDerivation.collectDerivationTreeNodes
               (fun h_is_not : index₁ ≠ index₂ =>
                 prev) ) := by tauto
           let a : _ := List.foldl afunc [] allChildren
-          have aDef : a = List.foldl afunc [] allChildren := by simp
+          have aDef : a = List.foldl afunc [] allChildren := by simp [a]
           have afunc_monotone : ∀ list₁ list₂ : List _, list₁ ≠ [] → List.foldl afunc list₁ list₂ ≠ [] := by
             intro list₁ list₂
             induction list₁
@@ -478,7 +477,7 @@ def ContextFreeDerivation.collectDerivationTreeNodes
 
             apply Nat.zero_lt_of_ne_zero
             rw [ne_eq (List.length a) 0]
-            rw [List.length_eq_zero]
+            rw [List.length_eq_zero_iff]
             have proof_condition : List.foldl afunc [] allChildren = [] ↔ ¬ ∃ location ∈ allChildren, location.2 = index₁ := by
               induction allChildren
               case nil =>
@@ -492,7 +491,7 @@ def ContextFreeDerivation.collectDerivationTreeNodes
                   simp [afuncDef] at h_nil
                   by_cases index₁ = head.2
                   case pos h_is =>
-                    simp [h_is, List.foldl] at h_nil
+                    simp [h_is] at h_nil
                     absurd h_nil
                     sorry
                   case neg h_isnot =>
@@ -510,7 +509,7 @@ def ContextFreeDerivation.collectDerivationTreeNodes
           --let b : _ := a.toList
           @List.foldl _ (Fin (rightSide.len)) (fun prev (index : Fin (Word.len rightSide)) =>
             let symbol : _ := Word.get rightSide index
-            Decidable.by_cases
+            Decidable.byCases
             (fun h_var : Sum.isLeft symbol =>
               let child : DerivationTree G :=
                 let index₂ : Finset.range (Word.len u') := ⟨index, by
@@ -526,12 +525,12 @@ def ContextFreeDerivation.collectDerivationTreeNodes
                     apply Nat.lt_of_le_of_ne
                     case h₁ =>
                       apply Finset.mem_range_le
-                      simp
+                      simp [← rightSideDef]
                     case h₂ =>
                       by_contra h_not
-                      have rhs_not : _ := @Finset.not_mem_range_self (Word.len dstep.prod.val.rhs)
-                      nth_rewrite 1 [h_not.symm] at rhs_not
-                      have index_range : ↑index ∈ Finset.range (Word.len (dstep.prod.val.rhs)) := by simp
+                      have rhs_not : _ := @Finset.notMem_range_self (Word.len dstep.prod.val.rhs)
+                      have index_range : ↑index ∈ Finset.range (Word.len (dstep.prod.val.rhs)) := by simp [← rightSideDef]
+                      rw [h_not] at index_range
                       apply Not.intro rhs_not index_range) (_ : Word.len rightSide ≤ Word.len dstep.prod.val.rhs + (Word.len dstep.pre + Word.len dstep.suf))
                   rw [rightSideDef]
                   apply Nat.le_add_right ⟩
@@ -555,7 +554,7 @@ def ContextFreeDerivation.collectDerivationTreeNodes
         let var := dstep.prod.val.lhs
         let var_as_word : (Word (G.V ⊕ G.Z)) := Word.mk [Sum.inl var]
         let rule : G.productions := dstep.prod
-        let h_rule_lhs : rule.1.lhs = var := by simp
+        let h_rule_lhs : rule.1.lhs = var := by simp [rule, var]
         let h_rule_rhs : rule.1.rhs = NEPreDerivationTreeList.levelWord children := sorry
         let childrenValid : children.treeValid := sorry
         let thisNode := DerivationTree.inner var children rule h_rule_lhs h_rule_rhs childrenValid
@@ -566,7 +565,7 @@ def ContextFreeDerivation.collectDerivationTreeNodes
         let returnLeft : List (DerivationTree G × Finset.range u.len) :=
           -- foldl f z [a, b, c] = f (f (f z a) b) c
           List.foldl (fun prev (DT , index) =>
-            Decidable.by_cases
+            Decidable.byCases
             -- Those that have an index smaller than the number of symbols left of var
             -- are at position before the variable area
             (fun h_lt : (index < leftOfVarCount₂) =>
@@ -574,7 +573,7 @@ def ContextFreeDerivation.collectDerivationTreeNodes
                 apply Finset.mem_range.mpr
                 have h_leq₂ : (index : ℕ) < leftOfVarCount₂ := h_lt
                 apply lt_trans h_leq₂
-                simp [pre_len_less_u_len]⟩)])
+                simp [leftOfVarCount₂, leftOfVarCount, pre_len_less_u_len]⟩)])
             (fun h_ge : (¬ index < leftOfVarCount₂) =>
               prev)
           )
@@ -591,12 +590,12 @@ def ContextFreeDerivation.collectDerivationTreeNodes
         -- for those variables to the right of the variable we transformed from
         let shiftBy : Finset.range u'.len := ⟨ rhs_symbol_count - 1 , by
           simp [h_u_vs_u'_len, u_comp.symm]
-          simp [Word.mk, Word.len]
+          omega
         ⟩
         let returnRight : List (DerivationTree G × Finset.range u.len) :=
           -- foldl f z [a, b, c] = f (f (f z a) b) c
           List.foldl (fun prev (DT , index) =>
-            Decidable.by_cases
+            Decidable.byCases
             -- Those that have an index to the right of Var
             -- need to be adjusted in their position by shiftBy
             (fun h_lt : (u'.len - rightOfVarCount < index) =>
@@ -724,9 +723,7 @@ def DerivationTree.toExhaustiveContextFreeDerivation
             rw [h_constructor]
             rw [PreDerivationTree.result]
             rw [Word.ZtoVZ]
-            intro symbol
-            intro symbol_mem
-            simp at symbol_mem
+            intro symbol symbol_mem
             rw [List.mem_map] at symbol_mem
             have any : ∀ (a : { x // x ∈ G.Z }),
               a ∈ [terminalSymbol]

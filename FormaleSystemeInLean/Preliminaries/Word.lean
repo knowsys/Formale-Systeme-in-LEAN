@@ -2,7 +2,7 @@ import Mathlib.Data.Set.Lattice
 import Mathlib.Data.List.Basic
 import Mathlib.Data.Nat.ModEq
 
-import FormalSystems.Preliminaries.Alphabet
+import FormaleSystemeInLean.Preliminaries.Alphabet
 --================================================================================
 -- File: Word
 /-  Containts Word definition, ε, Word.len, Word.concat and multiple
@@ -37,7 +37,7 @@ instance Word.monoid: CancelMonoid (Word α) where
   letter of`w`and`xs`is the rest plus`v`.-/
 theorem Word.mul_eq_cons { w v : Word α } :
   w * v = x :: xs ↔ w = [] ∧ v = x :: xs ∨ ∃ (w': Word _), w = x :: w' ∧ xs = w' * v :=
-  List.append_eq_cons
+  List.append_eq_cons_iff
 
 /--Theorem: If any two words are the same, any of their prefixes are also the same.-/
 def Word.mul_right_cancel {w₁ w₂ t : Word α} (h : w₁ * t = w₂ * t) : w₁ = w₂ :=
@@ -58,7 +58,6 @@ def Word.decode [inst: Alphabet α]: (n : ℕ) → Word α
   | Nat.succ n => inst.decode_fin (Nat.fin_mod n Alphabet.card_pos) :: Word.decode (n / inst.card)
 termination_by n => n
 decreasing_by
-  simp [InvImage]
   apply Nat.lt_of_le_of_lt
   exact Nat.div_le_self n inst.card
   simp
@@ -75,7 +74,7 @@ def Word.encode [inst: Alphabet α]: (w : Word α) → ℕ
   | x::xs => by
     have ih := encodek xs
     simp [encode, decode, Nat.fin_mod, FinDenumerable.decode_fin]
-    simp [<- Nat.mod_add_mod, Nat.mod_eq_of_lt $ inst.encode_lt_card x]
+    simp [Nat.mod_eq_of_lt $ inst.encode_lt_card x]
     simp [Nat.add_div inst.card_pos, Nat.div_eq_of_lt $ inst.encode_lt_card x]
     rw [<- ite_not _]; simp [Nat.not_le_of_lt _, Nat.mod_lt _ inst.card_pos, ih]
 
@@ -86,13 +85,12 @@ def Word.encode [inst: Alphabet α]: (w : Word α) → ℕ
   | Nat.succ n => by
     have ih := @decodenk α _ (n / inst.card)
     simp [decode, FinDenumerable.decode_fin]
-    simp [encode, inst.decode_fin_is_some (Nat.fin_mod _ _)]
+    simp [encode]
     simp [ih, FinDenumerable.decode_fin_eq_option_get]
     rw [<- inst.encode_fin_eq_encode _, inst.decodenk]
     simp [Nat.fin_mod, Nat.mul_comm, Nat.div_add_mod n inst.card]
 termination_by n => n
 decreasing_by
-  simp [InvImage]
   apply Nat.lt_of_le_of_lt
   exact Nat.div_le_self n inst.card
   simp
@@ -124,14 +122,14 @@ theorem Word.eps_eq_nil : (ε : Word α) = ([] : Word _) := by rfl
 
 /--Theorem: The concatenation of two words is ε if and only if both words are ε.-/
 theorem Word.mul_eq_eps { w v : Word α } : w * v = ε ↔ w = ε ∧ v = ε :=
-  List.append_eq_nil
+  List.append_eq_nil_iff
 
 /--Return the length of a word. -/
 def Word.len (w: Word α) : Nat := List.length w
 
 /--Theorem: A word has length 0 if and only if it is ε.-/
 theorem Word.eps_len_0 : Word.len w = 0 ↔ w = ε := by
-  rw [Word.len, Word.eps_eq_nil, List.length_eq_zero]
+  rw [Word.len, Word.eps_eq_nil, List.length_eq_zero_iff]
 
 /--Theorem: The addition of the lengths of two words is the length of their product.-/
 theorem Word.length_mul_eq_add { w v : Word α } : Word.len (w * v) = Word.len w + Word.len v := by
@@ -163,8 +161,8 @@ instance : GetElem (Word α) ℕ α (λw i ↦ i < w.length) where
 
 /--Theorem: Characterwise function application does not care about word concatenation.-/
 @[simp] theorem Word.map_append (f : α → β) :
-  ∀ (u v : Word _), f <$> (u * v) = (f <$> u) * (f <$> v) :=
-  List.map_append f
+  ∀ (u v : Word _), f <$> (u * v) = (f <$> u) * (f <$> v) := fun _ _ =>
+  List.map_append
 
 /--Theorem: A symbol is in the concatenation of two words if and only if it is in one of the words.-/
 theorem Word.mem_mul_iff_or (a b : Word α) (elem : α) : elem ∈ a * b ↔ elem ∈ a ∨ elem ∈ b := by

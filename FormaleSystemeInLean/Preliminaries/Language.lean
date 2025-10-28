@@ -1,7 +1,7 @@
 import Mathlib.Algebra.Order.Kleene
 import Mathlib.Algebra.Group.NatPowAssoc
 
-import FormalSystems.Preliminaries.Word
+import FormaleSystemeInLean.Preliminaries.Word
 
 import Mathlib.Data.Fintype.Lattice
 /--A language is a set of words. Parameter: The words characters, probably an Alphabet.
@@ -15,7 +15,7 @@ namespace Language
 
 /--Allow for w ∈ L notation.-/
 instance : Membership (Word α) (Language α) where
-  mem x L := L x
+  mem L x := L x
 
 /--Allow for the`insert`operator to add words to a language.-/
 instance : Insert (Word α) (Language α) where

@@ -1,5 +1,1 @@
-**/build
-/lake-packages
-.lake
-*.olean
-/.direnv/
+/.lake
