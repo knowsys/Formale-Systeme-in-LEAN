@@ -1,4 +1,4 @@
-import FormaleSystemeInLean.Chomsky.Regular.NFA
+import FormaleSystemeInLeanLegacy.Chomsky.Regular.NFA
 
 import Mathlib.Tactic.Cases
 

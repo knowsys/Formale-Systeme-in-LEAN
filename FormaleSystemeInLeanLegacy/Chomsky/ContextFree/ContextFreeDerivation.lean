@@ -1,7 +1,7 @@
-import FormaleSystemeInLean.Chomsky.Grammar
+import FormaleSystemeInLeanLegacy.Chomsky.Grammar
 import Mathlib.Data.Finset.Functor
 
-import FormaleSystemeInLean.Chomsky.ContextFree.DerivationTree
+import FormaleSystemeInLeanLegacy.Chomsky.ContextFree.DerivationTree
 --================================================================================
 -- File: ContextFreeDerivation
 /-  Containts context-free derivation definition, some decidability theorems,

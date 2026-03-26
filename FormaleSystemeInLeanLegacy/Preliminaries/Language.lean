@@ -1,7 +1,7 @@
 import Mathlib.Algebra.Order.Kleene
 import Mathlib.Algebra.Group.NatPowAssoc
 
-import FormaleSystemeInLean.Preliminaries.Word
+import FormaleSystemeInLeanLegacy.Preliminaries.Word
 
 import Mathlib.Data.Fintype.Lattice
 /--A language is a set of words. Parameter: The words characters, probably an Alphabet.

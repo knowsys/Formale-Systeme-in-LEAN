@@ -1,4 +1,4 @@
-import FormaleSystemeInLean.Chomsky.Regular.DFA
+import FormaleSystemeInLeanLegacy.Chomsky.Regular.DFA
 
 import Mathlib.Data.Fintype.Option
 
@@ -113,8 +113,8 @@ theorem totalDFA_lang_eq:
 
   rw [Finset.mem_map]
   conv =>
-    right; congr; intro;
-    simp [Subtype.eq_iff];
+    right; congr; intro
+    rw [Subtype.ext_iff]
     rw [← totalDFA_del_star_eq]
     rw [And.comm];
 

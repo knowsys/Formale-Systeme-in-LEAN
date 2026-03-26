@@ -1,0 +1,13 @@
+diff --git a/lakefile.lean b/lakefile.lean
+index 935eced..46cbda5 100644
+--- a/lakefile.lean
++++ b/lakefile.lean
+@@ -11,7 +11,7 @@ package UnicodeBasic where
+   description := "Basic Unicode support for Lean 4"
+   keywords := #["unicode"]
+   reservoir := true
+-  precompileModules := true
++  precompileModules := false
+ 
+ target UnicodeCLib pkg : FilePath := do
+   let mut oFiles : Array (Job FilePath) := #[]

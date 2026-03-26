@@ -1,7 +1,7 @@
-import FormaleSystemeInLean.Chomsky.Grammar
+import FormaleSystemeInLeanLegacy.Chomsky.Grammar
 import Mathlib.Data.Finset.Functor
 
-import FormaleSystemeInLean.Chomsky.ContextFree.ContextFreeProductions
+import FormaleSystemeInLeanLegacy.Chomsky.ContextFree.ContextFreeProductions
 
 --================================================================================
 -- File: ContextFreeGrammar

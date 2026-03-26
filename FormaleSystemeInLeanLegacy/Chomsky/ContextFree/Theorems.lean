@@ -1,8 +1,8 @@
-import FormaleSystemeInLean.Chomsky.Grammar
+import FormaleSystemeInLeanLegacy.Chomsky.Grammar
 import Mathlib.Data.Finset.Functor
 import Mathlib.Tactic.Tauto
 
-import FormaleSystemeInLean.Chomsky.ContextFree.ContextFreeDerivation
+import FormaleSystemeInLeanLegacy.Chomsky.ContextFree.ContextFreeDerivation
 --================================================================================
 -- File: Theorems
 /-  Containts multiple theorems leading up to the Pumping Lemma for context-free

@@ -1,4 +1,4 @@
-import FormaleSystemeInLean.Chomsky.Grammar
+import FormaleSystemeInLeanLegacy.Chomsky.Grammar
 import Mathlib.Data.Finset.Functor
 import Mathlib.Tactic.Tauto
 

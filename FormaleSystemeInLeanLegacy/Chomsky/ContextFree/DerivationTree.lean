@@ -1,8 +1,8 @@
-import FormaleSystemeInLean.Chomsky.Grammar
+import FormaleSystemeInLeanLegacy.Chomsky.Grammar
 import Mathlib.Data.Finset.Functor
 import Mathlib.Tactic.Tauto
 
-import FormaleSystemeInLean.Chomsky.ContextFree.PreDerivationTree
+import FormaleSystemeInLeanLegacy.Chomsky.ContextFree.PreDerivationTree
 
 namespace ContextFreeGrammar
 --================================================================================

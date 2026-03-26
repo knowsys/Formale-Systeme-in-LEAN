@@ -2,7 +2,7 @@ import Mathlib.Data.Set.Lattice
 import Mathlib.Data.List.Basic
 import Mathlib.Data.Nat.ModEq
 
-import FormaleSystemeInLean.Preliminaries.Alphabet
+import FormaleSystemeInLeanLegacy.Preliminaries.Alphabet
 --================================================================================
 -- File: Word
 /-  Containts Word definition, ε, Word.len, Word.concat and multiple

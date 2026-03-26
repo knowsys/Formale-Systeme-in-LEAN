@@ -1,5 +1,5 @@
-import FormaleSystemeInLean.Chomsky.Regular.DFA
-import FormaleSystemeInLean.Preliminaries.Fold
+import FormaleSystemeInLeanLegacy.Chomsky.Regular.DFA
+import FormaleSystemeInLeanLegacy.Preliminaries.Fold
 
 import Mathlib.Data.Fintype.Powerset
 

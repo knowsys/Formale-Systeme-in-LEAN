@@ -2,8 +2,8 @@ import Mathlib.Data.Finset.Card
 import Mathlib.Data.Fintype.Basic
 import Mathlib.Data.Set.Lattice
 import Mathlib.Data.Finite.Defs
-import FormaleSystemeInLean.Preliminaries.Language
-import FormaleSystemeInLean.Chomsky.Regular.TotalDFA
+import FormaleSystemeInLeanLegacy.Preliminaries.Language
+import FormaleSystemeInLeanLegacy.Chomsky.Regular.TotalDFA
 
 def MyhillNerodeRelation (L : Language α) (u v : Word α) : Prop :=
   ∀w, u * w ∈ L ↔ v * w ∈ L

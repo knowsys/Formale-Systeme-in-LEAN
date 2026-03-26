@@ -1,0 +1,13 @@
+name = "docs"
+reservoir = false
+packagesDir = "../.lake/packages"
+
+[[require]]
+name = "FormaleSystemeInLean"
+path = ".."
+
+[[require]]
+scope = "leanprover"
+name = "doc-gen4"
+rev = "v4.28.0"
+

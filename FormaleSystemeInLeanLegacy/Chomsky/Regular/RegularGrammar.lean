@@ -1,7 +1,7 @@
 import Mathlib.Data.Finset.Basic
 import Mathlib.Data.Prod.Lex
 
-import FormaleSystemeInLean.Chomsky.ContextFree.ContextFreeGrammar
+import FormaleSystemeInLeanLegacy.Chomsky.ContextFree.ContextFreeGrammar
 --================================================================================
 -- File: RegularGrammar
 /-  Containts Regular production definition and regular derivation

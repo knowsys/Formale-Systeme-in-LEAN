@@ -1,0 +1,10 @@
+import FormaleSystemeInLeanLegacy.Chomsky.Regular.DFA
+import FormaleSystemeInLeanLegacy.Chomsky.Regular.NFA
+import FormaleSystemeInLeanLegacy.Chomsky.Regular.RegularGrammar
+import FormaleSystemeInLeanLegacy.Chomsky.Regular.Nerode
+import FormaleSystemeInLeanLegacy.Chomsky.Regular.PowersetConstruction
+import FormaleSystemeInLeanLegacy.Chomsky.ContextFree.ContextFreeGrammar
+import FormaleSystemeInLeanLegacy.Chomsky.ContextFree.ContextFreeDerivation
+import FormaleSystemeInLeanLegacy.Chomsky.ContextFree.Theorems
+import FormaleSystemeInLeanLegacy.Computability.Loop
+

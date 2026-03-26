@@ -3,7 +3,7 @@ import Mathlib.Data.Finset.Fold
 import Mathlib.Data.Finset.Prod
 import Mathlib.Tactic.Cases
 
-import FormaleSystemeInLean.Preliminaries.Fold
+import FormaleSystemeInLeanLegacy.Preliminaries.Fold
 
 structure Variable where
   index: Nat

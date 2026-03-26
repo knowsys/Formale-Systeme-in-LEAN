@@ -1,7 +1,7 @@
 import Mathlib.Data.Finset.Basic
 import Mathlib.Algebra.Group.Defs
 
-import FormaleSystemeInLean.Preliminaries.Language
+import FormaleSystemeInLeanLegacy.Preliminaries.Language
 --================================================================================
 -- File: Grammar
 /-  Containts generic Production Rules, derivation steps, derivations

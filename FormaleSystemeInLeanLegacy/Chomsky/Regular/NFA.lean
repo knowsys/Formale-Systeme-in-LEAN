@@ -1,4 +1,4 @@
-import FormaleSystemeInLean.Chomsky.Regular.RegularGrammar
+import FormaleSystemeInLeanLegacy.Chomsky.Regular.RegularGrammar
 
 import Mathlib.Data.Finset.Option
 import Mathlib.Data.Fintype.Sum
