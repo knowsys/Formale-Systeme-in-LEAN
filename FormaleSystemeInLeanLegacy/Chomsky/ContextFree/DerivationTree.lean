@@ -4,6 +4,8 @@ import Mathlib.Tactic.Tauto
 
 import FormaleSystemeInLeanLegacy.Chomsky.ContextFree.PreDerivationTree
 
+set_option backward.isDefEq.respectTransparency false
+
 namespace ContextFreeGrammar
 --================================================================================
 -- File: DerivationTree

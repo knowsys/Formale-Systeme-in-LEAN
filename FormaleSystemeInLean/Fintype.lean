@@ -13,6 +13,7 @@ class Fintype (α : Type u) where
 /--
 Subtype of α containing elements of l
 -/
+@[implicit_reducible]
 def subtype_of_list (l : List α) := { x : α // x ∈ l }
 
 /-- A subtype of α created from the list l is finite. -/
@@ -21,8 +22,7 @@ instance {l : List α} : Fintype (subtype_of_list l) where
   complete := by
     intro a
     rcases a with ⟨p, v⟩
-    simp only [List.attach, subtype_of_list, List.attachWith]
-    grind
+    apply List.mem_attach
 
 /-- If α is finite then Option α is finite as well. -/
 instance [T : Fintype α] : Fintype (Option α) where

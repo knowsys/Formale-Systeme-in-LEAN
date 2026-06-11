@@ -235,7 +235,7 @@ def powerset_δ (M : NFA Q Sigma) [DecidableEq Q] : Powertype Q -> Sigma -> Powe
       intro X Y eq
       simp only
       funext a
-      simp only [HasEquiv.Equiv, Setoid.r, Finset.eq] at eq
+      simp only [HasEquiv.Equiv, instHasEquivOfSetoid, Setoid.r, Finset.eq] at eq
       apply Quot.sound
       simp only [Setoid.r, Finset.eq]
       intro s
@@ -293,8 +293,8 @@ def powerset_δ (M : NFA Q Sigma) [DecidableEq Q] : Powertype Q -> Sigma -> Powe
     have q0_eq : M.to_TotalDFA.q0 = Finset.mk M.Q0 := rfl
     have F_eq : M.to_TotalDFA.F = Fintype.elems.filter (fun x => (Finset.mk M.F) ∩ x != ∅) := rfl
     have := δ_word_eq_DFA_NFA M w M.Q0
-    rw [Set.mem_iff, F_eq, List.mem_filter, q0_eq]
-
+    rw [Set.mem_iff, F_eq, q0_eq]
+    rw [List.mem_filter]
     constructor
     . rintro ⟨_, h⟩
       have exists_mem := Finset.ne_empty_contains_element _ h
@@ -305,7 +305,6 @@ def powerset_δ (M : NFA Q Sigma) [DecidableEq Q] : Powertype Q -> Sigma -> Powe
       constructor
       . rw [this]; exact mem_start
       . rw [mem_list_iff_mem_mk]; exact mem_f
-
     . rintro ⟨q, q_mem_start, q_mem_f⟩
       constructor
       . apply Fintype.complete

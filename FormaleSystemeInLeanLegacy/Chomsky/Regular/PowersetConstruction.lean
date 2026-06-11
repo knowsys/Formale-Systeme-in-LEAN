@@ -3,6 +3,8 @@ import FormaleSystemeInLeanLegacy.Preliminaries.Fold
 
 import Mathlib.Data.Fintype.Powerset
 
+set_option backward.isDefEq.respectTransparency false
+
 def DFA.fromNFA [DecidableEq qs] (M: NFA α qs): DFA α (Finset M.Q) where
   Z := M.Z
   Q := Finset.univ

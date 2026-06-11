@@ -2,6 +2,9 @@ import Mathlib.Data.Finset.Basic
 import Mathlib.Algebra.Group.Defs
 
 import FormaleSystemeInLeanLegacy.Preliminaries.Language
+
+set_option backward.isDefEq.respectTransparency false
+
 --================================================================================
 -- File: Grammar
 /-  Containts generic Production Rules, derivation steps, derivations
@@ -71,6 +74,7 @@ instance : Production α nt GenericProduction where
   prod_ext := GenericProduction.eq_iff_lhs_and_rhs_eq
 
 /--Construct a production from an embedding. The embedding is of ProductionType in GenericProduction.-/
+@[implicit_reducible]
 def Production.fromEmbedding (emb: ∀ Z V, ProductionType Z V ↪ GenericProduction Z V) : Production α nt ProductionType where
   lhs := lhs ∘ (emb _ _).toFun
   rhs := rhs ∘ (emb _ _).toFun

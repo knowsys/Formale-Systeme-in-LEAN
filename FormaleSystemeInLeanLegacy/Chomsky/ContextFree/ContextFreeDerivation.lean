@@ -2,6 +2,9 @@ import FormaleSystemeInLeanLegacy.Chomsky.Grammar
 import Mathlib.Data.Finset.Functor
 
 import FormaleSystemeInLeanLegacy.Chomsky.ContextFree.DerivationTree
+
+set_option backward.isDefEq.respectTransparency false
+
 --================================================================================
 -- File: ContextFreeDerivation
 /-  Containts context-free derivation definition, some decidability theorems,

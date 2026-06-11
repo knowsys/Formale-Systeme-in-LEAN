@@ -3,6 +3,8 @@ import FormaleSystemeInLeanLegacy.Chomsky.Regular.RegularGrammar
 import Mathlib.Data.Finset.Option
 import Mathlib.Data.Fintype.Sum
 
+set_option backward.isDefEq.respectTransparency false
+
 /--Structure: Define Nondeterministic Finite Automatas. Requires an Alphabet and Set of States. The structure includes:
 
 - Z - An alphabet (a finite set of symbols),
@@ -65,7 +67,6 @@ end NFA
 variable { Z: Finset α } [DecidableEq α]
 variable { V: Finset nt } [DecidableEq nt]
 
-/---/
 def RegularProduction.nextState (a: Z) (current: V):
   RegularProduction Z V → Option (V ⊕ ({ "qₐ" }: Finset _))
   | RegularProduction.eps _ => .none

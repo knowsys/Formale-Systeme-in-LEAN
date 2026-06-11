@@ -2,6 +2,8 @@ import FormaleSystemeInLeanLegacy.Chomsky.Regular.NFA
 
 import Mathlib.Tactic.Cases
 
+set_option backward.isDefEq.respectTransparency false
+
 structure DFA (α qs: Type) where
   Z: Finset α
   Q: Finset qs

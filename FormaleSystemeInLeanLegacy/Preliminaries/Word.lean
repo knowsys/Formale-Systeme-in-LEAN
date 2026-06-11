@@ -3,6 +3,9 @@ import Mathlib.Data.List.Basic
 import Mathlib.Data.Nat.ModEq
 
 import FormaleSystemeInLeanLegacy.Preliminaries.Alphabet
+
+set_option backward.isDefEq.respectTransparency false
+
 --================================================================================
 -- File: Word
 /-  Containts Word definition, ε, Word.len, Word.concat and multiple

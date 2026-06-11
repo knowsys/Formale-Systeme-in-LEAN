@@ -485,7 +485,7 @@ theorem add_exp (L : Language Sigma) (m n : Nat) : (L^n) * L^m = L^(n+m) := by
           . simp_all
           . intro z z_mem
             have z_mem_l : z ∈ l := by
-              simp only [List.extract_eq_drop_take] at z_mem
+              simp only [List.extract_eq_take_drop] at z_mem
               have mem_drop : z ∈ (List.drop n l) := List.mem_of_mem_take z_mem
               apply List.mem_of_mem_drop mem_drop
             apply b z z_mem_l
@@ -493,7 +493,7 @@ theorem add_exp (L : Language Sigma) (m n : Nat) : (L^n) * L^m = L^(n+m) := by
         rw [Word.mul_eq]
         rw [← List.flatten_append]
         apply congrArg
-        simp only [List.extract_eq_drop_take]
+        simp only [List.extract_eq_take_drop]
         rw [← List.length_drop]
         conv => right; right; rw [List.take_length]
         rw [List.take_append_drop]

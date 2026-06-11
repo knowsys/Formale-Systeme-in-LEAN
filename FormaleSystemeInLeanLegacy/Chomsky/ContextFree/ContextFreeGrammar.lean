@@ -3,6 +3,8 @@ import Mathlib.Data.Finset.Functor
 
 import FormaleSystemeInLeanLegacy.Chomsky.ContextFree.ContextFreeProductions
 
+set_option backward.isDefEq.respectTransparency false
+
 --================================================================================
 -- File: ContextFreeGrammar
 /-  Defines contex-free grammars, derivation steps and lots

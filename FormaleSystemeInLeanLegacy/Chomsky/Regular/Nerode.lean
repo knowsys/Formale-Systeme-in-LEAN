@@ -5,6 +5,8 @@ import Mathlib.Data.Finite.Defs
 import FormaleSystemeInLeanLegacy.Preliminaries.Language
 import FormaleSystemeInLeanLegacy.Chomsky.Regular.TotalDFA
 
+set_option backward.isDefEq.respectTransparency false
+
 def MyhillNerodeRelation (L : Language α) (u v : Word α) : Prop :=
   ∀w, u * w ∈ L ↔ v * w ∈ L
 
@@ -75,12 +77,14 @@ noncomputable def DecisionProcedure.classical: DecisionProcedure L := Classical.
 def FinalClass (L: Language α) (q: Quotient (myhillNerodeEquivalence L)): Prop :=
   q.lift (· ∈ L) (by apply MyhillNerodeRelation.mem_language')
 
+@[reducible]
 def final_class_decidable (proc: DecisionProcedure L):
   DecidablePred (FinalClass L) := fun q => q.recOnSubsingleton proc
 
 def liftPredicateToSubtype (p: α → Prop) (prop: α → Prop):
   { a : α // prop a } → Prop := p ∘ Subtype.val
 
+@[reducible]
 def decidable_pred_from_subtype (p: α → Prop) (h: DecidablePred p):
   ∀prop: α → Prop, @DecidablePred { a: α // prop a } (p ∘ Subtype.val) :=
   fun _ ⟨x, _⟩ => h x
@@ -125,7 +129,7 @@ theorem del_eq:
 theorem del_star_eq:
   let M := canonicalAutomaton nc (proc := proc)
   ∀(w: Word M.Z), ∀v, M.del_star' (⟪w⟫, v) = ⟪w * v⟫ :=
-  fun w v => Subtype.eq $ by
+  fun w v => Subtype.ext $ by
     induction v generalizing w
     case nil => simp [<-Word.eps_eq_nil]; unfold TotalDFA.del_star'; rfl
     case cons _ _ ih =>
@@ -136,7 +140,7 @@ theorem del_star_eq:
 
 theorem final_state_eq:
   let M := canonicalAutomaton nc (proc := proc)
-  ∀w, M.del_star' (⟪ε⟫, w) = ⟪w⟫ := fun w => Subtype.eq $ by
+  ∀w, M.del_star' (⟪ε⟫, w) = ⟪w⟫ := fun w => Subtype.ext $ by
   simp [del_star_eq]
 
 theorem initial_state_eq:

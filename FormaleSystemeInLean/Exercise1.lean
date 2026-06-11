@@ -237,7 +237,7 @@ section Exercise2
           have w_mem : w ∈ (L5* * L6) * L8 := by
             exists u*z
             constructor
-            . grind
+            . exists x, x_mem, y, y_mem
             . exists t
               constructor
               . exact t_mem
@@ -281,7 +281,7 @@ section Exercise2
               . exact z_mem
               . exists t*v
                 constructor
-                . grind
+                . exact tv_mem
                 . rw [← Word.mul_assoc]
                   exact w_eq
             rw [aux2, Language.mul_assoc] at w_mem

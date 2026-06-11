@@ -3,6 +3,9 @@ import Mathlib.Data.Finset.Functor
 import Mathlib.Tactic.Tauto
 
 import FormaleSystemeInLeanLegacy.Chomsky.ContextFree.ContextFreeDerivation
+
+set_option backward.isDefEq.respectTransparency false
+
 --================================================================================
 -- File: Theorems
 /-  Containts multiple theorems leading up to the Pumping Lemma for context-free

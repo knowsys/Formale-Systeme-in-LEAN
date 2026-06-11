@@ -2,6 +2,8 @@ import Mathlib.Data.Finset.Basic
 import Mathlib.Data.Prod.Lex
 
 import FormaleSystemeInLeanLegacy.Chomsky.ContextFree.ContextFreeGrammar
+
+set_option backward.isDefEq.respectTransparency false
 --================================================================================
 -- File: RegularGrammar
 /-  Containts Regular production definition and regular derivation

@@ -83,7 +83,7 @@ theorem FinDenumerable.fin_decode_eq_decode₂ [inst: FinDenumerable α] (n : Fi
   inst.decode n = inst.decode₂ _ n := by
   rw [← Option.some_get (decode_fin_is_some n)]
   apply Eq.symm
-  rw [Encodable.decode₂_is_partial_inv]
+  rw [Encodable.decode₂_isPartialInv]
   have ⟨ _, h ⟩ := fin_preimage_exists n
   simp [<- h]
 

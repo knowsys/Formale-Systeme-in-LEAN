@@ -2,6 +2,8 @@ import FormaleSystemeInLeanLegacy.Chomsky.Regular.DFA
 
 import Mathlib.Data.Fintype.Option
 
+set_option backward.isDefEq.respectTransparency false
+
 structure TotalDFA (α: Type) (qs: Type) extends DFA α qs where
   totality: ∀q, ∀a, Option.isSome $ δ (q, a)
 
@@ -86,14 +88,14 @@ theorem totalDFA_del_star_eq {q: _} {w: _}:
       let q' : M.toTotalDFA.Q := ⟨ none, Fintype.complete _ ⟩
       have : q'.val = none := rfl
       rw [<-this] at hd
-      simp [Subtype.eq hd]
+      simp [Subtype.ext hd]
       rw [totalDFA_del_star_none]
     . rw [Option.bind_some]
       rw [totalDFA_del_eq_del] at hd
       let q' : M.toTotalDFA.Q := ⟨ some q', Fintype.complete _ ⟩
       have : q'.val = some _ := rfl
       rw [<-this] at hd
-      rw [Subtype.eq hd]
+      rw [Subtype.ext hd]
       apply ih
 
 theorem totalDFA_lang_eq:

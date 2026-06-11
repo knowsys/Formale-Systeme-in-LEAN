@@ -51,9 +51,11 @@ section Exercise3
     Instead we use a subtype of String defined by a list of strings (statesList and sigma).
     -/
 
-    def statesList := ["q0", "q1", "q2"]
+    @[implicit_reducible]
+    def statesList : List String := ["q0", "q1", "q2"]
     def sigma := ['a', 'b']
 
+    @[implicit_reducible]
     def Q := subtype_of_list statesList
     def ⅀ := subtype_of_list sigma
 
@@ -139,7 +141,9 @@ section Exercise3
 
         have mem_step : sim (Finset.mk [q1,q2], q2) := by
           have aux := step (a := b) start_mem
-          have mem_delta : Finset.mk [q1,q2] ∈ 𝓜_total'.δ Q0 b := by grind
+          have mem_delta : Finset.mk [q1,q2] ∈ 𝓜_total'.δ Q0 b := by
+            rw [delta'_q0_eq]
+            exact List.mem_singleton_self _
           specialize aux (Finset.mk [q1,q2])
           have aux2 := aux mem_delta
           rcases aux2 with ⟨r, r_mem, mem_sim⟩
@@ -156,6 +160,7 @@ section Exercise3
                   simp
                   have : statesList.attach = Fintype.elems (α := Q) := rfl
                   rw [← this]
+                  rw [List.length_attach]
                   simp [statesList]
                 . unfold q1 q2
                   simp
