@@ -237,7 +237,9 @@ section Exercise2
           have w_mem : w ∈ (L5* * L6) * L8 := by
             exists u*z
             constructor
-            . exists x, x_mem, y, y_mem
+            . rw [uz_eq]
+              exists x
+              grind
             . exists t
               constructor
               . exact t_mem
@@ -281,7 +283,7 @@ section Exercise2
               . exact z_mem
               . exists t*v
                 constructor
-                . exact tv_mem
+                . assumption
                 . rw [← Word.mul_assoc]
                   exact w_eq
             rw [aux2, Language.mul_assoc] at w_mem
@@ -340,7 +342,7 @@ section Exercise2
 
       have mem : ab_word ∈ L_ab* := by
         unfold ab_word
-        unfold Language.kstar L_ab
+        unfold Language.kstar
         exists 2
         rw [Language.mem_pow]
         exists [['a'],['b']]
@@ -406,13 +408,14 @@ section d
     constructor
     . intro w_mem
       rcases w_mem with ⟨n, w_mem⟩
-      cases n
-      . rcases w_mem
+      cases n with
+      | zero =>
+        rcases w_mem
         simp only [Membership.mem]
-      . exfalso
+      | succ n =>
+        exfalso
         rcases w_mem with ⟨v, v_mem, x, x_mem, w_eq⟩
-        unfold Language.pow at x_mem
-        exact v_mem
+        contradiction
     . intro h
       apply Exists.intro 0
       trivial
@@ -610,7 +613,7 @@ theorem ex_2e (L₁ L₂ : Language Sigma) : (L₁* ∪ L₂*)* = (L₁ ∪ L₂
     have union_subset : L₁ ∪ L₂ ⊆ L₁* ∪ L₂* := by
       intro x x_mem
       rcases x_mem with inl | inr
-      . constructor
+      . constructor!
         apply L1_subset; exact inl
       . apply Or.inr
         apply L2_subset; exact inr

@@ -233,9 +233,8 @@ def powerset_δ (M : NFA Q Sigma) [DecidableEq Q] : Powertype Q -> Sigma -> Powe
     (fun R a => Finset.mk (R.flatMap (fun q => M.δ q a)))
     (by
       intro X Y eq
-      simp only
       funext a
-      simp only [HasEquiv.Equiv, instHasEquivOfSetoid, Setoid.r, Finset.eq] at eq
+      simp only [HasEquiv.Equiv] at eq
       apply Quot.sound
       simp only [Setoid.r, Finset.eq]
       intro s
@@ -272,18 +271,18 @@ def powerset_δ (M : NFA Q Sigma) [DecidableEq Q] : Powertype Q -> Sigma -> Powe
     simp only [mem_powerset_δ_iff]
 
   theorem δ_word_eq_DFA_NFA (M : NFA Q Sigma) (w : Word Sigma) (R : List Q) [DecidableEq Q] : ∀ q, q ∈ M.δ_word R w ↔ q ∈ M.to_TotalDFA.δ_word (Finset.mk R) w := by
-  intro q
-  induction w generalizing q R with
-  | nil =>
-    simp only [NFA.δ_word, TotalDFA.δ_word, mem_list_iff_mem_mk]
-  | cons a v ih =>
-    simp only [NFA.δ_word]
-    have aux := ih (List.flatMap (fun x => M.δ x a) R)
-    simp only [TotalDFA.δ_word]
-    have aux2 := mem_powerset_δ_iff M a R q
-    rw [δ_NFA_eq_δ_TotalDFA]
-    simp only [NFA.δ_word]
-    grind
+    intro q
+    induction w generalizing q R with
+    | nil =>
+      simp only [NFA.δ_word, TotalDFA.δ_word, mem_list_iff_mem_mk]
+    | cons a v ih =>
+      simp only [NFA.δ_word]
+      have aux := ih (List.flatMap (fun x => M.δ x a) R)
+      simp only [TotalDFA.δ_word]
+      have aux2 := mem_powerset_δ_iff M a R q
+      rw [δ_NFA_eq_δ_TotalDFA]
+      simp only [NFA.δ_word]
+      grind
 
   theorem NFA_totalDFA_lang_eq (M : NFA Q Sigma) [DecidableEq Q] : M.to_TotalDFA.Language = M.Language := by
     apply Set.ext
@@ -293,8 +292,9 @@ def powerset_δ (M : NFA Q Sigma) [DecidableEq Q] : Powertype Q -> Sigma -> Powe
     have q0_eq : M.to_TotalDFA.q0 = Finset.mk M.Q0 := rfl
     have F_eq : M.to_TotalDFA.F = Fintype.elems.filter (fun x => (Finset.mk M.F) ∩ x != ∅) := rfl
     have := δ_word_eq_DFA_NFA M w M.Q0
-    rw [Set.mem_iff, F_eq, q0_eq]
-    rw [List.mem_filter]
+    simp only [Membership.mem]
+    change (M.to_TotalDFA.δ_word M.to_TotalDFA.q0 w) ∈ M.to_TotalDFA.F ↔ ∃ q, q ∈ (M.δ_word M.Q0 w) ∧ q ∈ M.F
+    rw [F_eq, List.mem_filter, q0_eq]
     constructor
     . rintro ⟨_, h⟩
       have exists_mem := Finset.ne_empty_contains_element _ h

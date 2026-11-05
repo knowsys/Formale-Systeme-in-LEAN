@@ -175,6 +175,7 @@ theorem diff_via_inter (L₁ L₂ : Language Sigma) : L₁ \ L₂ = L₁ ∩ L�
       exact nw
 
 /-- For languages we can also execute concatenation multiple times and define this via Powers. -/
+@[implicit_reducible]
 def Language.pow (L : Language Sigma) : Nat -> Language Sigma
 | .zero => fun w => w = []
 | .succ n => L * L.pow n

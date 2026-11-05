@@ -114,7 +114,7 @@ section Exercise3
         have q01_mem : Q0 ∈ 𝓜_total'.Q0 := by
           unfold Q0 q0 𝓜_total' TotalDFA.to_NFA 𝓜_total 𝓜 NFA.to_TotalDFA
           simp
-        have q02_mem : q0 ∈ 𝓜.Q0 := by unfold q0 𝓜; simp
+        have q02_mem : q0 ∈ 𝓜.Q0 := by unfold q0 𝓜; grind
         have q02_eq : 𝓜.Q0 = [q0] := by unfold q0 𝓜; simp
 
         have start_mem : sim (Q0, q0) := by
@@ -141,9 +141,7 @@ section Exercise3
 
         have mem_step : sim (Finset.mk [q1,q2], q2) := by
           have aux := step (a := b) start_mem
-          have mem_delta : Finset.mk [q1,q2] ∈ 𝓜_total'.δ Q0 b := by
-            rw [delta'_q0_eq]
-            exact List.mem_singleton_self _
+          have mem_delta : Finset.mk [q1,q2] ∈ 𝓜_total'.δ Q0 b := by decide
           specialize aux (Finset.mk [q1,q2])
           have aux2 := aux mem_delta
           rcases aux2 with ⟨r, r_mem, mem_sim⟩
@@ -157,11 +155,7 @@ section Exercise3
               . exists [q1, q2]
                 constructor
                 . apply powerlist
-                  simp
-                  have : statesList.attach = Fintype.elems (α := Q) := rfl
-                  rw [← this]
-                  rw [List.length_attach]
-                  simp [statesList]
+                  decide
                 . unfold q1 q2
                   simp
               . unfold 𝓜
@@ -189,19 +183,15 @@ section Exercise3
                 contradiction
 
             have aux3 := final contra mem_F
-            simp only [𝓜, List.mem_singleton] at aux3
+            simp only [𝓜] at aux3
             grind
 
           have r_neq : ¬r = q1 := by
             intro contra
             rw [contra] at mem_sim
             contradiction
-          have r_eq : r = q2 := by
-            simp at r_mem
-            grind
-
-          rw [r_eq] at mem_sim
-          exact mem_sim
+          have r_eq : r = q2 := by simp at r_mem; grind
+          rw [r_eq] at mem_sim; exact mem_sim
 
         have delta_undef : ∀ (a : ⅀), ¬∃ r, r ∈ 𝓜.δ q2 a := by
           intro a contra

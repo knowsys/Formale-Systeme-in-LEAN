@@ -2,6 +2,7 @@ import FormaleSystemeInLean.Set
 import FormaleSystemeInLean.List
 
 @[implicit_reducible]
+@[implicit_reducible]
 def Finset' (α : Type u) := List α
 
 instance : Membership α (Finset' α) where
@@ -103,13 +104,14 @@ def Finset.union : Finset α -> Finset α -> Finset α :=
     (by
       intro u v w x eq_uw eq_vx
       simp only [List.append_eq]
-      unfold mk Quotient.mk Setoid.r instSetoid Finset.eq
-      simp only
-      simp only [HasEquiv.Equiv, instHasEquivOfSetoid, Setoid.r, eq] at *
+      unfold mk Quotient.mk Setoid.r instSetoid Finset.eq at *
+      simp only [HasEquiv.Equiv, instHasEquivOfSetoid, Setoid.r] at *
       have aux : ∀ a, a ∈ (u.append v) ↔ a ∈ (w.append x) := by
         intro a
         simp only [List.append_eq, List.mem_append]
-        rw [eq_uw, eq_vx]
+        specialize eq_vx a
+        specialize eq_uw a
+        rw [eq_vx, eq_uw]
       have test : Finset.eq (u.append v) (w.append x) := by
         unfold eq; exact aux
       have aux2 := Quot.sound test
@@ -129,7 +131,7 @@ def Finset.insert (a : α) : Finset α → Finset α :=
         unfold eq
         intro c
         specialize h c
-        rw [List.mem_cons]
+        conv => lhs; rw [List.mem_cons]
         by_cases hc : c = a
         . rw [hc]
           simp only [true_or, true_iff]
@@ -156,7 +158,8 @@ instance : HasSubset (Finset α) where
 
 theorem mem_list_iff_mem_mk (l' : List α) : ∀ a, a ∈ l' ↔ a ∈ Finset.mk l' := by
   intro a
-  simp only [Finset.mk, Quotient.mk, Setoid.r]
+  simp only [Finset.mk, Quotient.mk]
+  unfold Setoid.r Finset.instSetoid
   unfold Finset.eq
   simp only [Membership.mem, Finset.mem]
 
@@ -169,6 +172,7 @@ theorem Finset.ext (X Y : Finset α) : (∀ a, a ∈ X ↔ a ∈ Y) -> X = Y := 
   rw [← X_eq, ← Y_eq]
   intro mem_iff
   apply Quotient.sound
+  simp only [HasEquiv.Equiv]
   intro a
   rw [mem_list_iff_mem_mk l1, mem_list_iff_mem_mk l2]
   specialize mem_iff a

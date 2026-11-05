@@ -30,7 +30,7 @@ instance {l : List α} : Fintype (subtype_of_list l) where
   elems := l.attach
   complete := by
     intro a
-    rcases a with ⟨p, v⟩
+    unfold subtype_of_list at a
     apply List.mem_attach
 
 /-- If α is finite then Option α is finite as well. -/
