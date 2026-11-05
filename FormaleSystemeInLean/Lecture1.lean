@@ -406,26 +406,26 @@ theorem kstar_subset (L : Language Sigma) : ∀ (n : Nat), L^n ⊆ L* := by
 
 /-- Another example for something seemingly obvious that needs to be proven explicitly in order to be used in theorems. -/
 theorem first_power (L : Language Sigma) : L^1 = L := by
-    apply Set.ext
-    intro w
+  apply Set.ext
+  intro w
+  constructor
+  . intro w_mem
+    rcases w_mem with ⟨v, v_mem, u, u_mem, w_eq⟩
+    unfold Language.pow at u_mem
+    rcases u_mem
+    rw [epsilon_concat] at w_eq
+    subst w_eq
+    exact v_mem
+  . intro w_mem
+    exists w
     constructor
-    . intro w_mem
-      rcases w_mem with ⟨v, v_mem, u, u_mem, w_eq⟩
-      unfold Language.pow at u_mem
-      rcases u_mem
-      rw [epsilon_concat] at w_eq
-      subst w_eq
-      exact v_mem
-    . intro w_mem
-      exists w
+    . exact w_mem
+    . exists []
       constructor
-      . exact w_mem
-      . exists []
-        constructor
-        . unfold Language.pow
-          simp [Membership.mem]
-        . symm
-          apply epsilon_concat
+      . unfold Language.pow
+        simp [Membership.mem]
+      . symm
+        apply epsilon_concat
 
 theorem mul_eq_append (u v : Word Sigma) : u * v = u++v := by rfl
 
