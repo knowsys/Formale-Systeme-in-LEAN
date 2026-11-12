@@ -207,7 +207,6 @@ theorem powerlist (T : Fintype α) (l : List α) : l.length ≤ T.elems.length -
 
 
 /-! We use Finset instead of Set here because it enables easier proofs for (e.g.) DecidablePred (a ∈ X) and DecidableEq. -/
-
 @[implicit_reducible]
 def Powertype (α : Type u) := Finset α
 

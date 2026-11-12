@@ -1,3 +1,5 @@
+import FormaleSystemeInLean.List
+
 /-!
 Fintype related definitions and results.
 -/
@@ -9,6 +11,7 @@ Fintype is used to express that a type is finite by requiring a list that contai
 class Fintype (α : Type u) where
   elems : List α
   complete : ∀ a : α, a ∈ elems
+deriving DecidableEq
 
 /--
 Subtype of α containing elements of l
@@ -16,12 +19,18 @@ Subtype of α containing elements of l
 @[implicit_reducible]
 def subtype_of_list (l : List α) := { x : α // x ∈ l }
 
+instance {l : List α} [BEq α] : BEq (subtype_of_list l) where
+beq := fun a b => a.val == b.val
+
+instance {l : List α} [ToString α] : ToString (subtype_of_list l) where
+toString := fun a => ToString.toString a.val
+
 /-- A subtype of α created from the list l is finite. -/
 instance {l : List α} : Fintype (subtype_of_list l) where
   elems := l.attach
   complete := by
     intro a
-    rcases a with ⟨p, v⟩
+    unfold subtype_of_list at a
     apply List.mem_attach
 
 /-- If α is finite then Option α is finite as well. -/
@@ -42,3 +51,5 @@ instance [T : Fintype α] : Fintype (Option α) where
       constructor
       . exact T.complete r
       . exact r_eq
+
+instance [Fintype α] [DecidableEq α] (l : List α) (a : α) : Decidable (a ∈ l) := by infer_instance

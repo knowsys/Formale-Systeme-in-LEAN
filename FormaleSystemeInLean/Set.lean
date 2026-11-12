@@ -208,19 +208,19 @@ theorem empty_set_if_empty_type (T : Fintype α) (S : Set α) : T.elems = [] →
   contradiction
 
 theorem complete_set_iff [Fintype α] (S : Set α) : (S = fun _ => True) ↔ ∀ (x : α), x ∈ S := by
-constructor
-. intro eq
-  intro x
-  rw [eq]
-  simp only [Membership.mem]
-. intro h
-  apply Set.ext
-  intro x
   constructor
-  . intro x_mem
+  . intro eq
+    intro x
+    rw [eq]
     simp only [Membership.mem]
-  . intro x_mem
-    grind
+  . intro h
+    apply Set.ext
+    intro x
+    constructor
+    . intro x_mem
+      simp only [Membership.mem]
+    . intro x_mem
+      grind
 
 theorem complete_set_eq_fintype_elems (T : Fintype α) : T.elems.toSet = fun _ => True := by
   apply Set.ext
@@ -235,7 +235,6 @@ theorem complete_set_eq_fintype_elems (T : Fintype α) : T.elems.toSet = fun _ =
 
 theorem exists_not_mem_if_ne_complete_set (T : Fintype α) (S : Set α) : (S ≠ fun _ => True) → ∃ a, a ∉ S := by
   intro ne
-  rw [Ne.eq_1] at ne
   apply Classical.byContradiction
   intro contra
   simp at contra
@@ -244,21 +243,20 @@ theorem exists_not_mem_if_ne_complete_set (T : Fintype α) (S : Set α) : (S ≠
   contradiction
 
 theorem ssubset_of_complete_set (T : Fintype α) (S : Set α) : (S ≠ fun _ => True) → S ⊂ (fun _ => True) := by
-intro ne
-constructor
-. intro a a_mem
-  trivial
-. intro h
-  have aux := exists_not_mem_if_ne_complete_set T S ne
-  rcases aux with ⟨x, x_nmem⟩
-  let complete_set : Set α := (fun a => True)
-  have x_mem : x ∈ complete_set := by
-    unfold complete_set
-    simp only [Membership.mem]
-  have x_mem_S : x ∈ S := h x x_mem
-  contradiction
+  intro ne
+  constructor
+  . intro a a_mem
+    trivial
+  . intro h
+    have aux := exists_not_mem_if_ne_complete_set T S ne
+    rcases aux with ⟨x, x_nmem⟩
+    let complete_set : Set α := (fun a => True)
+    have x_mem : x ∈ complete_set := by
+      unfold complete_set
+      simp only [Membership.mem]
+    have x_mem_S : x ∈ S := h x x_mem
+    contradiction
 
 theorem mem_iff : ∀ {α} {S : Set α} x, x ∈ S ↔ S x := by simp [Membership.mem]
 
 end Set
-
