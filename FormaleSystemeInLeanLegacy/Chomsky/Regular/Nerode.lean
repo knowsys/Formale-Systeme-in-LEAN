@@ -12,7 +12,7 @@ def MyhillNerodeRelation (L : Language α) (u v : Word α) : Prop :=
 
 notation:60 u:60 " ≃( " L:61 " ) " v:61 => MyhillNerodeRelation L u v
 
-variable {L: Language α} {u v: Word α}
+variable {u v: Word α} {L: Language α}
 
 instance myhillNerodeEquivalence (L: Language α) : Setoid (Word α) where
   r a b := a ≃(L) b
@@ -162,4 +162,3 @@ theorem canonicalAutomaton_accepted_language:
   apply Set.ext
   intro w
   rw [TotalDFA.in_language_iff_del_star_final, final_state_accepts_iff]
-

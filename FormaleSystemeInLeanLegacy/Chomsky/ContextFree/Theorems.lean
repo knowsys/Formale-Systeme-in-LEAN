@@ -214,7 +214,6 @@ def DerivationTreePath
 instance
   {cfg : ContextFreeGrammar α nt}
   {dt : ContextFreeGrammar.DerivationTree cfg}
-  (_ : DerivationTreePath dt)
   : CoeOut (DerivationTreePath dt) (List (ContextFreeGrammar.DerivationTree cfg)) where
   coe path := path
 
@@ -322,7 +321,7 @@ theorem PumpingLemma :
           unfold ContextFreeGrammar.GeneratedLanguage at z₂_mem
           apply Nonempty.elim_to_inhabited at z₂_mem
           apply z₂_mem
-          case f =>
+          case _ =>
           intro h_exists_deriv_z₂
           -- Die Ableitung von z₂ in cfg_CNF (Ableitungspfad)
           let default_deriv_z₂ := h_exists_deriv_z₂.default
@@ -383,4 +382,3 @@ theorem PumpingLemma :
           --• Also kann der Baum unterhalb dieses Vorkommens maximal 2|V| = n Blätter haben
           --(dies sind die Symbole in vwx)
           sorry
-

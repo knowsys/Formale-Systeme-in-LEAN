@@ -1,4 +1,8 @@
-import Mathlib.Data.Set.Lattice
+import Mathlib.Data.Set.Lattice.Bounded
+import Mathlib.Data.Set.Lattice.Disjoint
+import Mathlib.Data.Set.Lattice.Image
+import Mathlib.Data.Set.Lattice.Indexed
+import Mathlib.Data.Set.Lattice.Order
 import Mathlib.Data.List.Basic
 import Mathlib.Data.Nat.ModEq
 
@@ -15,10 +19,11 @@ set_option backward.isDefEq.respectTransparency false
 
 /--A Word, input for automatons. Depends on an Alphabet α.
   Based on the Type List.-/
+@[implicit_reducible]
 def Word (α : Type u) := List α
 
-/--Words are lists and can thus be coerced.-/
-instance (_ : Word α): Coe (Word α) (List α) where
+/-Words are lists and can thus be coerced.-/
+instance : Coe (Word α) (List α) where
   coe word := word
 
 /--Construct a word from a list.-/

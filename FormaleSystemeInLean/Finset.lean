@@ -2,7 +2,6 @@ import FormaleSystemeInLean.Set
 import FormaleSystemeInLean.List
 
 @[implicit_reducible]
-@[implicit_reducible]
 def Finset' (α : Type u) := List α
 
 instance : Membership α (Finset' α) where

@@ -8,6 +8,7 @@ import Mathlib.Data.Fintype.Lattice
 
   Technically a language is a function from a word to a proposition (requirement for inclusion),
   but`∈`should be used to reason over languages at all times.-/
+@[implicit_reducible]
 def Language (α : Type u) := Set (Word α)
 -- Note: Dvorak and mathlib have Type*. Is this a difference?
 

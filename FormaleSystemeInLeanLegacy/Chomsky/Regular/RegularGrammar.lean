@@ -238,8 +238,11 @@ mutual
           | same h_same =>
             dsimp [RegularProduction.getRhs] at h_same
             simp [<-h_same, <-Word.eps_eq_nil] at h_w
-            rw [Word.eps_eq_nil, List.map_eq_nil_iff] at h_w
-            exact h_w
+            rw [Word.eps_eq_nil, Word.eps_eq_nil] at h_w
+            simp only [List.map_nil] at h_w
+            change List.map Sum.inr w = [] at h_w
+            simp only [List.map_eq_nil_iff] at h_w
+            assumption
           | step s' _ _ =>
             have contra := s'.sound.symm
             simp [RegularProduction.getRhs, <-Word.eps_eq_nil, List.map] at contra

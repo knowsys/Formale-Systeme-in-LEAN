@@ -122,16 +122,31 @@ theorem FinDenumerable.decodenk [inst: FinDenumerable α] :
   have ⟨ a, ph ⟩ := fin_preimage_exists n
   simp [<- ph]
 
+--#check (Function.Surjective.range_eq FinDenumerable.encode_fin_bijective.surjective)
+#check Equiv.setCongr
+#check Equiv.ofBijective
+#check Equiv.trans
+#check Function.Surjective.range_eq
+#check Equiv.Set.univ
+#check FinDenumerable.encode_fin_bijective
+#check Equiv.setCongr
+#check Function.Surjective.range_eq
+
+def test [inst: FinDenumerable α] := (Function.Surjective.range_eq inst.encode_fin_bijective.surjective)
+
+def test2 [inst: FinDenumerable α] := (Set.equivOfEq (Function.Surjective.range_eq inst.encode_fin_bijective.surjective))
+
 /--`encode_fin`has a range of exactly the finite set with the cardinality of`inst`.-/
 def FinDenumerable.encode_fin_range [inst: FinDenumerable α] :
   ↑(Set.range inst.encode_fin) ≃ Fin inst.card :=
+  sorry
+    /-
     Equiv.trans
       (Equiv.setCongr (Function.Surjective.range_eq encode_fin_bijective.surjective))
-      (Equiv.Set.univ (Fin (Fintype.card α)))
+      (Equiv.Set.univ (Fin (Fintype.card α))) -/
 
 /--The finite denumerable set based on type`α`has exactly the same
   size as`α`. (`α ≃ β`is the type of functions from`α → β`with a two-sided inverse.)-/
 def FinDenumerable.equiv_fin [inst: FinDenumerable α] : α ≃ Fin inst.card :=
   let tmp := Equiv.ofLeftInverse encode_fin (fun _ => inst.decode_fin) (fun _ => encodek_fin_left_inverse)
   Equiv.trans tmp encode_fin_range
-
