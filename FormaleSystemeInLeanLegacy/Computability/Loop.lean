@@ -1,9 +1,16 @@
-import Mathlib.Data.Finite.Defs
-import Mathlib.Data.Finset.Fold
-import Mathlib.Data.Finset.Prod
-import Mathlib.Tactic.Cases
+module
 
-import FormaleSystemeInLeanLegacy.Preliminaries.Fold
+public import Lean.Data.AssocList
+
+public import Mathlib.Basic.Finite.Defs
+public import Mathlib.Data.Finset.Fold
+public import Mathlib.Data.Finset.Prod
+public import Mathlib.Tactic.Cases
+
+public import FormaleSystemeInLeanLegacy.Preliminaries.Fold
+
+@[expose]
+public section
 
 structure Variable where
   index: Nat

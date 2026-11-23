@@ -1,9 +1,15 @@
-import Mathlib.Data.Finset.Basic
-import Mathlib.Data.Prod.Lex
+module
 
-import FormaleSystemeInLeanLegacy.Chomsky.ContextFree.ContextFreeGrammar
+public import Mathlib.Data.Finset.Basic
+public import Mathlib.Order.Prod.Lex.Basic
+
+public import FormaleSystemeInLeanLegacy.Chomsky.ContextFree.ContextFreeGrammar
 
 set_option backward.isDefEq.respectTransparency false
+
+@[expose]
+public section
+
 --================================================================================
 -- File: RegularGrammar
 /-  Containts Regular production definition and regular derivation
@@ -292,7 +298,7 @@ mutual
               simp at h
           )
     | .cons _ (a, X') =>
-      RegularDerivation.step
+      RegularDerivation.step (a := a) (w' := w.tail)
         X
         X'
         (by

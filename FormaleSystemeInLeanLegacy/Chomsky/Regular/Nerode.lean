@@ -1,11 +1,20 @@
-import Mathlib.Data.Finset.Card
-import Mathlib.Data.Fintype.Basic
-import Mathlib.Data.Set.Lattice
-import Mathlib.Data.Finite.Defs
-import FormaleSystemeInLeanLegacy.Preliminaries.Language
-import FormaleSystemeInLeanLegacy.Chomsky.Regular.TotalDFA
+module
+
+public import Mathlib.Basic.Finite.Defs
+public import Mathlib.Data.Finset.Card
+public import Mathlib.Data.Fintype.Basic
+public import Mathlib.Data.Set.Lattice.Bounded
+public import Mathlib.Data.Set.Lattice.Disjoint
+public import Mathlib.Data.Set.Lattice.Image
+public import Mathlib.Data.Set.Lattice.Indexed
+public import Mathlib.Data.Set.Lattice.Order
+public import FormaleSystemeInLeanLegacy.Preliminaries.Language
+public import FormaleSystemeInLeanLegacy.Chomsky.Regular.TotalDFA
 
 set_option backward.isDefEq.respectTransparency false
+
+@[expose]
+public section
 
 def MyhillNerodeRelation (L : Language α) (u v : Word α) : Prop :=
   ∀w, u * w ∈ L ↔ v * w ∈ L
@@ -14,7 +23,7 @@ notation:60 u:60 " ≃( " L:61 " ) " v:61 => MyhillNerodeRelation L u v
 
 variable {u v: Word α} {L: Language α}
 
-instance myhillNerodeEquivalence (L: Language α) : Setoid (Word α) where
+def myhillNerodeEquivalence (L: Language α) : Setoid (Word α) where
   r a b := a ≃(L) b
   iseqv := {
     refl := fun _ _ => Iff.refl _
@@ -34,9 +43,6 @@ theorem MyhillNerodeRelation.right_congruence:
     have := (h w) ε
     simp at this
     assumption
-
-local instance : HasEquiv (Word α) where
-  Equiv := fun a b => a ≃(L) b
 
 theorem MyhillNerodeRelation.not_congruent_if (pre: u ≠ v):
   (∃w, Language.isSingleton ({u*w, v*w} ∩ L)) → ¬ u ≃(L) v := by
@@ -75,7 +81,7 @@ def DecisionProcedure (L: Language α): Type := DecidablePred (· ∈ L)
 noncomputable def DecisionProcedure.classical: DecisionProcedure L := Classical.decPred (· ∈ L)
 
 def FinalClass (L: Language α) (q: Quotient (myhillNerodeEquivalence L)): Prop :=
-  q.lift (· ∈ L) (by apply MyhillNerodeRelation.mem_language')
+  q.lift (· ∈ L) (by intro a b eq; apply MyhillNerodeRelation.mem_language'; exact eq)
 
 @[reducible]
 def final_class_decidable (proc: DecisionProcedure L):

@@ -1,10 +1,15 @@
-import FormaleSystemeInLeanLegacy.Chomsky.Grammar
-import Mathlib.Data.Finset.Functor
-import Mathlib.Tactic.Tauto
+module
 
-import FormaleSystemeInLeanLegacy.Chomsky.ContextFree.ContextFreeDerivation
+public import FormaleSystemeInLeanLegacy.Chomsky.Grammar
+public import Mathlib.Data.Finset.Functor
+public import Mathlib.Tactic.Tauto
+
+public import FormaleSystemeInLeanLegacy.Chomsky.ContextFree.ContextFreeDerivation
 
 set_option backward.isDefEq.respectTransparency false
+
+@[expose]
+public section
 
 --================================================================================
 -- File: Theorems
@@ -21,7 +26,7 @@ def coerceWord {Z : Finset α} (w : Word Z) : Word α := w.map (fun t => t.val)
 
 /--Coerce a language from a grammars terminal symbol type (a.k.a. finset) into
   that finsets supertype.-/
-def coerceLang {Z : Finset α} (l : Language Z) : Language α := fun word => ∃ w, w ∈ l ∧ (coerceWord w = word)
+def coerceLang {Z : Finset α} (l : Language Z) : Language α := Set.ofPred (fun word => ∃ w, w ∈ l ∧ (coerceWord w = word))
 
 instance {Z : Finset α} : CoeOut (Word Z) (Word α) where
   coe word := @coerceWord α Z word

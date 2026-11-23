@@ -1,9 +1,14 @@
-import FormaleSystemeInLeanLegacy.Chomsky.Grammar
-import Mathlib.Data.Finset.Functor
+module
 
-import FormaleSystemeInLeanLegacy.Chomsky.ContextFree.ContextFreeProductions
+public import FormaleSystemeInLeanLegacy.Chomsky.Grammar
+public import Mathlib.Data.Finset.Functor
+
+public import FormaleSystemeInLeanLegacy.Chomsky.ContextFree.ContextFreeProductions
 
 set_option backward.isDefEq.respectTransparency false
+
+@[expose]
+public section
 
 --================================================================================
 -- File: ContextFreeGrammar
@@ -269,7 +274,7 @@ def Grammar.Derivation.cancelLeft
     )
   | .step s d' r =>
     let ⟨s', r'⟩ := Grammar.DerivationStep.cancelLeft s h_lhs
-    let d'' : G.Derivation s.result.tail (Sum.inr <$> w.tail) := d'.cancelLeft (by
+    let d'' : G.Derivation s.result.tail (Sum.inr <$> w.tail) := d'.cancelLeft (a := a) (by
       simp [← r]
       unfold DerivationStep.result
       simp [HMul.hMul, Mul.mul]

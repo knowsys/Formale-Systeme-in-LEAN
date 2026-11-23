@@ -1,10 +1,15 @@
-import FormaleSystemeInLeanLegacy.Chomsky.Grammar
-import Mathlib.Data.Finset.Functor
-import Mathlib.Tactic.Tauto
+module
 
-import FormaleSystemeInLeanLegacy.Chomsky.ContextFree.PreDerivationTree
+public import FormaleSystemeInLeanLegacy.Chomsky.Grammar
+public import Mathlib.Data.Finset.Functor
+public import Mathlib.Tactic.Tauto
+
+public import FormaleSystemeInLeanLegacy.Chomsky.ContextFree.PreDerivationTree
 
 set_option backward.isDefEq.respectTransparency false
+
+@[expose]
+public section
 
 namespace ContextFreeGrammar
 --================================================================================

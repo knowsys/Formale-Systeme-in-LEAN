@@ -1,9 +1,15 @@
-import Mathlib.Algebra.Order.Kleene
-import Mathlib.Algebra.Group.NatPowAssoc
+module
 
-import FormaleSystemeInLeanLegacy.Preliminaries.Word
+public import Mathlib.Algebra.Order.Kleene
+public import Mathlib.Algebra.Group.NatPowAssoc
 
-import Mathlib.Data.Fintype.Lattice
+public import FormaleSystemeInLeanLegacy.Preliminaries.Word
+
+public import Mathlib.Data.Fintype.Lattice
+
+@[expose]
+public section
+
 /--A language is a set of words. Parameter: The words characters, probably an Alphabet.
 
   Technically a language is a function from a word to a proposition (requirement for inclusion),
@@ -16,7 +22,7 @@ namespace Language
 
 /--Allow for w ∈ L notation.-/
 instance : Membership (Word α) (Language α) where
-  mem L x := L x
+  mem L x := L.Mem x
 
 /--Allow for the`insert`operator to add words to a language.-/
 instance : Insert (Word α) (Language α) where
@@ -31,8 +37,8 @@ instance : HasSubset (Language α) where
   Subset := Set.Subset
 
 /--Languages build complemented distributive lattices in which every subset has a supremum.-/
-instance : CompleteBooleanAlgebra (Language α) :=
-  Pi.instCompleteBooleanAlgebra
+instance : CompleteAtomicBooleanAlgebra (Language α) :=
+  Set.instCompleteAtomicBooleanAlgebra
 
 /--Allow for intersection ∩ notation for languages.-/
 instance : Inter (Language α) where
@@ -50,7 +56,7 @@ def isSingleton (L : Language α) : Prop
   Each new word is the concatenation of a word from the first followed
   by a word from the second input language.-/
 def concat (X Y : Language α) : Language α :=
-  fun w : Word α => ∃ u v : Word α, u ∈ X ∧ v ∈ Y ∧ w = u * v
+  Set.ofPred (fun w : Word α => ∃ u v : Word α, u ∈ X ∧ v ∈ Y ∧ w = u * v)
 infixl:70 " ∘ₗ " => Language.concat
 
 /--Theorem: Language concatenation is associative.-/
@@ -70,11 +76,11 @@ theorem concat_assoc (X Y Z : Language α): (X ∘ₗ Y) ∘ₗ Z = X ∘ₗ (Y 
 
 /--All words in the epsilon language are ε.-/
 def epsilon : Language α :=
-  fun w => w = ε
+  Set.ofPred (fun w => w = ε)
 
 /--The empty language is defined to have no words in it. (w ∈ L proposition always False)-/
 def empty : Language α :=
-  fun _ => False
+  Set.ofPred (fun _ => False)
 
 /--Allow for ∅ or {} notation for the empty language.-/
 instance : EmptyCollection (Language α) where
@@ -87,35 +93,33 @@ instance : Union (Language α) where
 /--Theorem: Concatenating the language {ε} to a language does not change it.
   Utilises function and property extensionality axioms.-/
 theorem mul_eps (L : Language α): L ∘ₗ Language.epsilon = L := by
-  apply funext
+  apply Set.ext
   intro w
-  apply propext
   constructor
   . rw [Language.concat]
     intro ⟨u,v, h1, h2, h3⟩
-    simp [Language.epsilon, Membership.mem] at h2
+    simp only [Language.epsilon, Set.ofPred_eq_eq_singleton] at h2; rw [Set.mem_singleton_iff] at h2
     simp [h3, h2, Word.epsilon]
     exact h1
   . intro h ; simp [Language.concat]
-    exists w ; simp [Membership.mem, h]
+    exists w ; simp [h]
     simp [Language.epsilon] ; rfl
 
 /--Theorem: Concatenating the language {ε} infront of a language does not change it.
   Utilises function and property extensionality axioms.-/
 theorem eps_mul (L : Language α): Language.epsilon ∘ₗ L = L := by
-  apply funext
+  apply Set.ext
   intro w
-  apply propext
   constructor
   . rw [Language.concat]
     intro ⟨u,v, h1, h2, h3⟩
-    simp [Language.epsilon, Membership.mem] at h1
+    simp only [Language.epsilon, Set.ofPred_eq_eq_singleton] at h1; rw [Set.mem_singleton_iff] at h1
     simp [h3, h1, Word.epsilon]
     exact h2
   . intro h
     simp [Language.concat]
-    exists ε ; simp [Language.epsilon, Membership.mem]
-    assumption
+    exists ε ; simp only [Language.epsilon, Set.ofPred_eq_eq_singleton]; rw [Set.mem_singleton_iff]
+    simpa
 
 /--Theorem: Concatenating the empty language ∅ to the right of a language
   causes the language to become empty.-/
@@ -210,12 +214,11 @@ instance : Semiring (Language α) where
   nsmul := nsmulRec
 
 def kstar (X : Language α) : Language α :=
-  fun w: Word α => ∃ n : Nat, w ∈ X^n
+  Set.ofPred (fun w: Word α => ∃ n : Nat, w ∈ X^n)
 
 /--Given a language`L`, compute`(L)⁺`-/
 def plus (X: Language α) : Language α :=
-  fun w: Word α =>
-    ∃ n:Nat, ¬ (n = 0) ∧ w ∈ X^n
+  Set.ofPred (fun w: Word α => ∃ n:Nat, ¬ (n = 0) ∧ w ∈ X^n)
 
 postfix:1024 "⁺" => Language.plus
 
@@ -260,10 +263,10 @@ theorem kleene_eq_plus_eps {L: Language α}
 
 /--The alphabet of a language contains words of length one.-/
 protected def Sigma : Language α :=
-  fun w: Word α =>
+  Set.ofPred (fun w: Word α =>
     match w with
     | _::[] => True
-    | _ => False
+    | _ => False)
 
 scoped[Language] notation:41 "Σ" => Language.Sigma
 

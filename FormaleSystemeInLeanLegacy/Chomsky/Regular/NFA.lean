@@ -1,9 +1,14 @@
-import FormaleSystemeInLeanLegacy.Chomsky.Regular.RegularGrammar
+module
 
-import Mathlib.Data.Finset.Option
-import Mathlib.Data.Fintype.Sum
+public import FormaleSystemeInLeanLegacy.Chomsky.Regular.RegularGrammar
+
+public import Mathlib.Data.Finset.Option
+public import Mathlib.Data.Fintype.Sum
 
 set_option backward.isDefEq.respectTransparency false
+
+@[expose]
+public section
 
 /--Structure: Define Nondeterministic Finite Automatas. Requires an Alphabet and Set of States. The structure includes:
 
@@ -60,7 +65,7 @@ def Run.len: (r: M.Run q w) → Nat
   a starting state) end in a final state. Requires existance of an initial state and of such a run.
   (Reminder: a language is defined by a set inclusion criterium with input word w.)-/
 def AcceptedLanguage (M: NFA α qs) : Language M.Z :=
-  fun w => ∃q₀ ∈ M.Q₀, ∃run: M.Run q₀ w, run.last ∈ M.F
+  Set.ofPred (fun w => ∃q₀ ∈ M.Q₀, ∃run: M.Run q₀ w, run.last ∈ M.F)
 
 end NFA
 

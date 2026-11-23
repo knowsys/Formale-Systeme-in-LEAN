@@ -1,8 +1,13 @@
-import FormaleSystemeInLeanLegacy.Chomsky.Grammar
-import Mathlib.Data.Finset.Functor
-import Mathlib.Tactic.Tauto
+module
+
+public import FormaleSystemeInLeanLegacy.Chomsky.Grammar
+public import Mathlib.Data.Finset.Functor
+public import Mathlib.Tactic.Tauto
 
 set_option backward.isDefEq.respectTransparency false
+
+@[expose]
+public section
 
 --================================================================================
 -- File: ContextFreeProduction

@@ -1,14 +1,19 @@
-import Mathlib.Data.Set.Lattice.Bounded
-import Mathlib.Data.Set.Lattice.Disjoint
-import Mathlib.Data.Set.Lattice.Image
-import Mathlib.Data.Set.Lattice.Indexed
-import Mathlib.Data.Set.Lattice.Order
-import Mathlib.Data.List.Basic
-import Mathlib.Data.Nat.ModEq
+module
 
-import FormaleSystemeInLeanLegacy.Preliminaries.Alphabet
+public import Mathlib.Data.Set.Lattice.Bounded
+public import Mathlib.Data.Set.Lattice.Disjoint
+public import Mathlib.Data.Set.Lattice.Image
+public import Mathlib.Data.Set.Lattice.Indexed
+public import Mathlib.Data.Set.Lattice.Order
+public import Mathlib.Data.List.Basic
+public import Mathlib.Data.Nat.ModEq
+
+public import FormaleSystemeInLeanLegacy.Preliminaries.Alphabet
 
 set_option backward.isDefEq.respectTransparency false
+
+@[expose]
+public section
 
 --================================================================================
 -- File: Word

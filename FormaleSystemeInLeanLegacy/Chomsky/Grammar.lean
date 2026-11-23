@@ -1,9 +1,14 @@
-import Mathlib.Data.Finset.Basic
-import Mathlib.Algebra.Group.Defs
+module
 
-import FormaleSystemeInLeanLegacy.Preliminaries.Language
+public import Mathlib.Data.Finset.Basic
+public import Mathlib.Algebra.Group.Defs
+
+public import FormaleSystemeInLeanLegacy.Preliminaries.Language
 
 set_option backward.isDefEq.respectTransparency false
+
+@[expose]
+public section
 
 --================================================================================
 -- File: Grammar
@@ -360,7 +365,7 @@ instance DerivationRelation.preorder (G: Grammar Prod) : Preorder (Word (G.V ⊕
 /--The language of a grammar is defined as the set of those words that can be derived
   from the starting symbol.-/
 def GeneratedLanguage (G: Grammar Prod) : Language G.Z :=
-  fun w => [.inl ↑G.start] (G)⇒* (.inr <$> w)
+  Set.ofPred (fun w => [.inl ↑G.start] (G)⇒* (.inr <$> w))
 
 def ExampleProductions : List (GenericProduction { 'b', 'z' } { 'A', 'B', 'S', 'Z' }) := [
     -- rule S -> BA

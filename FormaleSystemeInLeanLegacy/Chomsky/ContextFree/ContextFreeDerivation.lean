@@ -1,9 +1,14 @@
-import FormaleSystemeInLeanLegacy.Chomsky.Grammar
-import Mathlib.Data.Finset.Functor
+module
 
-import FormaleSystemeInLeanLegacy.Chomsky.ContextFree.DerivationTree
+public import FormaleSystemeInLeanLegacy.Chomsky.Grammar
+public import Mathlib.Data.Finset.Functor
+
+public import FormaleSystemeInLeanLegacy.Chomsky.ContextFree.DerivationTree
 
 set_option backward.isDefEq.respectTransparency false
+
+@[expose]
+public section
 
 --================================================================================
 -- File: ContextFreeDerivation
@@ -60,7 +65,7 @@ notation:40 u:40 " CF(" G:40 ")⇒* " v:41 => (Nonempty $ ContextFreeDerivation 
 /--The language of a grammar is defined as the set of those words that can be derived
   using a context-free grammar from the starting symbol.-/
 def GeneratedLanguage (G: ContextFreeGrammar α nt) : Language G.Z :=
-  fun w => [.inl G.start] CF(G)⇒* (.inr <$> w)
+  Set.ofPred (fun w => [.inl G.start] CF(G)⇒* (.inr <$> w))
 
 namespace ContextFreeDerivation
   /--Condition specifying wether a derivation is exhaustive:

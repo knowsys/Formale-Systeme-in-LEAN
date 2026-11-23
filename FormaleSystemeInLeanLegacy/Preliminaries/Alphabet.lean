@@ -1,4 +1,9 @@
-import FormaleSystemeInLeanLegacy.Preliminaries.FinDenumerable
+module
+
+public import FormaleSystemeInLeanLegacy.Preliminaries.FinDenumerable
+
+@[expose]
+public section
 
 /--Class: An alphabet is finite (`.elems`and all elements included in`.elems`),
   denumerable (`encode`and`decode`functions), all encodings (returned by`encode`)

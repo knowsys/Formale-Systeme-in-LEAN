@@ -1,9 +1,14 @@
-import FormaleSystemeInLeanLegacy.Chomsky.Regular.DFA
-import FormaleSystemeInLeanLegacy.Preliminaries.Fold
+module
 
-import Mathlib.Data.Fintype.Powerset
+public import FormaleSystemeInLeanLegacy.Chomsky.Regular.DFA
+public import FormaleSystemeInLeanLegacy.Preliminaries.Fold
+
+public import Mathlib.Data.Fintype.Powerset
 
 set_option backward.isDefEq.respectTransparency false
+
+@[expose]
+public section
 
 def DFA.fromNFA [DecidableEq qs] (M: NFA α qs): DFA α (Finset M.Q) where
   Z := M.Z
@@ -22,10 +27,11 @@ def DFA.fromNFA.RunFromRestricted { qs: _ }
   (DFA.fromNFA M).Run qs w :=
   match r with
   | .final _ h => .final qs h
-  | .step _ hq' r hw =>
+  | .step (a := a) _ hq' r hw =>
     .step
+      (q₂ := ⟨ Finset.fold (β:=Finset M.Q) (· ∪ ·) ∅ (λq => M.δ (q, a)) qs, by simp [toNFA,fromNFA] ⟩)
       qs
-      (by unfold toNFA; unfold fromNFA; simp; rfl)
+      (by unfold toNFA; unfold fromNFA; simp)
       (RunFromRestricted r (by unfold toNFA at hq'; unfold fromNFA at hq'; simp at hq'; simp [hq']; apply Finset.fold_union_subs; exact h))
       hw
 
@@ -53,10 +59,11 @@ def DFA.fromNFA.NFARunToRun (r: M.Run q w):
   (DFA.fromNFA M).Run ⟨{q}, Fintype.complete _⟩ w :=
   match r with
   | .final _ h => .final _ h
-  | .step _ hq' r hw =>
+  | .step (a := a) _ hq' r hw =>
     .step
-      _
-      (by unfold toNFA; unfold fromNFA; simp; rfl)
+      (q₂ := ⟨ Finset.fold (β:=Finset M.Q) (· ∪ ·) ∅ (λq => M.δ (q, a)) {q}, by simp [toNFA,fromNFA] ⟩)
+      ⟨{q}, Fintype.complete _⟩
+      (by unfold toNFA; unfold fromNFA; simp)
       (RunFromRestricted (NFARunToRun r) (by simp; exact hq'))
       hw
 

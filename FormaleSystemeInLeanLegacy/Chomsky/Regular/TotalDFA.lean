@@ -1,8 +1,13 @@
-import FormaleSystemeInLeanLegacy.Chomsky.Regular.DFA
+module
 
-import Mathlib.Data.Fintype.Option
+public import FormaleSystemeInLeanLegacy.Chomsky.Regular.DFA
+
+public import Mathlib.Data.Fintype.Option
 
 set_option backward.isDefEq.respectTransparency false
+
+@[expose]
+public section
 
 structure TotalDFA (α: Type) (qs: Type) extends DFA α qs where
   totality: ∀q, ∀a, Option.isSome $ δ (q, a)

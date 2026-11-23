@@ -1,7 +1,13 @@
-import FormaleSystemeInLeanLegacy.Chomsky.Grammar
-import Mathlib.Data.Finset.Functor
+module
 
-import FormaleSystemeInLeanLegacy.Chomsky.ContextFree.ContextFreeGrammar
+public import FormaleSystemeInLeanLegacy.Chomsky.Grammar
+public import Mathlib.Data.Finset.Functor
+
+public import FormaleSystemeInLeanLegacy.Chomsky.ContextFree.ContextFreeGrammar
+
+@[expose]
+public section
+
 --================================================================================
 -- File: PreDerivationTree
 /-  Containts PreDerivationTree and NEPreDerivationTreeList definitions.

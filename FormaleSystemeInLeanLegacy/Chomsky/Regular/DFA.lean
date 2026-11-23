@@ -1,8 +1,13 @@
-import FormaleSystemeInLeanLegacy.Chomsky.Regular.NFA
+module
 
-import Mathlib.Tactic.Cases
+public import FormaleSystemeInLeanLegacy.Chomsky.Regular.NFA
+
+public import Mathlib.Tactic.Cases
 
 set_option backward.isDefEq.respectTransparency false
+
+@[expose]
+public section
 
 structure DFA (α qs: Type) where
   Z: Finset α
@@ -31,7 +36,7 @@ def toNFA (M: DFA α qs) : NFA α qs := M
 def Run (M: DFA α qs) := M.toNFA.Run
 
 def AcceptedLanguage (M: DFA α qs) : Language M.Z :=
-  fun w => ∃run: M.Run M.q₀ w, run.last ∈ M.F
+  Set.ofPred (fun w => ∃run: M.Run M.q₀ w, run.last ∈ M.F)
 
 theorem accepted_lang_eq { M: DFA α qs } :
   M.AcceptedLanguage = M.toNFA.AcceptedLanguage := by
