@@ -120,9 +120,7 @@ def Run.toDerivation
           have ⟨p, ⟨_, _⟩, hp_q⟩ := h
           have hp_q := congrArg Subtype.val hp_q
           simp [h_q, Fintype.wrap] at hp_q
-          rw [<- hp_q, <- RegularProduction.eq_eps_from_isEps]
-          assumption
-          assumption)
+          rwa [← hp_q, ← RegularProduction.eq_eps_from_isEps])
       h
 
   | .step (q₂:=q₂) (a:=a) _ h_q₂ r h =>
@@ -143,8 +141,7 @@ def Run.toDerivation
             simp [Fintype.wrap, h_q₂'] at this
           | inr h =>
             cases prod <;> simp [ite_eq_iff] at h
-            rw [<- h.1.1, <- h.1.2]
-            assumption
+            rwa [← h.1.1, ← h.1.2]
         )
         (by
           cases r
@@ -175,8 +172,7 @@ def Run.toDerivation
             have ⟨⟨l, r₁⟩, r₂⟩ := inner
             have right := congrArg Subtype.val right
             simp [Fintype.wrap, h_q₂'] at right
-            rw [<-l, <-r₁, <-right, <-r₂, Prod.eta _]
-            assumption
+            rwa [← l, ← r₁, ← right, ← r₂, Prod.eta _]
       )
       h
       (toDerivation r h_q₂' hlast)

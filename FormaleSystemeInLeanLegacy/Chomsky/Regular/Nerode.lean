@@ -37,8 +37,7 @@ theorem MyhillNerodeRelation.right_congruence:
   . intro h w x
     have := h (w * x)
     rw [<- Word.monoid.mul_assoc] at this
-    rw [<- Word.monoid.mul_assoc] at this
-    assumption
+    rwa [← Word.monoid.mul_assoc] at this
   . intro h w
     have := (h w) ε
     simp at this

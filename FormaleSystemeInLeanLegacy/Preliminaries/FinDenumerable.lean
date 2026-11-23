@@ -47,7 +47,7 @@ def FinDenumerable.encode_embedding [inst: FinDenumerable α] : α ↪ Fin inst.
   -- Function.Embedding.mk : (toFun : α → β) (inj' : Function.Injective toFun) : α ↪ β
 
 /--A proof that`encode_fin`is bijective. Note: Why is this not a theorem?-/
-def FinDenumerable.encode_fin_bijective [inst: FinDenumerable α] : Function.Bijective inst.encode_fin := by
+theorem FinDenumerable.encode_fin_bijective [inst: FinDenumerable α] : Function.Bijective inst.encode_fin := by
   apply (Fintype.bijective_iff_injective_and_card encode_fin).2
   simp; exact encode_fin_injective
 
@@ -78,7 +78,7 @@ theorem FinDenumerable.decode_fin_eq_option_get [inst: FinDenumerable α] (n : F
 
 /--Theorem: Every`n`in a finite set of correct cardinality is an encoding of
   some element`a`of FinDenumerable.-/
-def FinDenumerable.fin_preimage_exists [inst: FinDenumerable α] (n: Fin inst.card) :
+theorem FinDenumerable.fin_preimage_exists [inst: FinDenumerable α] (n: Fin inst.card) :
   ∃a, inst.encode a = n := by
   apply (inst.decode_partial_inv n).imp
   intro _ h; exact h.2

@@ -84,7 +84,7 @@ theorem DerivationTree.fromChildTreeIsChild : (DerivationTree.fromChild children
   | inner _ _ _ => unfold inner; simp
 
 /--An internal function that fetches children.treeValid for inner DT-nodes.-/
-def DerivationTree._getChildrenValid
+theorem DerivationTree._getChildrenValid
   {DT : DerivationTree G} (c : NEPreDerivationTreeList G)
   (h_cons : DT.tree = PreDerivationTree.inner v c r) : (c.treeValid) := by
     let valid := DT.valid

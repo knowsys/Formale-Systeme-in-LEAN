@@ -53,11 +53,11 @@ theorem Word.mul_eq_cons { w v : Word α } :
   List.append_eq_cons_iff
 
 /--Theorem: If any two words are the same, any of their prefixes are also the same.-/
-def Word.mul_right_cancel {w₁ w₂ t : Word α} (h : w₁ * t = w₂ * t) : w₁ = w₂ :=
+theorem Word.mul_right_cancel {w₁ w₂ t : Word α} (h : w₁ * t = w₂ * t) : w₁ = w₂ :=
   List.append_cancel_right h
 
 /--Theorem: If any two words are the same, any of their suffixes are also the same.-/
-def Word.mul_left_cancel {w₁ w₂ t : Word α} (h : t * w₁ = t * w₂) : w₁ = w₂ :=
+theorem Word.mul_left_cancel {w₁ w₂ t : Word α} (h : t * w₁ = t * w₂) : w₁ = w₂ :=
   List.append_cancel_left h
 
 /--Return a version of the natural numbers restricted to numbers less than`N`,

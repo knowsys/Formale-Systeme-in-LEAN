@@ -88,8 +88,7 @@ theorem del_star_curried_isSome_iff_constrRun_isSome
     -- both are none
     . simp [del_star_curried, hq', Option.bind_eq_bind]
       unfold constrRun
-      rw [pbind_eq_none]
-      assumption; intros; assumption
+      rwa [pbind_eq_none]; intros; assumption
     -- both are some
     . conv =>
         right; rw [isSome_iff_exists]; congr
@@ -131,7 +130,7 @@ theorem in_language_iff_del_star_final
         (Option.isSome_iff_exists.mpr ⟨qf, hdel⟩)
     exists r.get this
     simp [last_state_eq_del_star (r.get this)] at hdel
-    rw [hdel]; assumption
+    rwa [hdel]
 
 
 def transitionToRule (M: DFA α qs) : (M.Q × M.Z) → Option (RegularProduction M.Z M.Q)
@@ -207,8 +206,7 @@ theorem toGrammar_prod_imp_transition
   M.δ (v, a) = some v' := by
   simp [toGrammar, transitionToRule] at h
   have ⟨_, _, _, _, _, _, _, _, c1, c2, c3⟩ := h
-  rw [<- c1, <- c2, <- c3]
-  assumption
+  rwa [← c1, ← c2, ← c3]
 
 def Run.fromDerivation: (d: M.toGrammar.RegularDerivation start word) →
   M.Run start word

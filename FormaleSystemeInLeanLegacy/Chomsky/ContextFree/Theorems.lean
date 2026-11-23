@@ -158,7 +158,7 @@ def generate_equivalent_CNF
   TODO: Note, that nt and nt₂ are part of the input. This is nonsensical and
   stems from our definition of grammars / context-free grammars that has
   the type of non-terminals as an input type parameter.-/
-def generate_equivalent_CNF_is_eq :
+theorem generate_equivalent_CNF_is_eq :
   ∀ α nt nt₂ : Type,
   ∀ (cfg : {cfg : ContextFreeGrammar α nt // ε ∉ cfg.GeneratedLanguage}),
    @coerceLang α _ cfg.val.GeneratedLanguage
